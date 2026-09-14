@@ -80,4 +80,16 @@ describe('session notes', () => {
     expect(buildCompletedWorkout({ ...a, note: 'slept badly' }).note).toBe('slept badly')
     expect('note' in buildCompletedWorkout(a)).toBe(false)
   })
+  it('records the double-progression rep aim so a fatigued session can repeat it', () => {
+    const active = {
+      id: 'a', d: '2026-08-08', start: 1000,
+      entries: [
+        { id: 'x', plan: { policy: 'double', kind: 'hold', reps: 10 }, sets: [{ done: true, w: 40, r: 10 }], target: { sets: 1, reps: 12 } },
+        { id: 'y', plan: { policy: 'linear', kind: 'up', weight: 60 }, sets: [{ done: true, w: 60, r: 5 }], target: { sets: 1, reps: 5 } },
+      ],
+    }
+    const completed = buildCompletedWorkout(active, { end: 2000 })
+    expect(completed.entries[0].aim).toBe(10)
+    expect(completed.entries[1]).not.toHaveProperty('aim')
+  })
 })

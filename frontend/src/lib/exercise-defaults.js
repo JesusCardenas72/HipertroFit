@@ -74,7 +74,15 @@ export function seedConfig(base, globals, mode) {
   // `bodyweight` decides whether `weight` is global at all, so it lands before the loop reads
   // the field list off `out`.
   if (globals.bodyweight !== undefined && fieldsForMode(mode).includes('bodyweight')) out.bodyweight = globals.bodyweight
-  for (const field of globalFieldsFor(out, mode)) if (globals[field] !== undefined) out[field] = globals[field]
+  // A base that already proposes a double-progression range keeps its range unless the exercise
+  // was given one of its own: a lone remembered `reps` (from a straight-sets rule) would
+  // otherwise overwrite the top of the range and leave a 10-11 range where 10-20 was meant.
+  const keepRange = base && base.prog === 'double' && base.repsMin !== undefined
+    && globals.repsMin === undefined && (globals.prog === undefined || globals.prog === 'double')
+  for (const field of globalFieldsFor(out, mode)) {
+    if (keepRange && field === 'reps') continue
+    if (globals[field] !== undefined) out[field] = globals[field]
+  }
   return out
 }
 
@@ -97,4 +105,16 @@ export function applyGlobals(store, exId, cfg, mode) {
   const touched = globalFieldsFor(cfg, mode)
   const kept = Object.fromEntries(Object.entries(previous).filter(([field]) => !touched.includes(field)))
   return { ...(store || {}), [exId]: { ...kept, ...pickGlobals(cfg, mode) } }
+}
+
+// Where an exercise being added to `routineId` was already set up, as { routine, cfg }, or null.
+// Another routine is preferred over a second copy in the same one; among several, the first in
+// the plan wins. `cfg` is the whole planned config — local fields included — minus the fields
+// that only mean something in the routine it came from (its superset link).
+export function previousRoutineConfig(routines, exId, routineId) {
+  const withEx = (routines || []).filter(r => (r.ex || []).some(e => e.id === exId))
+  const routine = withEx.find(r => r.id !== routineId) || withEx[0]
+  if (!routine) return null
+  const { id, sg, ...cfg } = routine.ex.find(e => e.id === exId)
+  return { routine, cfg }
 }

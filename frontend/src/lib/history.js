@@ -330,17 +330,54 @@ export function buildSets(S, cfg, options = {}) {
 /** Beyond this a "warm-up" is its own workout; the config stepper stops here too. */
 export const MAX_PLANNED_WARMUPS = 5
 
-function buildWorkSets(S, cfg, options = {}) {
-  const preferLast = !!options.preferLast
-  const useTarget = !!options.useTarget
-  // A workout flagged excludeFromProgression (a planned deload) is not "last time" for the
-  // next regular session either: its reps and durations must not seed the rows any more than
-  // its weight seeds the prescription. The deload session itself reads the routine's own target.
+// A workout flagged excludeFromProgression (a planned deload) is not "last time" for the
+// next regular session either: its reps and durations must not seed the rows any more than
+// its weight seeds the prescription. The deload session itself reads the routine's own target.
+function lastRegularEntryFor(S, exId) {
   const regular = (S.workouts || []).some(w => w.excludeFromProgression === true)
     ? { ...S, workouts: S.workouts.filter(w => w.excludeFromProgression !== true) }
     : S
-  const last = lastEntryFor(regular, cfg.id)
-  const n = Math.max(1, cfg.sets || 1)
+  return lastEntryFor(regular, exId)
+}
+
+// Whether a logged set was performed in `mode` — a plank logged for time says nothing about
+// how many sets of reps the same exercise takes, nor the other way round.
+const setInMode = (s, mode) => mode === 'cardio' ? s.min > 0 : mode === 'time' ? s.sec > 0 : s.r > 0 && !(s.sec > 0)
+
+/**
+ * How many work sets a session of this exercise gets.
+ *
+ * Sets, reps and weight belong to the EXERCISE, not to the routine that happens to list it:
+ * whatever you last did with it — in this routine or any other — is where the next session
+ * starts, and the routine's own `sets` is only the fallback for an exercise with no history.
+ * A deload (`useTarget`) reads the routine's number, like the rest of its prescription. A
+ * rest-pause session logs a single work set by design, so it never shrinks a regular plan.
+ */
+export function sessionSetCount(S, cfg, { useTarget = false } = {}) {
+  const planned = Math.max(1, cfg.sets || 1)
+  if (useTarget) return planned
+  const mode = modeOf(cfg)
+  const workouts = S.workouts || []
+  for (let i = workouts.length - 1; i >= 0; i--) {
+    if (workouts[i].excludeFromProgression === true) continue
+    const en = (workouts[i].entries || []).find(e => e.id === cfg.id)
+    const rows = en ? en.sets.filter(s => !isWarmupRow(s)) : []
+    if (!rows.some(s => s.done)) continue
+    if (rows.some(s => s.type === 'restpause')) return planned
+    const n = rows.filter(s => setInMode(s, mode)).length
+    if (!n) return planned
+    // What that session prescribed, or every work row it ended with when sets were added on the
+    // day: a set skipped for lack of time does not shrink the next session.
+    return Math.max(n, en.target && en.target.sets > 0 ? en.target.sets : 0)
+  }
+  return planned
+}
+
+function buildWorkSets(S, cfg, options = {}) {
+  const preferLast = !!options.preferLast
+  const useTarget = !!options.useTarget
+  const last = lastRegularEntryFor(S, cfg.id)
+  const n = sessionSetCount(S, cfg, { useTarget })
   const mode = modeOf(cfg)
   const sets = []
   // A deload routine must use its own prescription instead of carrying regular-session values

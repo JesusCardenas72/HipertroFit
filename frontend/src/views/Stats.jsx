@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
-import { EXIDX, matchExercise } from '../lib/exercises.js'
+import { EXIDX, matchExercise, exOr } from '../lib/exercises.js'
 import { lastBW, streakWeeks, setLabel, modeOf, effortOf, metricModeForEntry, metricRowsForEntry, bestWeightForEntry } from '../lib/history.js'
 import { fmtNum, fmtDate, fmtVol, todayISO } from '../lib/format.js'
 import { t, exerciseNameFor, getLang } from '../lib/i18n.js'
@@ -25,6 +25,9 @@ import VolumeGroupBars from '../components/VolumeGroupBars.jsx'
 import { Button, Segmented, SelectRow } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { isWarmupRow } from '../lib/workout-model.js'
+import { doubleProgressExercises, doubleProgressStatus } from '../lib/double-progress.js'
+import { DoubleProgressMeter } from '../components/DoubleProgress.jsx'
+import { aiAnalysisSheet } from '../components/AiAnalysis.jsx'
 
 // Which muscles the training in a window actually hit — and, the point of the card,
 // which ones it keeps missing. Shading is relative within the window (lib/muscles.js).
@@ -239,6 +242,35 @@ function MuscleBalance({ S }) {
 // Every number carries how much of the training it speaks for: rating is optional and off by
 // default, so a partly rated history is the normal case, and an average without its
 // denominator would quietly speak for sets that were never rated.
+// Most urgent first: what the next session will ask about, then what is holding progress back.
+const DP_ORDER = { ready: 0, fatigue: 1, deload: 2, climbing: 3, bodyweight: 4, first: 5 }
+
+function DoubleProgressCard({ S }) {
+  const [open, setOpen] = useState(null)
+  const list = useMemo(() => doubleProgressExercises(S)
+    .map(({ cfg, routine }) => doubleProgressStatus(S, cfg, routine))
+    .sort((a, b) => (DP_ORDER[a.state] - DP_ORDER[b.state]) || (b.progress - a.progress)), [S])
+  if (!list.length) return null
+  const count = k => list.filter(x => x.state === k).length
+  return <div className="card">
+    <h2>{t('Double progression')} <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}>· {t('where each exercise stands')}</span></h2>
+    <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+      {count('ready') > 0 && <span className="tag nocap" style={{ color: 'var(--green)' }}>{t('{0} ready to progress', count('ready'))}</span>}
+      {count('fatigue') > 0 && <span className="tag nocap" style={{ color: 'var(--orange)' }}>{t('{0} with fatigue', count('fatigue'))}</span>}
+      {count('climbing') > 0 && <span className="tag nocap" style={{ color: 'var(--blue)' }}>{t('{0} climbing reps', count('climbing'))}</span>}
+    </div>
+    <div className="dpm-list">
+      {list.map(st => <div className="dpm-item" key={st.id} {...tappable(() => setOpen(o => (o === st.id ? null : st.id)))}>
+        <div className="row between" style={{ flexWrap: 'nowrap', gap: 8 }}><span className="dpm-name" style={{ flex: 1, minWidth: 0 }}>{exerciseNameFor(exOr(st.id))}</span><Icon name={open === st.id ? 'chevronUp' : 'chevronDown'} /></div>
+        <DoubleProgressMeter status={st} unit={S.unit} compact={open !== st.id} />
+      </div>)}
+    </div>
+    <div className="muted small" style={{ marginTop: 8 }}>
+      {t('Each bar is a set of the last session inside its rep range. When every set reaches the top without reps dropping between sets, the next session asks whether to add weight or a set.')}
+    </div>
+  </div>
+}
+
 function EffortCard({ S }) {
   const [win, setWin] = useState(90)
   const kind = displayScale(S)
@@ -438,7 +470,10 @@ export default function Stats() {
 
   return <>
     <div className="hdr"><div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}</div></div>
-      <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button></div>
+      <div className="row" style={{ gap: 8 }}>
+        <button className="iconbtn" onClick={aiAnalysisSheet} aria-label={t('Analyze with AI')}><Icon name="sparkles" /></button>
+        <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button>
+      </div></div>
 
     <div className="tiles">
       <div className="tile"><div className="l"><Icon name="dumbbell" />{t('Workouts')}</div><div className="v">{workouts.length}</div></div>
@@ -469,6 +504,8 @@ export default function Stats() {
           options={[{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]} />
         <div className="chart"><LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} /></div>
       </div>
+
+      <DoubleProgressCard S={S} />
 
       <div className="card">
         <h2>{t('Exercise progress')}</h2>

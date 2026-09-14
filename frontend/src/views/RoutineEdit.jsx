@@ -7,12 +7,13 @@ import { uid } from '../lib/format.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { supersetUnits, moveSupersetUnit, cleanupSg, exLine } from '../lib/history.js'
 import { Thumb } from '../components/Media.jsx'
-import { glyphPicker, exercisePicker, exConfigSheet, confirmSheet } from '../sheets.jsx'
+import { glyphPicker, exercisePicker, exConfigSheet, confirmSheet, addExerciseToRoutine } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { glyphOf } from '../lib/glyphs.js'
 import { Button, Row, SelectRow, Switch } from '../components/ui.jsx'
 import { POLICIES_FOR, POLICY_NAME, POLICY_DESC } from '../lib/progression.js'
 import BodyMap from '../components/BodyMap.jsx'
+import { folderOf, moveRoutineToFolder } from '../lib/folders.js'
 import { loadOfRoutine, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
 
 export const ROUTINE_LONG_PRESS_MS = 380
@@ -352,6 +353,9 @@ export default function RoutineEdit() {
     </div>
 
     <div className="sect-b" style={{ marginBottom: 16 }}>
+      {(S.folders || []).length > 0 && <SelectRow icon="folder" title={t('Folder')} sheetTitle={t('Move to folder')}
+        value={folderOf(S, r) || ''} onChange={v => update(s => { moveRoutineToFolder(s, id, v || null) })}
+        options={[{ value: '', label: t('No folder') }, ...S.folders.map(f => ({ value: f.id, label: f.name }))]} />}
       <SelectRow icon="chartLine" title={t('Progression')} sheetTitle={t('Progression')}
         value={r.prog || 'linear'} onChange={v => update(s => { s.routines.find(x => x.id === id).prog = v })}
         options={POLICIES_FOR.reps.map(p => ({ value: p, label: t(POLICY_NAME[p]), subtitle: t(POLICY_DESC[p]) }))} />
@@ -423,7 +427,7 @@ export default function RoutineEdit() {
     })()}
 
     <div className="small dim row" style={{ margin: '10px 2px', gap: 5 }}><Icon name="link" style={{ fontSize: 13 }} />{t('Tap the link button on an exercise to superset it with the one above — you’ll do them back-to-back.')}</div>
-    <Button variant="primary" onClick={() => exercisePicker(ex => exConfigSheet(ex, null, cfg => edit(x => { x.push({ id: ex.id, ...cfg }) }), null, r))} icon="plus">{t('Add exercise')}</Button>
+    <Button variant="primary" onClick={() => exercisePicker(ex => addExerciseToRoutine(ex, r, cfg => edit(x => { x.push({ id: ex.id, ...cfg }) })))} icon="plus">{t('Add exercise')}</Button>
     <div style={{ height: 10 }} />
     <Button variant="danger" onClick={() => confirmSheet({
       title: t('Delete routine?'), message: t('“{0}” and its exercises will be removed.', r.name), confirmText: t('Delete'), danger: true,

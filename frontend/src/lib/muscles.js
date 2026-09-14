@@ -70,7 +70,28 @@ const BY_BODYPART = {
   cardio: {},
 }
 
-const SECONDARY = 0.4   // a supporting muscle counts this much against a primary
+// How much a supporting (secondary) muscle counts against a primary. 0.4 is the usual way
+// fractional volume is counted, but what a secondary set is worth is a judgement call — some
+// people count them fully, some not at all — so it is a user setting (Settings ▸ Training
+// volume, S.secondaryVolume) pushed in here by the store, the same way registerCustom pushes
+// the custom-exercise catalogue. Pure helpers still read one module-level number, so nothing
+// downstream (volume, recovery, the muscle map) has to thread it through.
+export const DEFAULT_SECONDARY = 0.4
+let SECONDARY = DEFAULT_SECONDARY
+
+/** Clamp a user-supplied secondary weight into 0…1; anything unusable falls back to 0.4. */
+export function normalizeSecondaryWeight(w) {
+  if (w == null || w === '') return DEFAULT_SECONDARY   // Number(null) is 0, which is a real choice here
+  const n = Number(w)
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_SECONDARY
+  return Math.min(1, n)
+}
+
+/** Set the secondary-muscle weight used by musclesOf from here on (store -> lib). */
+export const setSecondaryWeight = w => { SECONDARY = normalizeSecondaryWeight(w) }
+
+/** The secondary-muscle weight currently in force. */
+export const secondaryWeight = () => SECONDARY
 
 const arrayOf = value => Array.isArray(value) ? value : value == null || value === '' ? [] : [value]
 

@@ -8,7 +8,7 @@
 
    Stored as an ArrayBuffer plus its type rather than as a File/Blob: older WebKit could not keep
    Blobs in IndexedDB, and bytes round-trip everywhere. */
-import { clipsDuration, forgetClip } from './sound.js'
+import { clipsDuration, forgetClip, playClips, fanfare } from './sound.js'
 import defaultRestClip from '../assets/boxing-bell-single_CORTO.mp3'
 
 const DB_NAME = 'hipertrofit-media'
@@ -71,48 +71,63 @@ function withStore(mode, fn) {
   }))
 }
 
-let current = null   // { name, url } while a custom sound is in use
-let loaded = null    // Promise of the first read from IndexedDB
-
-function adopt(record) {
-  if (current) {
-    forgetClip(current.url)
-    try { URL.revokeObjectURL(current.url) } catch (e) { /* */ }
+/* One stored sound per slot: `key` is its IndexedDB key, `fallback` the bundled clip it replaces
+   (null when the default is synthesised instead, as the progression fanfare is). */
+function soundSlot(key, fallback) {
+  let current = null   // { name, url } while a custom sound is in use
+  let loaded = null    // Promise of the first read from IndexedDB
+  const adopt = record => {
+    if (current) {
+      forgetClip(current.url)
+      try { URL.revokeObjectURL(current.url) } catch (e) { /* */ }
+    }
+    current = record && record.data
+      ? { name: record.name || '', url: URL.createObjectURL(new Blob([record.data], { type: record.type || '' })) }
+      : null
   }
-  current = record && record.data
-    ? { name: record.name || '', url: URL.createObjectURL(new Blob([record.data], { type: record.type || '' })) }
-    : null
-}
-
-/** Name of the custom sound in use, or null for the default bell. Synchronous: null until loaded. */
-export function customSoundName() { return current ? current.name : null }
-
-/** The clips the rest alert plays right now. */
-export function restAlertClips() { return [current ? current.url : defaultRestClip] }
-
-/** Read the saved choice once. Resolves to its name (null for the bell); never rejects. */
-export function loadCustomSound() {
-  if (!loaded) {
-    loaded = withStore('readonly', s => s.get(KEY))
-      .then(adopt, () => {})
-      .then(customSoundName)
+  const name = () => (current ? current.name : null)
+  return {
+    /** Name of the custom sound in use, or null for the default. Synchronous: null until loaded. */
+    name,
+    /** The clips this sound plays right now — empty when the default is not a clip. */
+    clips: () => (current ? [current.url] : fallback ? [fallback] : []),
+    /** Read the saved choice once. Resolves to its name (null for the default); never rejects. */
+    load() {
+      if (!loaded) loaded = withStore('readonly', st => st.get(key)).then(adopt, () => {}).then(name)
+      return loaded
+    },
+    /** Save `file` in this slot. Run customSoundProblem first; this only stores it. */
+    async save(file) {
+      const record = { name: file.name || '', type: file.type || '', data: await file.arrayBuffer() }
+      await withStore('readwrite', st => st.put(record, key))
+      adopt(record)
+      loaded = Promise.resolve(name())
+      return name()
+    },
+    /** Back to the default. */
+    async clear() {
+      await withStore('readwrite', st => st.delete(key))
+      adopt(null)
+      loaded = Promise.resolve(null)
+      return null
+    }
   }
-  return loaded
 }
 
-/** Save `file` as the rest-end sound. Run customSoundProblem first; this only stores it. */
-export async function saveCustomSound(file) {
-  const record = { name: file.name || '', type: file.type || '', data: await file.arrayBuffer() }
-  await withStore('readwrite', s => s.put(record, KEY))
-  adopt(record)
-  loaded = Promise.resolve(customSoundName())
-  return customSoundName()
+/** The rest-end alert: the boxing bell or a file of the user's. */
+export const restSound = soundSlot(KEY, defaultRestClip)
+/** The "time to progress" celebration: a synthesised fanfare or a file of the user's. */
+export const progressSound = soundSlot('progress', null)
+
+/** Play the progression celebration: the user's file when there is one, else the fanfare. */
+export function playProgressSound(enabled) {
+  const clips = progressSound.clips()
+  if (clips.length) playClips(enabled, clips)
+  else fanfare(enabled)
 }
 
-/** Back to the bundled bell. */
-export async function clearCustomSound() {
-  await withStore('readwrite', s => s.delete(KEY))
-  adopt(null)
-  loaded = Promise.resolve(null)
-  return null
-}
+export const customSoundName = () => restSound.name()
+export const restAlertClips = () => restSound.clips()
+export const loadCustomSound = () => restSound.load()
+export const saveCustomSound = file => restSound.save(file)
+export const clearCustomSound = () => restSound.clear()

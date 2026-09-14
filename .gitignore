@@ -5,6 +5,9 @@ media/gif/
 # Runtime data — users, passkeys, per-user state, session secret
 data/
 
+# Local AI model files (docker compose --profile ai)
+ollama/
+
 # Local config
 .env
 .env.*.local

@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { DAYN, uid, exCount } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
-import { dayAssignSheet, loadStarterPlan, planToolsSheet, programSheet } from '../sheets.jsx'
+import { dayAssignSheet, folderSheet, loadStarterPlan, planToolsSheet, programSheet } from '../sheets.jsx'
+import { groupRoutines, toggleFolder } from '../lib/folders.js'
 import { programActive } from '../lib/program.js'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
@@ -19,6 +20,11 @@ export default function Plan() {
     update(s => { s.routines.push(r) })
     nav('/plan/r/' + r.id)
   }
+  const { loose, folders } = groupRoutines(S)
+  const routineRow = r => <div key={r.id} className="item" {...tappable(() => nav('/plan/r/' + r.id))}>
+    <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+    <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
+    <Icon name="chevronRight" className="chev" /></div>
 
   return <>
     <div className="hdr">
@@ -54,12 +60,28 @@ export default function Plan() {
     </div><div>
       <div className="row between" style={{ marginTop: 22, marginBottom: 10 }}>
         <h4 className="sec" style={{ margin: 0 }}>{t('Routines')}</h4>
-        <Button size="sm" variant="tinted" icon="plus" onClick={addRoutine}>{t('New')}</Button>
+        <div className="row" style={{ gap: 6 }}>
+          <Button size="sm" variant="tinted" icon="folder" onClick={() => folderSheet()} aria-label={t('New folder')} title={t('New folder')} />
+          <Button size="sm" variant="tinted" icon="plus" onClick={addRoutine}>{t('New')}</Button>
+        </div>
       </div>
-      {S.routines.length ? <div className="list">{S.routines.map(r => <div key={r.id} className="item" {...tappable(() => nav('/plan/r/' + r.id))}>
-        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
-        <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
-        <Icon name="chevronRight" className="chev" /></div>)}</div> : <>
+      {S.routines.length || folders.length ? <div className="list">
+        {folders.map(({ folder: f, routines }) => <div key={f.id} className={'folder' + (f.open ? ' open' : '')}>
+          <div className="item folder-hd" aria-expanded={!!f.open} {...tappable(() => update(s => toggleFolder(s, f.id)))}>
+            <span className="lrow-i"><Icon name="folder" /></span>
+            <div className="grow"><div className="tt">{f.name}</div>
+              <div className="ss">{t(routines.length === 1 ? '{0} routine' : '{0} routines', routines.length)}</div></div>
+            <button className="iconbtn" aria-label={t('Edit folder')} title={t('Edit folder')}
+              onClick={e => { e.stopPropagation(); folderSheet(f) }}><Icon name="pencil" /></button>
+            <Icon name={f.open ? 'chevronUp' : 'chevronDown'} className="chev" />
+          </div>
+          {f.open && <div className="list folder-body">
+            {routines.length ? routines.map(routineRow)
+              : <div className="small dim folder-empty">{t('Empty folder — open a routine and pick this folder, or add one from the folder menu.')}</div>}
+          </div>}
+        </div>)}
+        {loose.map(routineRow)}
+      </div> : <>
         <div className="empty"><div className="ico"><Icon name="clipboard" /></div>{t('No routines yet.')}<br />{t('Create one or load the starter plan.')}</div>
         <Button icon="sparkles" onClick={loadStarterPlan}>{t('Load starter plan (Push / Pull / Legs)')}</Button>
       </>}

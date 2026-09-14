@@ -1,4 +1,4 @@
-/* The eight read-only tools. Each handler returns JSON; labels.js pre-substitutes any
+/* The read-only tools. Each handler returns JSON; labels.js pre-substitutes any
    {0}/{1} template the lib returns so the LLM gets final text, not template strings.
    ISO dates are validated on the way in; the handlers never see 'yesterday'. */
 import { z } from 'zod'
@@ -16,6 +16,9 @@ import {
 } from '../../frontend/src/lib/onerm.js'
 import { loadOfWorkouts, rankOf, levelsOf } from '../../frontend/src/lib/muscles.js'
 import { policyFor } from '../../frontend/src/lib/progression.js'
+import { buildDigest, DIGEST_WEEKS } from '../../frontend/src/lib/ai-digest.js'
+import { proposalFor } from '../../frontend/src/lib/ai-actions.js'
+import { VOLUME_TARGET } from '../../frontend/src/lib/volume.js'
 
 /* ---------- helpers ---------- */
 
@@ -77,7 +80,7 @@ function prTable(S, formula) {
   return [...byId.values()].sort((a, b) => b.est - a.est)
 }
 
-/* ---------- the 8 tools ---------- */
+/* ---------- the tools ---------- */
 
 /** list_routines — names + counts of each routine in the user's plan. */
 export const listRoutines = {
@@ -407,10 +410,63 @@ export const muscleBalance = {
   }
 }
 
+// Exercise names for the digest: a custom exercise from state, else the catalogue, else whatever
+// the logged entry remembers (a deleted custom), else the id.
+const digestName = S => (id, entry) => {
+  const ex = exerciseOf(id, S)
+  if (!ex.missing) return ex.n
+  return (entry && (entry.muscleSnapshot?.n || entry.exercise?.n || entry.n)) || id
+}
+
+/** training_analysis — the same anonymous digest the in-app "Analyze with AI" sends. */
+export const trainingAnalysis = {
+  name: 'training_analysis',
+  description: 'The app\'s own training analysis — the exact digest its "Analyze with AI" feature builds. Microcycle position and strategy, mesocycle/deload state, adherence, effective-set volume per muscle group (current microcycle and what the programming plans) against the 10–20 target, double-progression status per exercise, estimated-1RM trends, body weight vs goal, routines, the latest sessions set by set, and `findings`: what the app itself flags (deload due, stalled or fatigued lifts, volume outside the band, strength drops, inactivity). Treat `findings` as facts computed by the app; start any coaching review here.',
+  schema: {
+    weeks: z.number().int().min(1).max(52).optional().describe(`look-back window for trends and recent sessions, in weeks (default ${DIGEST_WEEKS})`)
+  },
+  handler: ({ weeks }) => {
+    const S = getState()
+    if (!S) return noState()
+    return buildDigest(S, { weeks: weeks || DIGEST_WEEKS, nameOf: digestName(S) })
+  }
+}
+
+/** suggested_changes — the concrete routine changes the app would propose for its findings. */
+export const suggestedChanges = {
+  name: 'suggested_changes',
+  description: `Concrete changes the app can make for what it flags: scheduling a deload microcycle, or adding/removing work sets on specific routine exercises so a muscle group's planned effective sets per microcycle land in the ${VOLUME_TARGET.min}–${VOLUME_TARGET.max} band. Computed deterministically (primary movers first, at most 2 sets per exercise, only the set count changes). Read-only: this server never applies them — tell the user they can apply each one, after reviewing it, from Stats → Analyze with AI in the app.`,
+  schema: {},
+  handler: () => {
+    const S = getState()
+    if (!S) return noState()
+    const name = digestName(S)
+    const digest = buildDigest(S, { nameOf: name })
+    const changes = []
+    for (const finding of digest.findings) {
+      const p = proposalFor(S, finding)
+      if (!p) continue
+      if (p.kind === 'deload') {
+        changes.push({ finding: finding.type, kind: 'deload', microcycle: p.cycle + 1, reduction_pct: Math.round(p.pct * 100), loading_microcycles: p.streak })
+      } else if (p.missing) {
+        changes.push({ finding: finding.type, kind: 'volume', group: p.group, planned_sets: p.before, applicable: false, note: 'No exercise in the programmed routines trains this group as a primary mover — the user needs to add one.' })
+      } else {
+        changes.push({
+          finding: finding.type, kind: 'volume', group: p.group, direction: p.dir,
+          planned_sets_before: p.before, planned_sets_after: p.after, applicable: true,
+          sets: p.changes.map(c => ({ routine: c.routineName, exercise: name(c.exId, null), from: c.from, to: c.to }))
+        })
+      }
+    }
+    return { unit: S.unit || 'kg', target_band: VOLUME_TARGET, changes }
+  }
+}
+
 /* ---------- registration list ---------- */
 
 export const TOOLS = [
-  listRoutines, getRoutine, getWeekPlan, listWorkouts, getWorkout, getBodyweight, estimate1rm, muscleBalance
+  listRoutines, getRoutine, getWeekPlan, listWorkouts, getWorkout, getBodyweight, estimate1rm, muscleBalance,
+  trainingAnalysis, suggestedChanges
 ]
 
 function noState() {

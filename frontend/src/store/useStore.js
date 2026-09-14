@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { api, setRemoteAuth } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
 import { registerCustom } from '../lib/exercises.js'
+import { DEFAULT_SECONDARY, setSecondaryWeight } from '../lib/muscles.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
 import { MOBILE, initReminderSync, nativeLoad, nativeSave, syncReminder, writeAutoBackup } from '../lib/mobile.js'
@@ -16,6 +17,9 @@ export const DEF = {
   restExSec: null,
   theme: 'dark', accent: 'lime', body: 'male', targetW: null,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
+  // Plan ▸ Routines folders ({ id, name, open }); a routine is filed by `routine.folder`. Purely a
+  // view — schedules keep pointing at routine ids. See lib/folders.js.
+  folders: [],
   // Calendar programming: a repeating microcycle laid out as an ordered sequence of days
   // (routine ids and 'rest'), anchored to a start date. null = use the weekly plan (S.week).
   // See lib/program.js. `strategy` (full-body / upper-lower / ppl / custom) sizes the block
@@ -44,6 +48,12 @@ export const DEF = {
   // press)", 'local' = translation only), plus per-exercise manual names keyed by exercise id.
   // Both are read by lib/i18n-core.js's exerciseNameFor — see lib/exercise-name.js.
   exNameStyle: 'bilingual', exNames: {},
+  // What one set of an exercise's secondary muscles is worth as volume, 0…1 (a primary is
+  // always 1). Feeds lib/muscles.js musclesOf, so it moves the home volume panel, the muscle
+  // map and the recovery model together. See Settings ▸ Training volume.
+  secondaryVolume: DEFAULT_SECONDARY,
+  // Last AI analyses answered through the server (newest first, capped) — see lib/ai-report.js.
+  aiReports: [],
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 
@@ -83,6 +93,7 @@ export const useStore = create((set, get) => {
   const persist = (S, push = true) => {
     S._ts = Date.now()
     registerCustom(S.customEx)
+    setSecondaryWeight(S.secondaryVolume)
     localStorage.setItem(KEY, JSON.stringify(S))
     set({ S })
     if (MOBILE) nativePersist()
@@ -121,7 +132,7 @@ export const useStore = create((set, get) => {
   }
 
   return {
-    S: (() => { const s = loadState(); registerCustom(s.customEx); return s })(),
+    S: (() => { const s = loadState(); registerCustom(s.customEx); setSecondaryWeight(s.secondaryVolume); return s })(),
     user: (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })(),
     ready: false,
     needsMobileOnboarding: false,   // mobile build only — set true by boot() on a genuine first launch

@@ -16,6 +16,9 @@ import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, SelectSheet } from '../components/ui.jsx'
 import { nextPrescription, applyPrescription, defaultIncrement } from '../lib/progression.js'
 import { progressionGuidance } from '../lib/progression-copy.js'
+import { doubleProgressStatus, applyProgressionChoice } from '../lib/double-progress.js'
+import { DoubleProgressMeter, progressionSheet } from '../components/DoubleProgress.jsx'
+import { playProgressSound } from '../lib/custom-sound.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { isWarmupRow, isDropSet, isRestPauseSet, dropsOf, clustersOf, addDrop, addCluster, removeDropAt, removeClusterAt, setDropAt, setClusterAt, nextDropWeight, nextBurstReps } from '../lib/workout-model.js'
 import { canMoveActiveWorkoutUnit, moveActiveWorkoutUnit, moveActiveWorkoutUnitTo } from '../lib/active-workout-order.js'
@@ -75,7 +78,7 @@ function Elapsed({ start }) {
 }
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onSwap, onRemove, swipeSet, swipeDx = 0 }) {
+function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onOpenProgression, onSwap, onRemove, swipeSet, swipeDx = 0 }) {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
   const working = useUI(s => s.work)
@@ -126,6 +129,9 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   // the session was built so the reason matches the numbers already in the rows.
   const plan = entry.plan
   const guidance = progressionGuidance(plan)
+  // Double progression gets its picture — where last session's sets sit in the rep range — and,
+  // the session the top of the range was earned, the question of what to add.
+  const doubleTrack = plan?.policy === 'double' && mode === 'reps'
   // Set-by-set reference: what the same position did last session, and what today's row should
   // carry to actually overload it. The aggregate "Last time" line below answers how the session
   // went; this answers what to type into the row in front of you (lib/set-reference.js).
@@ -140,6 +146,7 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   // stepper instead of two, which is the whole point of the flag. Adding a belt weight in the
   // config brings it back, now labelled as the addition it is.
   const cfg = { ...(entry.target || {}), id: entry.id }
+  const dpStatus = doubleTrack && !compact ? doubleProgressStatus(S, cfg, S.routines.find(r => r.id === S.active.routineId)) : null
   const bw = !cardio && isBw(cfg)
   const added = bw && entry.sets.some(s => s.w > 0)
   const loadCol = { f: 'w', step: 2.5, dec: true, hd: bw ? t('Added ({0})', S.unit) : t('Weight ({0})', S.unit) }
@@ -224,11 +231,18 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
     </div>}
     {entry.note && <div className="exnote">{entry.note}</div>}
     {last && <div className="small dim" style={{ marginBottom: 4 }}>{t('Last time')} ({fmtDate(last.d)}): {last.sets.map(s => setLabel(entry.id, s, last.target)).join(', ')}</div>}
-    {guidance && <button type="button" className={'progline' + (plan.kind === 'deload' ? ' warn' : '')}
+    {guidance && <button type="button" className={'progline' + ((plan.kind === 'deload' || plan.fatigue) ? ' warn' : '')}
       aria-label={t('Open progression settings')} onClick={onProgressionSettings}>
-      <Icon name={plan.kind === 'up' ? 'arrowUp' : plan.kind === 'deload' ? 'arrowDown' : 'lightbulb'} />
+      <Icon name={plan.kind === 'up' || plan.kind === 'decide' ? 'arrowUp' : plan.kind === 'deload' ? 'arrowDown' : plan.fatigue ? 'bolt' : 'lightbulb'} />
       <span><strong>{t(guidance.policyLabel)}</strong> · {t(...guidance.why)}</span>
     </button>}
+    {/* The question itself is a window that pops up on its own (see openProgression); this is
+        the way back to it once it was put off with the sheet closed some other way. */}
+    {doubleTrack && plan.kind === 'decide' && !entry.decided && onOpenProgression &&
+      <button type="button" className="dpask" onClick={onOpenProgression}>
+        <Icon name="sparkles" /><span>{t('Time to progress')}</span><Icon name="chevronRight" />
+      </button>}
+    {dpStatus && dpStatus.state !== 'first' && !entry.decided && <DoubleProgressMeter status={dpStatus} unit={S.unit} compact live />}
     <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
       {/* Warm-up sets seed the ramp to the work sets, so the button to add one sits at the top
           of the list, above the column legends — not down in the footer with Add/Remove set. */}
@@ -635,10 +649,54 @@ function ActiveWorkout() {
       const freshWork = fresh.filter(x => !isWarmupRow(x))
       activeEntry.target = { ...cfg }
       activeEntry.plan = plan
+      delete activeEntry.decided
       activeEntry.sets = [...doneWarm, ...freshWarm.slice(doneWarm.length), ...doneWork, ...freshWork.slice(doneWork.length)]
     }), null, routine)
   }
 
+
+  // The athlete's answer to a double progression that reached the top of its range. An added set
+  // lives on in the finished session's target, which is where the next session reads its count.
+  const chooseProgression = (idx, choice) => {
+    let decided = null
+    update(s => {
+      const e = s.active?.entries?.[idx]
+      if (!e) return
+      const next = applyProgressionChoice(e, choice, { step: defaultIncrement(e.id, s.unit), unit: s.unit })
+      s.active.entries[idx] = next
+      decided = next.decided
+    })
+    if (decided === 'weight') useUI.getState().toast(t('Weight up — reps back to the bottom of the range'))
+    else if (decided === 'sets') useUI.getState().toast(t('Set added — kept for next sessions'))
+  }
+
+  // The "time to progress" window, with its confetti and sound. A past workout being logged gets
+  // the question without the party — nothing is happening at the bar right now.
+  const openProgression = (idx, { celebrate = true } = {}) => {
+    const st = useStore.getState().S
+    const e = st.active?.entries?.[idx]
+    if (!e || e.plan?.kind !== 'decide' || e.decided) return
+    const party = celebrate && !st.active.backfill
+    if (party) playProgressSound(st.sound)
+    progressionSheet({ plan: e.plan, unit: st.unit, celebrate: party, onChoose: choice => chooseProgression(idx, choice) })
+  }
+  // It pops up by itself the first time the exercise comes on screen, once the slide into it has
+  // settled and nothing else (the weigh-in, a confirmation) is open on top.
+  const celebrated = useRef(new Set())
+  const sheetsOpen = useUI(s => (s.sheets || []).length)
+  useEffect(() => {
+    if (sheetsOpen) return
+    const idx = unit.find(i => {
+      const e = A.entries[i]
+      return e?.plan?.kind === 'decide' && !e.decided && !celebrated.current.has(A.id + ':' + i + ':' + e.id)
+    })
+    if (idx == null) return
+    const tm = setTimeout(() => {
+      celebrated.current.add(A.id + ':' + idx + ':' + A.entries[idx].id)
+      openProgression(idx)
+    }, 450)
+    return () => clearTimeout(tm)
+  }, [A.id, unitIdx, sheetsOpen])
 
   const addExercise = () => exercisePicker(ex => {
     const routine = S.routines.find(r => r.id === A.routineId)
@@ -848,6 +906,7 @@ function ActiveWorkout() {
     const block = (idx, extra) => <ExerciseBlock entryIdx={idx}
       swipeSet={!preview && rowDrag?.entry === idx ? rowDrag.set : null} swipeDx={rowDrag?.dx || 0}
       onToggle={i => toggle(idx, i)} onField={(i, f, v) => setField(idx, i, f, v)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onAddWarmup={() => addWarmup(idx)} onRemoveSetAt={i => removeSetAt(idx, i)} onStartTimed={i => startTimed(idx, i)} onProgressionSettings={() => openProgressionSettings(idx)}
+      onOpenProgression={preview ? undefined : () => openProgression(idx, { celebrate: false })}
       onSwap={preview ? undefined : () => swapActiveWorkoutExercise(idx)} onRemove={preview ? undefined : () => confirmRemoveExercise(idx)}
       {...extra} />
     if (members.length > 1) return (

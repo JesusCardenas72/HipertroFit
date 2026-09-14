@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { EXIDX, EXDB, smOf } from './exercises.js'
 import {
   MUSCLE_NAME, exerciseMuscleSnapshot, hasExplicitMuscleMetadata, levelsOf, loadOf,
-  loadOfWorkouts, matchesMuscleGroups, muscleBalanceWindow, muscleGroupsOf, musclesOf, rankOf
+  loadOfWorkouts, matchesMuscleGroups, muscleBalanceWindow, muscleGroupsOf, musclesOf, rankOf,
+  DEFAULT_SECONDARY, normalizeSecondaryWeight, secondaryWeight, setSecondaryWeight
 } from './muscles.js'
 
 describe('multi-muscle exercise metadata', () => {
@@ -208,5 +209,33 @@ describe('muscle balance windows and ranking', () => {
     const deleted = { id: 'deleted', muscleSnapshot: { muscleWeights: { chest: 1 } }, sets: [{ done: true }] }
     expect(loadOfWorkouts([{ entries: [known] }])).toEqual({ chest: 1, triceps: 0.4, deltoids: 0.4, biceps: 0.4 })
     expect(loadOfWorkouts([{ entries: [deleted] }])).toEqual({ chest: 1 })
+  })
+})
+
+describe('normalizeSecondaryWeight', () => {
+  afterEach(() => setSecondaryWeight(DEFAULT_SECONDARY))
+
+  it('accepts anything in 0…1 and clamps above it', () => {
+    expect(normalizeSecondaryWeight(0)).toBe(0)
+    expect(normalizeSecondaryWeight(0.33)).toBe(0.33)
+    expect(normalizeSecondaryWeight(1)).toBe(1)
+    expect(normalizeSecondaryWeight(4)).toBe(1)
+  })
+
+  it('falls back to 0.4 for a missing or unusable value', () => {
+    // Profiles saved before the setting existed have no value at all.
+    expect(normalizeSecondaryWeight(undefined)).toBe(DEFAULT_SECONDARY)
+    expect(normalizeSecondaryWeight(null)).toBe(DEFAULT_SECONDARY)
+    expect(normalizeSecondaryWeight('x')).toBe(DEFAULT_SECONDARY)
+    expect(normalizeSecondaryWeight(-1)).toBe(DEFAULT_SECONDARY)
+  })
+
+  it('is what musclesOf weighs a secondary muscle with', () => {
+    const bench = { id: 'b', tg: 'pectorals', sm: ['triceps'] }
+    setSecondaryWeight(0.5)
+    expect(secondaryWeight()).toBe(0.5)
+    expect(musclesOf(bench)).toEqual({ chest: 1, triceps: 0.5 })
+    setSecondaryWeight(DEFAULT_SECONDARY)
+    expect(musclesOf(bench)).toEqual({ chest: 1, triceps: 0.4 })
   })
 })

@@ -214,7 +214,99 @@ Push services like a contact address for whoever runs the server, in case they e
 you about your pushes. openGym sends your `ORIGIN` by default; set `VAPID_SUBJECT=mailto:you@example.com`
 in `.env` if you would rather they had an inbox.
 
-## 8. Updating
+## 8. AI analysis (optional)
+
+**Stats → ✨ Analyze with AI** always works without any setup: it shows what the app flags on its
+own (stalled lifts, a deload that is due, muscle groups outside 10–20 effective sets per
+microcycle…) and lets the user copy a ready-made prompt into whatever assistant they already use.
+Nothing is sent anywhere.
+
+Set a provider and signed-in users also get **Analyze now**: the browser builds an anonymous
+digest (no name, account, ids or session notes), this server adds the API key and forwards it,
+and the answer comes back as a summary, alerts and suggestions. The key never reaches a browser,
+and the sheet names the provider host before anything is sent.
+
+Any OpenAI-compatible `/chat/completions` endpoint works — one set of variables for all of them:
+
+```bash
+# Groq (free tier, no card)
+AI_BASE_URL=https://api.groq.com/openai/v1
+AI_MODEL=openai/gpt-oss-20b
+AI_API_KEY=gsk_...
+
+# Google Gemini (free tier; Google may use free-tier data to improve its products — the app says so)
+AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+AI_MODEL=gemini-2.5-flash
+AI_API_KEY=AIza...
+
+# OpenRouter (free models end in :free)
+AI_BASE_URL=https://openrouter.ai/api/v1
+AI_MODEL=<a model id ending in :free>
+AI_API_KEY=sk-or-...
+
+# Ollama on your own hardware — nothing leaves your network, no key
+AI_BASE_URL=http://ollama:11434/v1
+AI_MODEL=qwen2.5:7b
+```
+
+### A local model in the same stack
+
+Nothing leaves your server if the model runs next to it. `docker-compose.yml` ships an optional
+Ollama service behind the `ai` profile — it does not start unless you ask for it:
+
+```bash
+# .env
+AI_BASE_URL=http://ollama:11434/v1
+AI_MODEL=qwen2.5:3b
+AI_DAILY_LIMIT=0          # your hardware, your limit
+AI_TIMEOUT_MS=300000      # CPUs are slow; give it five minutes
+# OLLAMA_MODEL=qwen2.5:3b # what ollama-pull downloads; keep it equal to AI_MODEL
+
+docker compose --profile ai up -d
+docker compose logs -f ollama-pull   # one-time download, ~2 GB for qwen2.5:3b
+```
+
+No port is published — only the api container talks to it. Model files go to `./ollama`, outside
+`./data`, so backups stay small (`ollama/` is gitignored). A 3B model needs roughly 4 GB of free RAM
+and answers in a minute or two on a modest CPU; `qwen2.5:7b` (~5 GB) gives noticeably better
+coaching if you have 8 GB+ to spare. Small models sometimes ignore the JSON format — the app then
+shows the answer as plain text, and `AI_JSON_MODE=0` is there for models that reject the option.
+
+### What the app can apply
+
+Analyses never change anything on their own. When a finding or a suggestion maps to a change the
+app knows how to make, it shows an **Apply** button that opens a confirmation listing exactly what
+changes: scheduling the next microcycle as a deload, or adding/removing work sets on named routine
+exercises so a muscle group's planned effective sets per microcycle land in 10–20 (primary movers
+first, at most two sets per exercise; weight, reps and progression untouched). The change is
+recomputed by the app, not taken from the model's text, and it is refused if the routines changed
+since the analysis. The MCP server exposes the same proposals read-only (`suggested_changes`).
+
+| Variable | Default | |
+|---|---|---|
+| `AI_BASE_URL` | — | Provider base URL, up to (not including) `/chat/completions`. |
+| `AI_MODEL` | — | Model id. Both this and `AI_BASE_URL` are required to turn the feature on. |
+| `AI_API_KEY` | — | Sent as `Authorization: Bearer`. Leave empty for a local model. |
+| `AI_DAILY_LIMIT` | `20` | Analyses per user per UTC day, so one account cannot drain a shared free tier. `0` = unlimited. Kept in memory: a restart resets the count, and a failed call is not counted. |
+| `AI_TIMEOUT_MS` | `90000` | Give up on a provider that does not answer. Raise it for a slow local model. |
+| `AI_JSON_MODE` | `1` | Asks for `response_format: json_object`. Set `0` for a model that rejects it; the app still reads a plain-text answer. |
+| `AI_ENABLED` | — | `0` switches a configured provider off without deleting the settings. |
+
+Free tiers change often — check the provider's current limits. The api container logs the
+provider and model at start-up (`ai=api.groq.com openai/gpt-oss-20b`, or `ai=off`), every analysis
+is recorded in the activity log (`ai.analyze`, with token counts — never the content), and a
+provider error is logged in the container output but not shown to users.
+
+A signed-in browser and the paired mobile app use this server's provider when there is one.
+Without it — guests, the standalone mobile app, or an instance with no `AI_*` set — each user can
+connect their **own** provider in the same sheet (*Use your own API key*): Groq, Gemini,
+OpenRouter, Mistral, a local Ollama or any OpenAI-compatible URL. That request goes straight from
+the device to the provider (all of the listed ones allow browser calls), never through this server;
+the key stays on the device, is never synced or put in a backup, and is only written to storage if
+the user switches on *Remember the key on this device*. Plain `http://` is refused except to
+`localhost`, and a local Ollama has to allow the app's origin with `OLLAMA_ORIGINS`.
+
+## 9. Updating
 
 Running prebuilt images:
 

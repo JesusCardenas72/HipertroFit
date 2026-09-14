@@ -20,7 +20,9 @@ const mocks = vi.hoisted(() => {
     toast: vi.fn(),
     scrollCalls: [],
     swapActiveWorkoutExercise: vi.fn(),
+    sheet: null,
   }
+  state.openSheet = vi.fn((render, opts) => { state.sheet = { render, opts }; return { close: vi.fn() } })
   state.stopRest = vi.fn(() => { state.timer = null })
   state.stopWork = vi.fn(() => { state.work = null })
   state.storeSnapshot = () => ({
@@ -41,6 +43,8 @@ const mocks = vi.hoisted(() => {
     shiftRestOwner: vi.fn(),
     startWork: vi.fn(),
     toast: state.toast,
+    sheets: [],
+    openSheet: state.openSheet,
   })
   return state
 })
@@ -689,9 +693,12 @@ describe('progression guidance', () => {
     expect(saved.target.prog).toBe('double')
     expect(saved.sets[0]).toEqual(completed)
     expect(saved.sets[0]).toEqual({ w: 60, r: 5, done: true })
-    expect(saved.sets[1]).toEqual({ w: 62.5, r: 3, done: false })
+    // Double progression is semi-automatic: the top of the range asks instead of adding.
+    expect(saved.sets[1]).toEqual({ w: 60, r: 5, done: false })
+    expect(saved.plan.kind).toBe('decide')
     expect(container.querySelector('.progline')?.textContent)
-      .toContain('Double progression · Top of the rep range in every set — 2.5 kg more, back to 3 reps.')
+      .toContain('Double progression · Top of the rep range in every set — time to progress: more weight or another set.')
+    expect(container.querySelector('.dpask')).toBeTruthy()
 
     const persisted = JSON.parse(JSON.stringify(mocks.S))
     await unmount()
@@ -699,7 +706,32 @@ describe('progression guidance', () => {
     installDom()
     await act(async () => { root.render(React.createElement(Workout)) })
     expect(container.querySelector('.progline')?.textContent)
-      .toContain('Double progression · Top of the rep range in every set — 2.5 kg more, back to 3 reps.')
+      .toContain('Double progression · Top of the rep range in every set — time to progress: more weight or another set.')
+
+    // The reminder reopens the window: a locked centred sheet asking the question.
+    mocks.openSheet.mockClear()
+    await act(async () => { container.querySelector('.dpask').click() })
+    expect(mocks.openSheet).toHaveBeenCalledTimes(1)
+    expect(mocks.sheet.opts).toEqual({ kind: 'center', locked: true })
+    const sheetHost = document.createElement('div')
+    document.body.appendChild(sheetHost)
+    const sheetRoot = createRoot(sheetHost)
+    const close = vi.fn()
+    await act(async () => { sheetRoot.render(mocks.sheet.render(close)) })
+    expect(sheetHost.querySelector('.dpcele .dpchoice')).toBeTruthy()
+
+    // Answering the question moves only the rows still to do: +2.5 kg, reps to the bottom.
+    const apply = [...sheetHost.querySelectorAll('.dpchoice button')].find(b => b.textContent.includes('Apply'))
+    await act(async () => { apply.click(); root.render(React.createElement(Workout)) })
+    expect(close).toHaveBeenCalled()
+    await act(async () => { sheetRoot.unmount() })
+    const decided = mocks.S.active.entries[0]
+    expect(decided.decided).toBe('weight')
+    expect(decided.sets[0]).toEqual({ w: 60, r: 5, done: true })
+    expect(decided.sets[1]).toEqual({ w: 62.5, r: 3, done: false })
+    expect(container.querySelector('.dpask')).toBe(null)
+    expect(container.querySelector('.progline')?.textContent)
+      .toContain('Top of the rep range in every set — 2.5 kg more, back to 3 reps.')
   })
 })
 

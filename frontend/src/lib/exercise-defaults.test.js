@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  GLOBAL_FIELDS, isGlobalField, globalFieldsFor, pickGlobals, seedConfig, changedGlobals, applyGlobals,
+  GLOBAL_FIELDS, isGlobalField, globalFieldsFor, pickGlobals, seedConfig, changedGlobals, applyGlobals, previousRoutineConfig,
 } from './exercise-defaults.js'
 
 const loaded = { sets: 3, reps: 10, weight: 60, mode: 'reps', bodyweight: false }
@@ -183,5 +183,26 @@ describe('mode-aware field sets', () => {
     expect(changedGlobals(timed, globals, 'time')).toEqual([])
     expect(changedGlobals({ ...timed, restSec: 120 }, globals, 'time'))
       .toEqual([{ field: 'restSec', from: 90, to: 120 }])
+  })
+})
+
+describe('previousRoutineConfig', () => {
+  const push = { id: 'push', name: 'Push', ex: [{ id: 'bench', sets: 4, reps: 12, repsMin: 8, prog: 'double', weight: 80, sg: 'g1' }] }
+  const upper = { id: 'upper', name: 'Upper', ex: [{ id: 'bench', sets: 3, reps: 10, weight: 70 }] }
+
+  it('is null for an exercise no routine uses yet', () => {
+    expect(previousRoutineConfig([push], 'squat', 'legs')).toBeNull()
+    expect(previousRoutineConfig(undefined, 'squat')).toBeNull()
+  })
+
+  it('returns the whole config from another routine, local fields included, without its superset link', () => {
+    const found = previousRoutineConfig([push], 'bench', 'legs')
+    expect(found.routine).toBe(push)
+    expect(found.cfg).toEqual({ sets: 4, reps: 12, repsMin: 8, prog: 'double', weight: 80 })
+  })
+
+  it('prefers another routine over a copy already in the one being edited', () => {
+    expect(previousRoutineConfig([upper, push], 'bench', 'upper').routine).toBe(push)
+    expect(previousRoutineConfig([upper], 'bench', 'upper').routine).toBe(upper)
   })
 })

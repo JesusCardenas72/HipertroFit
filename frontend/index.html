@@ -36,7 +36,7 @@
     display:flex;flex-direction:column;align-items:center;gap:18px;
     animation:splash-zoom 3s ease-in forwards;
   }
-  @keyframes splash-zoom{from{transform:scale(1)}to{transform:scale(20)}}
+  @keyframes splash-zoom{from{transform:scale(1)}to{transform:scale(var(--splash-scale,3))}}
   .splash img{width:min(38vw,168px);height:auto}
   .splash-name{font-size:32px;font-weight:700;letter-spacing:-.02em}
   .splash.out{opacity:0;pointer-events:none}
@@ -45,6 +45,13 @@
 </head>
 <body>
 <div id="splash" class="splash" aria-hidden="true"><div class="splash-in"><img src="logo.svg" alt=""><div class="splash-name">HipertroFit</div></div></div>
+<script>
+  /* The zoom ends exactly when the logo spans the full viewport width: the logo is
+     min(38vw,168px) wide (see .splash img), so the final scale is that ratio. Inline and
+     before the bundle so it is set on the very first frame of the animation. */
+  document.documentElement.style.setProperty('--splash-scale',
+    String(innerWidth / Math.min(innerWidth * 0.38, 168)));
+</script>
 <div id="root"></div>
 <script type="module" src="/src/main.jsx"></script>
 </body>

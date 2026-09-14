@@ -132,8 +132,10 @@ export function matchesExerciseSearch(exercise, query) {
 const ENV = import.meta.env || {}
 const IMG_BASE = ENV.VITE_IMG_BASE || 'img/'
 const GIF_BASE = ENV.VITE_GIF_BASE || 'gif/'
-export const imgSrc = ex => IMG_BASE + ex.img
-export const gifSrc = ex => GIF_BASE + ex.gif
+// A custom exercise carries its picture inline (data: URL), so it is used as is.
+const mediaSrc = (base, file) => /^data:/.test(file || '') ? file : base + file
+export const imgSrc = ex => mediaSrc(IMG_BASE, ex.img)
+export const gifSrc = ex => mediaSrc(GIF_BASE, ex.gif)
 
 // Cardio exercises log time + speed instead of weight × reps.
 export const isCardio = idOrEx => (typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx)?.bp === 'cardio'

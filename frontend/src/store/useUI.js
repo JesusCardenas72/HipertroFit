@@ -6,7 +6,7 @@ import { beep, vibrate, playClips, stopClips, clipsDuration, setAudioFocusHooks 
 // rest are the same instant — so it begins its own length before the timer runs out.
 // (playClips takes a list because the alert used to be two separate files; a single-entry one
 // is the same call, and keeping the list means adding a second clip needs no new plumbing.)
-import { restAlertClips, loadCustomSound } from '../lib/custom-sound.js'
+import { restAlertClips, loadCustomSound, progressSound } from '../lib/custom-sound.js'
 import { MOBILE, duckOtherAudio, releaseOtherAudio } from '../lib/mobile.js'
 import { api } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
@@ -55,6 +55,7 @@ const maybeRestNotification = async () => {
 
 // Read the saved custom sound up front so the first rest already knows which clip to measure.
 loadCustomSound()
+progressSound.load()
 // Native Android: duck the user's music while the alert plays and give it back afterwards.
 if (MOBILE) setAudioFocusHooks({ acquire: duckOtherAudio, release: releaseOtherAudio })
 

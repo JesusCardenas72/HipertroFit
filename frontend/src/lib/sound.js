@@ -29,6 +29,11 @@ export function beep(enabled, freq, dur, when) {
     o.start(t0); o.stop(t0 + (dur || 0.18) + 0.05)
   } catch (e) { /* */ }
 }
+// A short rising arpeggio with a held top note — the built-in "time to progress" sound.
+export function fanfare(enabled) {
+  const notes = [[523.25, 0, 0.14], [659.25, 0.12, 0.14], [783.99, 0.24, 0.14], [1046.5, 0.36, 0.5]]
+  notes.forEach(([f, when, dur]) => beep(enabled, f, dur, when))
+}
 export function vibrate(p) { try { navigator.vibrate && navigator.vibrate(p) } catch (e) { /* */ } }
 
 /* ---- sample playback (rest-over alert) ----

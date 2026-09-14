@@ -98,7 +98,17 @@ WebAuthn passkeys (`@simplewebauthn/server`) plus a signed session cookie (HMAC'
 `DATA_DIR/secret` generated on first boot) — no JWT/session-store dependency. Optional pieces
 gated by env vars: `ADMIN_UIDS` (admin dashboard), `INVITE_ONLY` (signup needs a code),
 `ALLOW_GUEST` (client-only guest mode never hits the server at all), plus a rotating
-`data/audit.log` (JSONL) for sign-in/admin events. Web Push (`web-push`, VAPID keys
+`data/audit.log` (JSONL) for sign-in/admin/AI events. `api/ai.js` is an optional relay for AI
+analysis (`AI_BASE_URL`/`AI_MODEL`/`AI_API_KEY`, OpenAI-compatible, plain `fetch`): the browser
+builds the digest + prompt (`frontend/src/lib/ai-digest.js`, `ai-prompt.js`), the server only adds
+the key, a per-user daily cap and parses the answer. Without a server provider the user can bring
+their own key: `frontend/src/lib/ai-provider.js` calls the provider straight from the device (key in
+localStorage only, never in `S`); its request/parse code mirrors `api/ai.js` and a parity test keeps
+them in step. `frontend/src/lib/ai-actions.js` turns findings/suggestions into reviewable proposals
+(schedule a deload, ±sets on routine exercises to bring planned volume into 10–20) — computed by the
+app, never from model text, applied only after confirmation and refused if the plan changed. The MCP
+server exposes the digest (`training_analysis`) and proposals (`suggested_changes`), read-only.
+`docker compose --profile ai` adds an optional local Ollama. Web Push (`web-push`, VAPID keys
 auto-generated into `data/vapid.json`) drives rest-timer-over and day-reminder notifications.
 
 ### MCP server (`mcp/src`)
@@ -117,15 +127,29 @@ WebAuthn passkeys are bound to an exact hostname (`RP_ID`) and require HTTPS (lo
 when neither is available). Read `docs/SELF_HOSTING.md` before touching auth, session, or
 notification code; it documents the exact env-var contract (`RP_ID`, `ORIGIN`, `PORT`,
 `WEB_PORT`, `NGINX_PORT`, `BACKEND`, `SESSION_DAYS`, `ADMIN_UIDS`, `INVITE_ONLY`, `ALLOW_GUEST`,
-`AUDIT_*`, `VAPID_SUBJECT`) that real deployments depend on.
+`AUDIT_*`, `VAPID_SUBJECT`, `AI_*`) that real deployments depend on.
 
 ### Docker / deploy
 
-`docker-compose.yml` has three services: `media` (one-shot exercise-asset downloader, gitignored
+`docker-compose.yml` has three services (plus `ollama`/`ollama-pull` behind the opt-in `ai` profile): `media` (one-shot exercise-asset downloader, gitignored
 output), `api`, `web` (multi-stage build of `frontend/` served by nginx, which also proxies
 `/api` → `api` and serves the shared media volume — single origin, required for passkeys).
 `web/nginx.conf.template` is rendered from env vars at container start (`NGINX_PORT`, `BACKEND`,
 `PORT`), so host/port remapping works against prebuilt images without a rebuild.
+
+### Adding an exercise to a routine (product rules)
+
+- **Exercise class → rep range.** `lib/exercise-class.js` classifies every exercise (name +
+  target muscle + equipment, plus `OVERRIDES`) as heavy compound (5–12), stable machine
+  (multi-joint on leverage/sled/Smith/cable, 8–10) or isolation (single-joint, 10–20).
+- **Never configured before:** `routineExerciseConfig` seeds the config sheet with double
+  progression, the class range and the heaviest work set of the last session (0 without
+  history). Values in `S.exDefaults` still win (see `seedConfig`). The engine fallback
+  (`policyFor` → linear) is deliberately unchanged so existing routines don't shift.
+- **Already in another routine:** `addExerciseToRoutine` (`sheets.jsx`) copies that routine's
+  whole config (minus `sg`, found by `previousRoutineConfig` in `lib/exercise-defaults.js`),
+  shows it in a notice, and offers *Accept* (insert as is) or *Review and change* (opens
+  `ExConfig` on it). Both RoutineEdit's "Add exercise" and "Add to routine" go through it.
 
 ## Guidelines from CONTRIBUTING.md worth knowing before changing code
 

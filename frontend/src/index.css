@@ -459,6 +459,12 @@ h4.sec{
   transition:background var(--fast);text-align:left;width:100%;
 }
 .item:active{background:var(--surface-2)}
+/* Plan ▸ Routines folders: a header row, and when open the routines indented under a rail */
+.folder-hd .iconbtn{width:34px;height:34px;flex:none;background:transparent;color:var(--label-2)}
+.folder.open .folder-hd{background:var(--surface-2)}
+.folder-body{margin:8px 0 0 18px;padding-left:10px;border-left:2px solid var(--sep)}
+.folder-empty{padding:6px 4px 4px;line-height:1.4;grid-column:1/-1}
+.folder{grid-column:1/-1;min-width:0}
 .routine-list{position:relative}
 .routine-drag-row{touch-action:pan-y;-webkit-touch-callout:none;position:relative;transition:transform var(--fast) var(--ease)}
 .routine-list.is-reordering{user-select:none;-webkit-user-select:none}
@@ -782,10 +788,10 @@ h4.sec{
 /* What the same set position did last session, sitting under the row it refers to, with the
    chip that writes the progression's answer into that row. Indented to the steppers' column so
    it reads as part of the row and not as a new one. */
-.setprev{display:flex;align-items:center;gap:6px;padding:1px 0 5px 32px;font-size:11px;color:var(--label-3)}
+.setprev{display:flex;align-items:center;gap:6px;padding:1px 0 5px 32px;font-size:12px;color:var(--label-2)}
 .setprev .subn{flex:none;display:inline-flex;align-items:center;gap:3px}
 .setprev .subn svg{width:11px;height:11px}
-.setprev .pv{font-variant-numeric:tabular-nums;text-transform:none;color:var(--label-2)}
+.setprev .pv{font-variant-numeric:tabular-nums;text-transform:none;color:var(--label);font-weight:500}
 .setprev .chip.add{
   margin-left:auto;display:inline-flex;align-items:center;gap:3px;flex:none;
   color:var(--acc);text-transform:none;font-size:11px;font-weight:500;padding:3px 9px;
@@ -1334,3 +1340,84 @@ h4.sec{
 .gfield-diff li{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .gfield-diff li span{color:var(--label-2)}
 .gfield-diff li b{color:var(--gfield);font-weight:600;text-align:right}
+
+/* double progression tracking — where each set sits in the rep range (lib/double-progress.js) */
+.dpm{--dp:var(--blue);position:relative;padding:10px 0 12px}
+.dpm-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.dpm-w{font-size:17px;font-weight:600;letter-spacing:-.02em}
+.dpm-range{font-size:12px;color:var(--label-2)}
+.dpm-state{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;
+  color:var(--dp);background:color-mix(in srgb,var(--dp) 14%,transparent);padding:2px 8px;border-radius:999px}
+.dpm-state svg{font-size:12px}
+.dpm-bars{display:flex;flex-direction:column;gap:5px}
+.dpm-row{display:grid;grid-template-columns:16px 1fr 26px;align-items:center;gap:8px}
+.dpm-row.extra{opacity:.6}
+.dpm-n{font-size:11px;color:var(--label-3);text-align:right}
+.dpm-track{position:relative;height:12px;border-radius:6px;overflow:hidden;background:
+  repeating-linear-gradient(90deg,transparent 0 calc(100% / var(--segs) - 2px),var(--bg) calc(100% / var(--segs) - 2px) calc(100% / var(--segs))),
+  var(--surface-2)}
+.dpm-fill{position:absolute;inset:0 auto 0 0;background:var(--dp);border-radius:6px 0 0 6px;
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 calc(100% / var(--segs) - 2px),transparent calc(100% / var(--segs) - 2px) calc(100% / var(--segs)));
+  transition:width var(--fast,.2s)}
+.dpm.compact .dpm-track{height:9px}
+.dpm-r{font-size:13px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.dpm-r.top{color:var(--green)}
+.dpm-r.under{color:var(--red)}
+.dpm-foot{margin-top:8px;color:var(--label-2)}
+.dpm-foot b{color:var(--label);font-weight:600}
+.dpm-climb{display:flex;gap:6px;align-items:flex-end;margin-top:10px;height:58px}
+.dpm-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;height:100%}
+.dpm-colbar{flex:1;width:100%;max-width:26px;background:var(--surface-2);border-radius:4px;display:flex;align-items:flex-end;overflow:hidden}
+.dpm-colfill{width:100%;background:color-mix(in srgb,var(--dp) 70%,transparent);border-radius:4px}
+.dpm-colfill.fat{background:var(--orange)}
+.dpm-cold{font-size:9px;color:var(--label-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.dpm-prog{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--surface-2);border-radius:1px;overflow:hidden}
+.dpm-prog>div{height:100%;background:var(--dp)}
+.dpm-list .dpm-item{border-bottom:var(--hair) solid var(--sep);padding-top:10px}
+.dpm-list .dpm-item:last-child{border-bottom:0}
+.dpm-name{font-weight:600;text-transform:capitalize;font-size:15px}
+
+/* the semi-automatic step, asked in the session it becomes due */
+.dpchoice{margin:8px 0 4px;padding:12px;border-radius:14px;border:1px solid color-mix(in srgb,var(--green) 55%,transparent);
+  background:color-mix(in srgb,var(--green) 9%,transparent)}
+.dpchoice-t{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--green);margin-bottom:2px}
+.dpchoice-prev{font-size:13px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.dpchoice .grow{flex:1}
+
+/* "time to progress" window — pops in with a bounce, confetti over everything */
+.confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:200}
+.center:has(.dpcele){width:min(92vw,360px);overflow:visible;animation:dp-pop .55s cubic-bezier(.18,1.35,.4,1)}
+@keyframes dp-pop{
+  0%{transform:translate(-50%,-50%) scale(.55) rotate(-4deg);opacity:0}
+  60%{opacity:1}
+  100%{transform:translate(-50%,-50%) scale(1) rotate(0);opacity:1}
+}
+.dpcele{position:relative;padding-top:18px}
+.dpcele-badge{
+  position:absolute;left:50%;top:-46px;transform:translateX(-50%);
+  width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:28px;color:var(--on-acc,#000);background:var(--green);
+  box-shadow:0 0 0 6px color-mix(in srgb,var(--green) 25%,transparent),0 10px 30px -6px color-mix(in srgb,var(--green) 70%,transparent);
+  animation:dp-badge 1.6s var(--ease,ease) .35s both;
+}
+@keyframes dp-badge{
+  0%{transform:translateX(-50%) scale(0) rotate(-90deg)}
+  35%{transform:translateX(-50%) scale(1.25) rotate(12deg)}
+  55%{transform:translateX(-50%) scale(.95) rotate(-6deg)}
+  75%,100%{transform:translateX(-50%) scale(1) rotate(0)}
+}
+.dpcele .dpchoice{margin:0;padding:0;border:0;background:none}
+.dpcele .dpchoice-t{justify-content:center;font-size:21px;letter-spacing:-.02em;margin-bottom:4px;animation:dp-title .6s var(--ease,ease) .2s both}
+.dpcele .dpchoice-t svg{display:none}
+.dpcele .dpchoice > .small{text-align:center}
+@keyframes dp-title{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+/* the inline reminder on the exercise, for when the window was put off */
+.dpask{width:100%;display:flex;align-items:center;gap:8px;margin:8px 0 4px;padding:10px 12px;border-radius:12px;
+  color:var(--green);font-weight:600;font-size:14px;text-align:left;
+  background:color-mix(in srgb,var(--green) 12%,transparent);border:1px solid color-mix(in srgb,var(--green) 45%,transparent)}
+.dpask svg{flex:none}
+.dpask span{flex:1}
+
+/* custom exercise: choosing which frame of an animated GIF is the thumbnail */
+.gifpick{background:var(--surface-2);border-radius:var(--r-lg);padding:12px;margin-bottom:10px}
+.gifpick-frame{width:88px;height:auto;max-height:120px;background:#fff;border-radius:10px;flex:none}

@@ -1,14 +1,17 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
+import { DEFAULT_SECONDARY, setSecondaryWeight } from './muscles.js'
 import {
   EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS,
-  isEffectiveSet, groupVolume, cycleVolume, volumeStatus, volumeColor,
+  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, volumeStatus, volumeColor,
 } from './volume.js'
 
 // A work set with an optional RIR. Inline exercise metadata (tg/mg/sm) resolves through
 // musclesOf exactly as a catalogue entry would; ids here are intentionally not in EXIDX.
 const set = (rir, extra = {}) => ({ done: true, w: 50, r: 8, ...(rir == null ? {} : { rir }), ...extra })
 const entry = (meta, sets) => ({ id: meta.id || 'x', ...meta, sets })
-const workout = (d, entries) => ({ d, start: Date.parse(d + 'T10:00:00'), entries })
+const workout = (d, entries, routineId = 'a') => ({ d, start: Date.parse(d + 'T10:00:00'), routineId, entries })
+// The same session logged with no routine: a freestyle workout, trained outside the plan.
+const offPlan = (d, entries) => workout(d, entries, null)
 
 // Single-muscle exercises so the group value equals the effective set count exactly.
 const curl = sets => entry({ id: 'curl', tg: 'biceps' }, sets)          // biceps primary
@@ -74,10 +77,11 @@ describe('groupVolume', () => {
 describe('cycleVolume', () => {
   // Six sessions close a PPL block, so the seventh opens a new one and the count restarts:
   // the panel reports the block being built, not a rolling six.
+  const SEQ = ['a', 'b', 'c', 'd', 'e', 'f']
   const S = n => ({
-    program: { strategy: 'ppl', seq: ['a', 'b', 'c', 'd', 'e', 'f'], cycleStart: '2026-09-01' },
+    program: { strategy: 'ppl', seq: SEQ, cycleStart: '2026-09-01' },
     workouts: Array.from({ length: n }, (_, i) =>
-      workout(`2026-09-${String(i + 1).padStart(2, '0')}`, [curl([set(2)])])),
+      workout(`2026-09-${String(i + 1).padStart(2, '0')}`, [curl([set(2)])], SEQ[i % 6])),
   })
 
   it('sums only the sessions logged since the block opened', () => {
@@ -89,6 +93,33 @@ describe('cycleVolume', () => {
     expect(cycleVolume(S(6)).sessions).toBe(0)      // block closed, next one empty
     expect(cycleVolume(S(7)).sessions).toBe(1)
     expect(cycleVolume(S(7)).groups.biceps).toBe(1)
+  })
+
+  // An extra session trained outside the plan is still training: every set of it is volume
+  // for the microcycle it happened in, and it must not shorten that microcycle by taking a
+  // planned session's place — the block still runs its six planned sessions.
+  it('adds an off-plan session to the volume of the microcycle it falls in', () => {
+    const st = S(3)
+    st.workouts.splice(2, 0, offPlan('2026-09-02', [curl([set(2), set(2)])]))
+    const vol = cycleVolume(st)
+    expect(vol.groups.biceps).toBe(5)               // 3 planned sets + the 2 extra ones
+    expect(vol.sessions).toBe(4)
+  })
+
+  it('does not let an off-plan session close the block early', () => {
+    const st = S(6)                                 // six planned sessions: block closed
+    st.workouts.splice(3, 0, offPlan('2026-09-03', [curl([set(2)])]))
+    expect(cycleVolume(st).sessions).toBe(0)        // still exactly six, still closed
+    // ...and the last planned session stays inside the block instead of being pushed out.
+    const five = S(5)
+    five.workouts.splice(2, 0, offPlan('2026-09-02', [curl([set(2)])]))
+    expect(cycleVolume(five).groups.biceps).toBe(6) // all five planned + the extra one
+  })
+
+  it('opens the next block with an off-plan session trained before it starts', () => {
+    const st = S(6)
+    st.workouts.push(offPlan('2026-09-07', [curl([set(2), set(2)])]))
+    expect(cycleVolume(st).groups.biceps).toBe(2)   // the closed block did not take it
   })
 })
 
@@ -108,5 +139,71 @@ describe('volume status', () => {
   it('exposes the seven home groups in order', () => {
     expect(VOLUME_GROUPS.map(g => g.key)).toEqual(
       ['legs', 'chest', 'back', 'delts', 'biceps', 'triceps', 'abs'])
+  })
+})
+
+// The secondary-muscle weight is a user setting (Settings ▸ Training volume, pushed into
+// lib/muscles.js by the store): it is the only source of the decimals on the volume panel,
+// so the panel has to follow it.
+describe('user-set secondary weight', () => {
+  afterEach(() => setSecondaryWeight(DEFAULT_SECONDARY))
+
+  // Bench: chest primary, triceps secondary. Four sets -> chest 4, triceps 4 * weight.
+  const bench = sets => entry({ id: 'bench', tg: 'pectorals', sm: ['triceps'] }, sets)
+  const tri = w => {
+    setSecondaryWeight(w)
+    return groupVolume([workout('2026-09-01', [bench([set(2), set(2), set(2), set(2)])])]).groups
+  }
+
+  it('defaults to 0.4 of a set', () => {
+    expect(DEFAULT_SECONDARY).toBe(0.4)
+    expect(tri(DEFAULT_SECONDARY).triceps).toBeCloseTo(1.6)
+  })
+
+  it('counts a secondary as a full set at 1, and not at all at 0', () => {
+    expect(tri(1).triceps).toBe(4)
+    expect(tri(0).triceps).toBe(0)
+  })
+
+  it('leaves the primary muscle at a full set whatever the weight is', () => {
+    expect(tri(0).chest).toBe(4)
+    expect(tri(1).chest).toBe(4)
+    expect(tri(0.25).chest).toBe(4)
+  })
+
+  it('still credits a group with its strongest muscle, not the sum', () => {
+    setSecondaryWeight(1)                 // squat: quads + glutes + hamstrings all "legs"
+    const { groups } = groupVolume([workout('2026-09-01', [squat([set(1), set(1)])])])
+    expect(groups.legs).toBe(2)
+  })
+})
+
+describe('plannedVolume', () => {
+  const routines = [
+    { id: 'push', ex: [{ id: 'curl', tg: 'biceps', sets: 3, warmupSets: 2 }] },
+    { id: 'legs', ex: [{ id: 'squat', tg: 'quads', sets: 4 }] },
+  ]
+  const S = (seq, strategy = 'custom') => ({ routines, workouts: [], program: { on: false, seq, anchor: '2026-09-01', strategy } })
+
+  it('counts the configured work sets of each routine in the sequence, warm-ups aside', () => {
+    const v = plannedVolume(S(['push', 'rest', 'legs']))
+    expect(v.groups.biceps).toBe(3)
+    expect(v.groups.legs).toBe(4)
+    expect(v.sessions).toBe(2)
+    expect(v.total).toBe(7)
+    expect(v.unrated).toBe(0)
+  })
+  it('wraps the sequence to fill the strategy microcycle', () => {
+    // Upper / Lower = 4 sessions: push, legs, push, legs.
+    const v = plannedVolume(S(['push', 'legs'], 'upper-lower'))
+    expect(v.groups.biceps).toBe(6)
+    expect(v.groups.legs).toBe(8)
+    expect(v.sessions).toBe(4)
+  })
+  it('skips rest days and deleted routines, and is empty without a sequence', () => {
+    expect(plannedVolume(S(['gone', 'rest', 'push'])).groups.biceps).toBe(3)
+    const empty = plannedVolume(S([]))
+    expect(empty.total).toBe(0)
+    expect(empty.sessions).toBe(0)
   })
 })

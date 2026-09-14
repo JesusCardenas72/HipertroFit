@@ -80,6 +80,8 @@ tags:
     description: Web Push (VAPID) subscriptions, rest-timer and test pushes
   - name: activity
     description: Live-workout presence heartbeat
+  - name: ai
+    description: Optional AI analysis relay — off unless `AI_BASE_URL` and `AI_MODEL` are set
   - name: admin
     description: Admin dashboard — requires an admin session (`ADMIN_UIDS` or `admin:true`)
 
@@ -669,6 +671,92 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Ok' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/ai/config:
+    get:
+      tags: [ai]
+      operationId: aiConfig
+      summary: Whether AI analysis is available, and where the data would go
+      description: >-
+        Never returns the key or the full base URL — only the provider host and model, so the
+        client can tell the user where a prompt is sent before sending it. `remaining` is the
+        caller's analyses left today (null when unlimited or disabled).
+      responses:
+        '200':
+          description: Provider status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled]
+                properties:
+                  enabled: { type: boolean }
+                  host: { type: string, example: api.groq.com }
+                  model: { type: string, example: openai/gpt-oss-20b }
+                  daily_limit: { type: integer, description: 0 = unlimited }
+                  remaining: { type: [integer, 'null'] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/ai/analyze:
+    post:
+      tags: [ai]
+      operationId: aiAnalyze
+      summary: Forward an analysis prompt to the configured provider
+      description: |
+        The client builds the prompt from its own training digest; the server adds the API key
+        and calls the OpenAI-compatible `/chat/completions` endpoint of `AI_BASE_URL`. The answer
+        is parsed into `{summary, alerts, suggestions}` — `structured: false` means the model
+        ignored the JSON format and the whole text is in `summary`.
+
+        One analysis in flight per user; `AI_DAILY_LIMIT` per user per UTC day (in memory, a
+        failed provider call is not counted). Provider error bodies are logged, never returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt: { type: string, maxLength: 40000 }
+      responses:
+        '200':
+          description: The parsed answer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answer:
+                    type: object
+                    properties:
+                      summary: { type: string }
+                      alerts: { type: array, items: { type: object, properties: { type: { type: string }, target: { type: string }, detail: { type: string } } } }
+                      suggestions: { type: array, items: { type: object, properties: { action: { type: string }, target: { type: string }, reason: { type: string } } } }
+                      structured: { type: boolean }
+                  usage: { type: object, properties: { prompt_tokens: { type: [integer, 'null'] }, completion_tokens: { type: [integer, 'null'] } } }
+                  host: { type: string }
+                  model: { type: string }
+                  remaining: { type: [integer, 'null'] }
+        '400':
+          description: "`prompt required` or `prompt too long`."
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: "`ai not configured`."
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '409':
+          description: "`analysis already running` for this user."
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '429':
+          description: "`daily ai limit reached`, or the provider's own rate limit."
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '502':
+          description: Provider unreachable, key rejected, or an unusable answer.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '504':
+          description: Provider did not answer within `AI_TIMEOUT_MS`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
 
   /api/activity:
     post:

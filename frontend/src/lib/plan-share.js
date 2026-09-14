@@ -87,6 +87,18 @@ function cleanIntensifier(x) {
   return null
 }
 
+// The optional fields a custom exercise can carry (see lib/custom-exercise.js), so a shared
+// plan brings the whole exercise along — equipment, muscles, class, instructions, picture.
+const CUSTOM_FIELDS = ['desc', 'eq', 'tg', 'mg', 'sm', 'primaries', 'secondaries', 'muscleGroups', 'st', 'cls', 'img', 'gif', 'frame']
+const customFields = c => {
+  const out = {}
+  CUSTOM_FIELDS.forEach(k => {
+    const v = c[k]
+    if (Array.isArray(v) ? v.length : v) out[k] = Array.isArray(v) ? [...v] : v
+  })
+  return out
+}
+
 /** Build the shareable bundle: every routine, the week schedule, referenced customs. */
 export function buildPlanBundle(S, name) {
   const routines = (S.routines || []).map(r => ({
@@ -98,7 +110,7 @@ export function buildPlanBundle(S, name) {
   const usedIds = new Set(routines.flatMap(r => r.ex.map(e => e.id)))
   const customEx = (S.customEx || [])
     .filter(c => usedIds.has(c.id))
-    .map(c => ({ id: c.id, n: c.n, bp: c.bp, ...(c.desc ? { desc: c.desc } : {}) }))
+    .map(c => ({ id: c.id, n: c.n, bp: c.bp, ...customFields(c) }))
   const week = {}
   WEEK_ORDER.forEach(d => { if (S.week?.[d]) week[d] = S.week[d] })
   return { opengym_plan: PLAN_FMT, exported: todayISO(), name: name || '', week, routines, customEx }
@@ -164,7 +176,7 @@ export function mergePlan(s, bundle, { schedule } = {}) {
     if (same) { exIdMap[c.id] = same.id; return }
     const nid = uid()
     exIdMap[c.id] = nid
-    s.customEx.push({ id: nid, n: c.n, bp: c.bp, ...(c.desc ? { desc: c.desc } : {}) })
+    s.customEx.push({ id: nid, n: c.n, bp: c.bp, ...customFields(c), custom: true })
   })
   const ridMap = {}
   bundle.routines.forEach(r => {

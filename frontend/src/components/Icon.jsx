@@ -58,6 +58,13 @@ const P = {
   // Head lifted clear of the arm-V apex (was cy 10.5, right where the arm strokes
   // meet) so the body no longer reads as tangled lines behind a transparent head.
   pullup: <><path d="M3.6 5.1h16.8M8.5 5.5v2.3M15.5 5.5v2.3" /><circle cx="12" cy="9.6" r="1.8" /><path d="m8.5 7.8 3.5 5 3.5-5M12 13.3v3.9M12 17.2l-2.1 3.2M12 17.2l2.1 3.2" /></>,
+  // The Push / Pull / Legs trio, drawn as the movement each day is named after:
+  // bench press, hang from the bar, squat. `pullup` already covered the pull, so
+  // only the two ends of the split are new — and all three share the same figure
+  // proportions (head r 1.7-1.9, one leg shown in profile) so a row of the three
+  // reads as one set rather than three drawings.
+  bench: <><path d="M4.9 7.2h14.2" /><circle cx="4.9" cy="7.2" r="1.9" /><circle cx="19.1" cy="7.2" r="1.9" /><path d="M9 13.6 8.8 7.8M12.2 13.6l.4-5.8" /><circle cx="6.5" cy="14.2" r="1.7" /><path d="M8.2 14.2h4.9l2 .6.6 5.2M15.1 20h1.9" /><path d="M3.6 16.8h9.6M7.6 16.8v3.2M6 20h3.2" /></>,
+  squat: <><circle cx="13.8" cy="5.5" r="1.9" /><path d="M13.4 7.5 10.2 13.4" /><path d="M12.3 9.5h6.4" /><path d="M10.2 13.4 15.1 14.8 14.5 20" /><path d="M12.9 20h3.2" /></>,
   kettlebell: <><path d="M9.5 11V9.6a2.5 2.5 0 0 1 5 0V11" /><path d="M14.9 11.8c2.2 1.5 3.6 3.9 3.6 6.4a1.6 1.6 0 0 1-1.6 1.6H7.1a1.6 1.6 0 0 1-1.6-1.6c0-2.5 1.4-4.9 3.6-6.4Z" /></>,
   plate: <><circle cx="12" cy="12" r="8.2" /><circle cx="12" cy="12" r="2.7" /></>,
   machine: <><path d="M12 3.6v3.1" /><rect x="6.6" y="6.7" width="10.8" height="12.9" rx="1.9" /><path d="M9 10.1h6M9 13.2h6M9 16.3h6" /></>,
@@ -123,6 +130,9 @@ P.exercises = P.magnifier
 P.weight = P.scale
 P.streak = P.flame
 P.done = P.check
+// Split names, so a call site can say `push`/`pull` instead of the movement.
+P.push = P.bench
+P.pull = P.pullup
 
 export const ICON_NAMES = Object.keys(P)
 

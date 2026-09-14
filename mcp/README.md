@@ -67,7 +67,7 @@ the server's stderr.
 
 ## Tools
 
-Eight read-only tools in v1:
+Ten read-only tools:
 
 | Tool | What it answers |
 |---|---|
@@ -79,6 +79,8 @@ Eight read-only tools in v1:
 | `get_bodyweight` | Weigh-ins with the latest weight, the goal line, and deltas vs goal. |
 | `estimate_1rm` | All-time best 1RM for an exercise + the trend, or a PR table across all exercises. |
 | `muscle_balance` | Which muscles I've trained this week/month/all-time, ranked + which I've neglected. |
+| `training_analysis` | The app's own analysis — the digest *Analyze with AI* sends: microcycle and deload state, effective-set volume per group vs 10–20, double-progression status, 1RM trends, and the app's `findings`. |
+| `suggested_changes` | The concrete changes the app would propose for those findings (a deload, or ±sets on named routine exercises). Never applied from here — the user applies them in the app after reviewing. |
 
 Each tool returns JSON the LLM can format as it likes; structured fields (sets, dates, levels)
 are pre-formatted into human-readable labels in `src/labels.js` so the LLM doesn't need to

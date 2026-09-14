@@ -14,15 +14,32 @@ import { ConnectSheet } from './MobileOnboarding.jsx'
 import { loadStarterPlan, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
-import { customSoundName, loadCustomSound, saveCustomSound, clearCustomSound, customSoundProblem, restAlertClips, MAX_SOUND_BYTES, MAX_SOUND_SECONDS } from '../lib/custom-sound.js'
+import { restSound, progressSound, playProgressSound, customSoundProblem, MAX_SOUND_BYTES, MAX_SOUND_SECONDS } from '../lib/custom-sound.js'
 import { playClips, stopClips } from '../lib/sound.js'
 import { REST_EX_PRESETS, restExLabel, settingChoice } from '../lib/rest-between.js'
+import { DEFAULT_SECONDARY, normalizeSecondaryWeight } from '../lib/muscles.js'
+import { VOLUME_TARGET } from '../lib/volume.js'
 
-/* Rest-end sound: the bundled bell or a file from this device (lib/custom-sound.js). The file
-   is checked before it is kept — a clip the browser cannot decode, or one long enough to start
-   ringing the moment a rest begins, is refused with a toast rather than saved and silent. */
-function RestSoundSheet({ close, onChanged, toast }) {
-  const [name, setName] = useState(customSoundName())
+/* A stored sound — the rest-end bell or the "time to progress" celebration — or a file from this
+   device (lib/custom-sound.js). The file is checked before it is kept — a clip the browser cannot
+   decode, or one long enough to start ringing the moment a rest begins, is refused with a toast
+   rather than saved and silent. */
+const SOUND_SHEETS = {
+  rest: {
+    slot: restSound, title: 'Rest-end sound', defaultName: 'Boxing bell', restore: 'Use the default bell',
+    restored: 'Default bell restored', note: 'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.',
+    preview: () => playClips(true, restSound.clips())
+  },
+  progress: {
+    slot: progressSound, title: 'Progression sound', defaultName: 'Fanfare', restore: 'Use the default fanfare',
+    restored: 'Default fanfare restored', note: 'Stored on this device only. Up to {0} seconds — it plays with the confetti when an exercise is ready to progress.',
+    preview: () => playProgressSound(true)
+  }
+}
+
+function SoundSheet({ kind, onChanged, toast }) {
+  const cfg = SOUND_SHEETS[kind]
+  const [name, setName] = useState(cfg.slot.name())
   const [busy, setBusy] = useState(false)
   const fileRef = useRef(null)
   // A preview still playing when the sheet closes is cut with it.
@@ -41,27 +58,27 @@ function RestSoundSheet({ close, onChanged, toast }) {
       const problem = await customSoundProblem(file)
       if (problem) { toast(problemText(problem)); return }
       stopClips()
-      const saved = await saveCustomSound(file)
+      const saved = await cfg.slot.save(file)
       setName(saved); onChanged(saved); toast(t('Sound updated'))
     } catch (e) {
       toast(t('Couldn’t save the sound on this device.'))
     } finally { setBusy(false) }
   }
   const reset = async () => {
-    try { stopClips(); await clearCustomSound() } catch (e) { toast(t('Couldn’t save the sound on this device.')); return }
-    setName(null); onChanged(null); toast(t('Default bell restored'))
+    try { stopClips(); await cfg.slot.clear() } catch (e) { toast(t('Couldn’t save the sound on this device.')); return }
+    setName(null); onChanged(null); toast(t(cfg.restored))
   }
   return <>
-    <h3>{t('Rest-end sound')}</h3>
+    <h3>{t(cfg.title)}</h3>
     <p className="muted small" style={{ marginTop: -4, marginBottom: 12 }}>
-      {t('Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.', MAX_SOUND_SECONDS)}
+      {t(cfg.note, MAX_SOUND_SECONDS)}
     </p>
     <div className="sect-b">
-      <Row icon="bell" iconTint="var(--pink)" title={name || t('Boxing bell')} subtitle={t('Tap to preview')}
-        onClick={() => playClips(true, restAlertClips())} />
+      <Row icon={kind === 'progress' ? 'sparkles' : 'bell'} iconTint="var(--pink)" title={name || t(cfg.defaultName)} subtitle={t('Tap to preview')}
+        onClick={cfg.preview} />
       <Row icon="upload" iconTint="var(--blue)" title={t('Choose audio file')} accessory="chevron"
         onClick={() => { if (!busy) fileRef.current.click() }} />
-      {name && <Row icon="reset" iconTint="var(--orange)" title={t('Use the default bell')} onClick={reset} />}
+      {name && <Row icon="reset" iconTint="var(--orange)" title={t(cfg.restore)} onClick={reset} />}
     </div>
     <input ref={fileRef} type="file" accept="audio/*" hidden onChange={pick} />
     <div style={{ height: 8 }} />
@@ -77,10 +94,12 @@ export default function Settings() {
   const fileRef = useRef(null)
   const importRef = useRef(null)
   const wakeOK = wakeLockSupported()
-  const [soundName, setSoundName] = useState(customSoundName())
+  const [soundName, setSoundName] = useState(restSound.name())
+  const [progressName, setProgressName] = useState(progressSound.name())
   useEffect(() => {
     let live = true
-    loadCustomSound().then(n => { if (live) setSoundName(n) })
+    restSound.load().then(n => { if (live) setSoundName(n) })
+    progressSound.load().then(n => { if (live) setProgressName(n) })
     return () => { live = false }
   }, [])
 
@@ -234,7 +253,9 @@ export default function Settings() {
         <Switch checked={!!S.sound} onChange={v => update(s => { s.sound = v })} />
       </Row>
       <Row icon="bell" iconTint="var(--purple)" title={t('Rest-end sound')} value={soundName || t('Boxing bell')} accessory="chevron"
-        onClick={() => useUI.getState().openSheet(close => <RestSoundSheet close={close} onChanged={setSoundName} toast={toast} />)} />
+        onClick={() => useUI.getState().openSheet(() => <SoundSheet kind="rest" onChanged={setSoundName} toast={toast} />)} />
+      <Row icon="sparkles" iconTint="var(--green)" title={t('Progression sound')} value={progressName || t('Fanfare')} accessory="chevron"
+        onClick={() => useUI.getState().openSheet(() => <SoundSheet kind="progress" onChanged={setProgressName} toast={toast} />)} />
       <Row icon="sun" iconTint="var(--yellow)" title={t('Flash screen when timer ends')}>
         <Switch checked={!!S.timerFlash} onChange={v => update(s => { s.timerFlash = v })} />
       </Row>
@@ -247,6 +268,9 @@ export default function Settings() {
           value={effortOf(S)} onChange={v => update(s => { s.effort = v; delete s.showRir })} />
       </Row>
     </Section>
+
+    {/* ---------- training volume ---------- */}
+    <VolumeCard S={S} update={update} />
 
     {(user || MOBILE) && <NotificationsCard S={S} update={update} toast={toast} />}
 
@@ -399,6 +423,33 @@ function BackupFolderRow({ toast }) {
       value={st.folder || t('Documents')} accessory="chevron" onClick={choose} />
     {!!st.folder && <Row icon="reset" iconTint="var(--dim)" title={t('Use default folder')} accessory="chevron" onClick={forget} />}
   </>
+}
+
+/* How much a secondary muscle earns per set — the one number behind every decimal on the home
+   volume panel. A primary muscle is always a full set; what a supporting muscle is worth is a
+   judgement call (0.4 is the common convention, but counting them fully or not at all are both
+   defensible), so it is the user's to set. It feeds lib/muscles.js musclesOf, which is also what
+   the muscle map and the recovery model read — this moves all three together, by design. */
+const SECONDARY_PRESETS = [0, 0.25, 0.33, DEFAULT_SECONDARY, 0.5, 0.75, 1]
+
+function secondaryLabel(v) {
+  if (v === 0) return t('Doesn’t count (0)')
+  if (v === 1) return t('Counts as a full set (1)')
+  return t('{0} of a set', String(v))
+}
+
+function VolumeCard({ S, update }) {
+  const value = normalizeSecondaryWeight(S.secondaryVolume)
+  const options = (SECONDARY_PRESETS.includes(value) ? SECONDARY_PRESETS : [...SECONDARY_PRESETS, value].sort((a, b) => a - b))
+    .map(v => ({
+      value: v,
+      label: secondaryLabel(v) + (v === DEFAULT_SECONDARY ? ' · ' + t('default') : ''),
+    }))
+  return <Section title={t('Training volume')}
+    footer={t('Effective sets are counted per muscle group over the current microcycle, against a target of {0}–{1}. An exercise’s main muscle always scores a full set; this is what its supporting muscles add. Changing it also moves the muscle map and the recovery estimate.', VOLUME_TARGET.min, VOLUME_TARGET.max)}>
+    <SelectRow icon="target" iconTint="var(--teal)" title={t('Secondary muscle value')}
+      value={value} onChange={v => update(s => { s.secondaryVolume = v })} options={options} />
+  </Section>
 }
 
 function NotificationsCard({ S, update, toast }) {

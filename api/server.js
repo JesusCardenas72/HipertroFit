@@ -13,6 +13,7 @@ import {
 import webpush from 'web-push';
 import { dayReminderPush, restTimerPush, testPush } from './push-messages.js';
 import { verifyError } from './verify-error.js';
+import { aiConfig, publicAiConfig, createQuota, readAiRequest, callProvider } from './ai.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -521,6 +522,14 @@ if (AUDIT_ON) {
   setInterval(compactAudit, 3600000).unref();    // honour AUDIT_DAYS on an idle instance too
 }
 
+/* ---------- AI analysis (optional) ---------- */
+// Off unless AI_BASE_URL + AI_MODEL are set. The browser builds the prompt from its own digest;
+// this server only adds the key and forwards it (see ai.js). One analysis in flight per user,
+// and a daily cap per user so one account cannot drain a free tier for everybody.
+const AI = aiConfig();
+const aiQuota = createQuota();
+const aiInFlight = new Set();
+
 /* ---------- routes ---------- */
 const routes = {
   'GET /api/health': async (req, res) => json(res, 200, { ok: true, users: db.users.length }),
@@ -739,6 +748,36 @@ const routes = {
     delete body.state.active;              // in-progress workouts stay device-local
     atomicWrite(stateFile(user.id), JSON.stringify(body.state));
     json(res, 200, { ok: true, ts: body.state._ts || null });
+  },
+
+  'GET /api/ai/config': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    json(res, 200, { ...publicAiConfig(AI), remaining: AI.enabled ? aiQuota.remaining(user.id, AI.dailyLimit) : null });
+  },
+
+  'POST /api/ai/analyze': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    if (!AI.enabled) return json(res, 404, { error: 'ai not configured' });
+    const { prompt, error } = readAiRequest(await readBody(req));
+    if (error) return json(res, 400, { error });
+    if (aiInFlight.has(user.id)) return json(res, 409, { error: 'analysis already running' });
+    if (!aiQuota.take(user.id, AI.dailyLimit)) return json(res, 429, { error: 'daily ai limit reached', remaining: 0 });
+    aiInFlight.add(user.id);
+    try {
+      const { answer, usage } = await callProvider(AI, prompt);
+      audit(req, 'ai.analyze', { user, msg: AI.model + ' ' + (usage.prompt_tokens || '?') + '+' + (usage.completion_tokens || '?') + ' tok' });
+      json(res, 200, { answer, usage, host: AI.host, model: AI.model, remaining: aiQuota.remaining(user.id, AI.dailyLimit) });
+    } catch (e) {
+      aiQuota.refund(user.id);
+      if (!e.status) throw e;
+      console.warn('ai.analyze failed:', e.detail);
+      audit(req, 'ai.analyze.fail', { ok: false, user, msg: e.message });
+      json(res, e.status, { error: e.message, remaining: aiQuota.remaining(user.id, AI.dailyLimit) });
+    } finally {
+      aiInFlight.delete(user.id);
+    }
   },
 
   'GET /api/push/public-key': async (req, res) => json(res, 200, { key: vapid.publicKey }),
@@ -974,4 +1013,4 @@ http.createServer(async (req, res) => {
     console.error(key, e);
     if (!res.headersSent) json(res, 500, { error: 'server error' });
   }
-}).listen(PORT, () => console.log(`gym-api on :${PORT} (rpID=${RP_ID}, origin=${ORIGIN})`));
+}).listen(PORT, () => console.log(`gym-api on :${PORT} (rpID=${RP_ID}, origin=${ORIGIN}, ai=${AI.enabled ? AI.host + ' ' + AI.model : 'off'})`));

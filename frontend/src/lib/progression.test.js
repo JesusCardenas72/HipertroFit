@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   readSession, sessionsFor, stallCount, nextPrescription, applyPrescription,
-  policyFor, defaultIncrement, POLICIES_FOR, DELOAD_AFTER, MAX_BW_SETS
+  policyFor, defaultIncrement, POLICIES_FOR, DELOAD_AFTER, MAX_BW_SETS, repsFell
 } from './progression.js'
 import { EXDB } from './exercises.js'
 
@@ -207,8 +207,9 @@ describe('bodyweight exercises', () => {
   })
 
   it('stops adding sets at the cap and says what to do instead', () => {
-    const at15 = hist(LIFT, [[0, 15, 15, 15]], { sets: 3, reps: 15 })
-    const p = nextPrescription(at15, { ...cfg, sets: MAX_BW_SETS, reps: 10, repsMax: 15 })
+    // The cap is counted on what was last done, not on the routine's own `sets`.
+    const at15 = hist(LIFT, [[0, ...Array(MAX_BW_SETS).fill(15)]], { sets: MAX_BW_SETS, reps: 15 })
+    const p = nextPrescription(at15, { ...cfg, sets: 3, reps: 10, repsMax: 15 })
     expect(p.kind).toBe('hold')
     expect(p.sets).toBeUndefined()
     expect(p.why[0]).toMatch(/harder variation/)
@@ -285,18 +286,67 @@ describe('Greyskull LP', () => {
 describe('double progression', () => {
   const cfg = { id: LIFT, sets: 3, reps: 12, repsMin: 8, weight: 40, prog: 'double' }
 
-  it('adds weight and drops back to the bottom of the range at the top of it', () => {
+  it('asks the athlete what to add at the top of the range instead of adding it', () => {
     const p = nextPrescription(hist(LIFT, [[40, 12, 12, 12]], { sets: 3, reps: 12 }), cfg)
-    expect(p.kind).toBe('up')
-    expect(p.weight).toBe(42.5)
-    expect(p.reps).toBe(8)
+    expect(p.kind).toBe('decide')
+    expect(p.weight).toBe(40)
+    expect(p.choice).toEqual({ inc: 2.5, weight: 42.5, sets: 3, reps: 8 })
   })
 
   it('keeps the weight and asks for one more rep while inside the range', () => {
-    const p = nextPrescription(hist(LIFT, [[40, 10, 9, 9]], { sets: 3, reps: 12 }), cfg)
+    const p = nextPrescription(hist(LIFT, [[40, 9, 9, 9]], { sets: 3, reps: 12 }), cfg)
     expect(p.kind).toBe('hold')
+    expect(p.fatigue).toBeUndefined()
     expect(p.weight).toBe(40)
     expect(p.reps).toBe(10)             // worst set was 9 → aim for 10
+  })
+
+  it('reps falling set to set block any overload — no more reps, no more weight', () => {
+    const p = nextPrescription(hist(LIFT, [[40, 10, 9, 9]], { sets: 3, reps: 12 }), cfg)
+    expect(p.kind).toBe('hold')
+    expect(p.fatigue).toBe(true)
+    expect(p.weight).toBe(40)
+    expect(p.reps).toBe(9)              // not 10: the weakest set is repeated, not beaten
+  })
+
+  it('repeats the recorded aim of a fatigued session', () => {
+    const S = hist(LIFT, [[40, 10, 9, 8]], { sets: 3, reps: 12 })
+    S.workouts[0].entries[0].aim = 10
+    expect(nextPrescription(S, cfg).reps).toBe(10)
+  })
+
+  it('never offers the step up when reps fell, even above the top of the range', () => {
+    const p = nextPrescription(hist(LIFT, [[40, 14, 13, 12]], { sets: 3, reps: 12 }), cfg)
+    expect(p.kind).toBe('hold')
+    expect(p.fatigue).toBe(true)
+    expect(p.weight).toBe(40)
+    expect(p.reps).toBe(12)
+  })
+
+  it('does not call a heavier set with fewer reps fatigue', () => {
+    expect(repsFell([{ w: 40, r: 12, done: true }, { w: 42.5, r: 10, done: true }])).toBe(false)
+    expect(repsFell([{ w: 40, r: 12, done: true }, { w: 37.5, r: 10, done: true }])).toBe(true)
+    expect(repsFell([{ w: 40, r: 10, done: true }, { w: 40, r: 8, done: false }])).toBe(false)
+    expect(repsFell([{ w: 20, r: 15, done: true, phase: 'warmup' }, { w: 40, r: 10, done: true }])).toBe(false)
+  })
+
+  it('never deloads a climb through the range, however many sessions it takes', () => {
+    const rows = [[40, 8, 8, 8], [40, 9, 9, 8], [40, 9, 9, 9], [40, 10, 10, 9], [40, 11, 11, 11]]
+    const p = nextPrescription(hist(LIFT, rows, { sets: 3, reps: 12 }), cfg)
+    expect(p.kind).toBe('hold')
+    expect(p.reps).toBe(12)
+  })
+
+  it('judges the top against the current range, not the one stored with the session', () => {
+    const wider = { ...cfg, reps: 15, repsMin: 10 }
+    const p = nextPrescription(hist(LIFT, [[40, 13, 13, 13]], { sets: 3, reps: 12 }), wider)
+    expect(p.kind).toBe('hold')
+    expect(p.reps).toBe(14)
+  })
+
+  it('counts fatigued sessions towards the deload', () => {
+    const rows = [[40, 12, 12, 11], [40, 12, 11, 11], [40, 12, 12, 10]]
+    expect(nextPrescription(hist(LIFT, rows, { sets: 3, reps: 12 }), cfg).kind).toBe('deload')
   })
 
   it('never asks for more than the top of the range', () => {
@@ -305,7 +355,8 @@ describe('double progression', () => {
   })
 
   it('deloads after a run of stalls and restarts at the bottom of the range', () => {
-    const rows = [[40, 9, 9, 9], [40, 9, 9, 9], [40, 9, 9, 9]]
+    // the first session at a weight is a baseline, the three after it went nowhere
+    const rows = [[40, 9, 9, 9], [40, 9, 9, 9], [40, 9, 9, 9], [40, 9, 9, 9]]
     const p = nextPrescription(hist(LIFT, rows, { sets: 3, reps: 12 }), cfg)
     expect(p.kind).toBe('deload')
     expect(p.reps).toBe(8)

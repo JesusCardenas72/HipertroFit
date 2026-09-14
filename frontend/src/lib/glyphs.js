@@ -16,7 +16,10 @@ export const DEFAULT_GLYPH = 'figureStrength'
 // which say how a workout went, not what it is; nobody names a routine "crown".
 // Grouped, because 20 loose icons is a wall — you scan the group first.
 export const GLYPH_GROUPS = [
-  { key: 'Strength',  items: ['figureStrength', 'arm', 'abs', 'legs', 'pullup'] },
+  // First, because naming the three days of a split is the most common thing a
+  // picker is opened for — the movement each day is named after, in order.
+  { key: 'Push / Pull / Legs', items: ['bench', 'pullup', 'squat'] },
+  { key: 'Strength',  items: ['figureStrength', 'arm', 'abs', 'legs'] },
   { key: 'Equipment', items: ['dumbbell', 'barbell', 'kettlebell', 'plate', 'machine'] },
   { key: 'Cardio',    items: ['figureRun', 'bike', 'swim', 'boxing', 'timer'] },
   { key: 'Recovery',  items: ['stretch', 'moon', 'heart', 'flame', 'bolt'] },
@@ -26,7 +29,7 @@ export const GLYPHS = GLYPH_GROUPS.flatMap(g => g.items)
 // Legacy emoji → icon key, so routines created before the redesign keep a
 // sensible glyph instead of all collapsing onto the default.
 const LEGACY = {
-  '💪': 'arm', '🦾': 'arm', '🫸': 'figureStrength', '🫷': 'pullup',
+  '💪': 'arm', '🦾': 'arm', '🫸': 'bench', '🫷': 'pullup',
   '🏋️': 'dumbbell', '🏋': 'dumbbell', '🏋️‍♀️': 'dumbbell',
   '🦵': 'legs', '🍑': 'legs',
   '🔥': 'flame', '⚡': 'bolt', '💥': 'bolt', '🧨': 'bolt', '😤': 'flame',

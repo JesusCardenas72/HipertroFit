@@ -12,13 +12,17 @@
 // seven calendar days, so counting by week would cut one microcycle in two. Where the block
 // starts and ends is lib/microcycle.js's business; this file only adds its sets up. Volume
 // accumulates inside the block and restarts with the next one — it is not a rolling window.
+// Everything trained inside the block counts, planned or not: an extra session squeezed in
+// mid-microcycle adds all of its sets here (it just does not consume one of the block's
+// planned slots — see microcycle.js isPlannedSession).
 //
 // Grouping is deliberately per-set, taking the strongest involvement of any muscle in a
 // group rather than summing the group's muscles: a squat counts as one leg set, not as
 // quads + glutes + hamstrings stacked. Secondary muscles still earn partial credit (the
 // 0.4 weight from musclesOf), which is the usual way fractional volume is counted.
 
-import { cycleWorkouts } from './microcycle.js'
+import { cycleWorkouts, microcycleLen } from './microcycle.js'
+import { REST } from './program.js'
 import { musclesOf } from './muscles.js'
 import { EXIDX } from './exercises.js'
 import { rirOf } from './effort.js'
@@ -66,6 +70,17 @@ function entryMuscles(entry) {
   return musclesOf(source)
 }
 
+// Credit `n` sets of an exercise to each group it trains, at the strongest involvement of
+// any of the group's muscles — never their sum.
+function creditSet(groups, mus, n) {
+  const best = {}
+  for (const slug in mus) {
+    const g = GROUP_OF[slug]
+    if (g) best[g] = Math.max(best[g] || 0, mus[slug])
+  }
+  for (const g in best) groups[g] += best[g] * n
+}
+
 /**
  * Effective-set volume per muscle group across a set of workouts.
  *
@@ -85,12 +100,7 @@ export function groupVolume(workouts, pick = isEffectiveSet) {
         if (!s.done || isWarmupRow(s)) continue
         if (rirOf(s) == null) unrated++; else rated++
         if (pick && !pick(s)) continue
-        const best = {}
-        for (const slug in mus) {
-          const g = GROUP_OF[slug]
-          if (g) best[g] = Math.max(best[g] || 0, mus[slug])
-        }
-        for (const g in best) groups[g] += best[g]
+        creditSet(groups, mus, 1)
       }
     }
   }
@@ -98,13 +108,46 @@ export function groupVolume(workouts, pick = isEffectiveSet) {
 }
 
 /**
- * Effective-set volume per muscle group over the current microcycle — the sessions logged
- * since the block opened (lib/microcycle.js). `sessions` says how many that is, so the UI
- * can show the block filling up rather than implying the count is final.
+ * Effective-set volume per muscle group over the current microcycle — everything logged
+ * since the block opened (lib/microcycle.js), off-plan sessions included. `sessions` says
+ * how many that is, so the UI can show the block filling up rather than implying the count
+ * is final.
  */
 export function cycleVolume(S) {
   const win = cycleWorkouts(S)
   return { ...groupVolume(win), sessions: win.length }
+}
+
+/**
+ * The volume the programming plans for one microcycle, before anything is trained — what the
+ * Programming sheet shows while the sequence is being built.
+ *
+ * One microcycle is microcycleLen(S) sessions, taken from the sequence's training steps in
+ * order and wrapping around: a Push/Pull/Legs sequence under the PPL strategy (6 sessions) is
+ * counted twice, which is what the block will actually train. Rest days and deleted routines
+ * plan nothing. Each exercise contributes the work sets its routine configures (`sets`, warm-ups
+ * never count), credited per group the same way groupVolume credits a logged set, so the plan
+ * reads on the same scale as the live panel. Every planned set is assumed effective.
+ */
+export function plannedVolume(S) {
+  const groups = {}
+  for (const g of VOLUME_GROUPS) groups[g.key] = 0
+  const routines = (S && S.routines) || []
+  const byId = id => routines.find(r => r.id === id)
+  // A deleted routine still holds its slot in the block (microcycleLen counts it); it just
+  // plans no sets.
+  const steps = ((S && S.program && S.program.seq) || []).filter(x => x && x !== REST)
+  const len = steps.length ? microcycleLen(S) : 0
+  let total = 0
+  for (let i = 0; i < len; i++) {
+    const r = byId(steps[i % steps.length])
+    for (const cfg of (r && r.ex) || []) {
+      const n = Math.max(1, Math.round(cfg.sets) || 1)
+      creditSet(groups, entryMuscles(cfg), n)
+      total += n
+    }
+  }
+  return { groups, rated: total, unrated: 0, total, sessions: len }
 }
 
 /** Traffic-light status of a group's effective-set count against the target band. */

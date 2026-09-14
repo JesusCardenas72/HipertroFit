@@ -8,7 +8,8 @@ const EVENTS = [
   'auth.login.ok', 'auth.login.fail', 'auth.register.ok', 'auth.register.fail',
   'auth.register.denied', 'auth.logout', 'auth.logout.all',
   'admin.user.disable', 'admin.user.enable', 'admin.invite.create',
-  'admin.invite.revoke', 'admin.audit.clear', 'admin.denied'
+  'admin.invite.revoke', 'admin.audit.clear', 'admin.denied',
+  'ai.analyze', 'ai.analyze.fail'
 ]
 const REASONS = [
   'challenge-expired', 'unknown-credential', 'verify-error', 'not-verified',
@@ -39,8 +40,8 @@ describe('auditCat', () => {
   it('survives a missing event name', () => {
     expect(auditCat(undefined)).toBe('')
   })
-  it('puts every known event in exactly auth or admin', () => {
-    expect([...new Set(EVENTS.map(auditCat))].sort()).toEqual(['admin', 'auth'])
+  it('puts every known event in exactly one of auth, admin or ai', () => {
+    expect([...new Set(EVENTS.map(auditCat))].sort()).toEqual(['admin', 'ai', 'auth'])
   })
 })
 

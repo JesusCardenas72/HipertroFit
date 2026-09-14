@@ -9,7 +9,8 @@ import { createRoot } from 'react-dom/client'
 import { EXDB } from './lib/exercises.js'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { exConfigSheet } from './sheets.jsx'
+import { exConfigSheet, addExerciseToRoutine } from './sheets.jsx'
+import { routineExerciseConfig } from './lib/exercise-class.js'
 
 const ex = EXDB.find(e => e.id === '0009')
 const mounted = []
@@ -123,5 +124,70 @@ describe('exercise config: fields that belong to the exercise', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ reps: 11 }))
     expect(useStore.getState().S.exDefaults[ex.id].reps).toBe(11)
     expect(useUI.getState().sheets).toHaveLength(0)
+  })
+
+  it('a new routine exercise starts on double progression, its class range and last weight', () => {
+    const squat = EXDB.find(e => e.id === '0043')
+    const S = { workouts: [{ d: '2026-09-01', entries: [{ id: squat.id, sets: [{ w: 90, reps: 8, done: true }] }] }] }
+    const onSave = vi.fn()
+    exConfigSheet(squat, null, onSave, null, { id: 'r1', ex: [] }, routineExerciseConfig(S, squat))
+    const host = renderTop()
+    expect(value(host, 'Reps from')).toBe('5')
+    expect(value(host, 'Reps up to')).toBe('12')
+    expect(value(host, 'Weight (kg)')).toBe('90')
+    act(() => { button(host, /^add to routine$/i).click() })
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ prog: 'double', repsMin: 5, reps: 12, weight: 90 }))
+  })
+})
+
+describe('adding an exercise that another routine already set up', () => {
+  const squat = EXDB.find(e => e.id === '0043')
+  const planned = { id: squat.id, sets: 4, reps: 8, repsMin: 6, prog: 'double', weight: 100, restSec: 180, sg: 'x' }
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    useUI.setState({ sheets: [] })
+    useStore.setState(s => ({ S: { ...s.S, unit: 'kg', workouts: [], exDefaults: {},
+      routines: [{ id: 'legs', name: 'Legs A', ex: [planned] }, { id: 'new', name: 'Legs B', ex: [] }] } }))
+    document.body.innerHTML = ''
+  })
+
+  afterEach(() => {
+    act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  })
+
+  it('tells the user, shows the parameters and accepts them as they are', () => {
+    const onAdd = vi.fn()
+    addExerciseToRoutine(squat, { id: 'new', ex: [] }, onAdd)
+    const host = renderTop()
+    expect(host.textContent).toContain('Legs A')
+    expect(host.textContent).toContain('6–8')
+    expect(host.textContent).toContain('100')
+    act(() => { button(host, /^accept$/i).click() })
+    expect(onAdd).toHaveBeenCalledWith({ sets: 4, reps: 8, repsMin: 6, prog: 'double', weight: 100, restSec: 180 })
+    expect(useUI.getState().sheets).toHaveLength(0)
+  })
+
+  it('opens the config sheet on those parameters to change them', () => {
+    const onAdd = vi.fn()
+    addExerciseToRoutine(squat, { id: 'new', ex: [] }, onAdd)
+    const notice = renderTop()
+    act(() => { button(notice, /review and change/i).click() })
+    const host = renderTop()
+    expect(value(host, 'Sets')).toBe('4')
+    expect(value(host, 'Reps from')).toBe('6')
+    expect(value(host, 'Reps up to')).toBe('8')
+    expect(value(host, 'Weight (kg)')).toBe('100')
+    bump(host, 'Sets', 'up')
+    act(() => { button(host, /^add to routine$/i).click() })
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ sets: 5, reps: 8, repsMin: 6, weight: 100 }))
+  })
+
+  it('goes straight to the class defaults for an exercise never set up', () => {
+    useStore.setState(s => ({ S: { ...s.S, routines: [] } }))
+    addExerciseToRoutine(squat, { id: 'new', ex: [] }, vi.fn())
+    const host = renderTop()
+    expect(value(host, 'Reps from')).toBe('5')
+    expect(value(host, 'Reps up to')).toBe('12')
   })
 })

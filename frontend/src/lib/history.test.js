@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, freestyleConfig, exLine, workoutVolume, bestWeightFor, bestWeightForEntry, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, cascadeWeight, insertWarmupRow, removeRowAt, workSetsDone, pairAdjacent, unpairSuperset, supersetUnits, applyIntensifierPlan, pinnedNoteFor, exNoteFor } from './history.js'
+import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, freestyleConfig, exLine, workoutVolume, bestWeightFor, bestWeightForEntry, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, cascadeWeight, insertWarmupRow, removeRowAt, workSetsDone, pairAdjacent, unpairSuperset, supersetUnits, applyIntensifierPlan, pinnedNoteFor, exNoteFor, sessionSetCount } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -465,7 +465,35 @@ describe('buildSets', () => {
   it('carries last time\'s numbers forward within the same mode', () => {
     const S = { exWeights: {}, workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, target: { mode: 'time' }, sets: [{ sec: 70, w: 10, done: true }] }] }] }
     expect(buildSets(S, { id: LIFT, mode: 'time', sets: 2, sec: 45, weight: 0 }))
-      .toEqual([{ sec: 70, w: 10, done: false }, { sec: 70, w: 10, done: false }])
+      .toEqual([{ sec: 70, w: 10, done: false }])
+  })
+
+  // Sets, reps and weight belong to the exercise: whatever routine it was last done in wins
+  // over the routine being started.
+  it('takes the set count, reps and weights from the last session in any routine', () => {
+    const S = { exWeights: {}, workouts: [{ d: '2026-01-01', routineId: 'other', entries: [{ id: LIFT, target: { sets: 4, reps: 8 }, sets: [
+      { w: 60, r: 8, done: true }, { w: 62.5, r: 8, done: true }, { w: 62.5, r: 7, done: true }, { w: 60, r: 8, done: true },
+    ] }] }] }
+    expect(buildSets(S, { id: LIFT, sets: 2, reps: 12, weight: 40 }, { preferLast: true }))
+      .toEqual([{ w: 60, r: 8, done: false }, { w: 62.5, r: 8, done: false }, { w: 62.5, r: 7, done: false }, { w: 60, r: 8, done: false }])
+  })
+
+  it('counts every work row of the last session, so an unticked set is kept and an added one grows it', () => {
+    const skipped = { exWeights: {}, workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, target: { sets: 3 }, sets: [
+      { w: 60, r: 8, done: true }, { w: 60, r: 8, done: true }, { w: 60, r: 8, done: false },
+    ] }] }] }
+    expect(sessionSetCount(skipped, { id: LIFT, sets: 2 })).toBe(3)
+    const added = { exWeights: {}, workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, target: { sets: 2 }, sets: [
+      { w: 60, r: 8, done: true }, { w: 60, r: 8, done: true }, { w: 60, r: 8, done: true },
+    ] }] }] }
+    expect(sessionSetCount(added, { id: LIFT, sets: 2 })).toBe(3)
+  })
+
+  it('falls back to the routine count with no history, in a deload, or across a mode switch', () => {
+    const timed = { exWeights: {}, workouts: [{ d: '2026-01-01', entries: [{ id: LIFT, target: { mode: 'time', sets: 5 }, sets: [{ sec: 70, done: true }] }] }] }
+    expect(sessionSetCount(emptyS, { id: LIFT, sets: 3 })).toBe(3)
+    expect(sessionSetCount(timed, { id: LIFT, sets: 3 })).toBe(3)
+    expect(sessionSetCount(timed, { id: LIFT, mode: 'time', sets: 3 }, { useTarget: true })).toBe(3)
   })
 
   it('does not seed a duration from a rep count when an exercise switches to time', () => {

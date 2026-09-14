@@ -663,3 +663,61 @@ describe('shared: no-state fallback', () => {
   // failure rather than inherits null silently.
   afterAll(() => { _seedStateForTests(S = freshState()) })
 })
+
+/* ---------- training_analysis ---------- */
+
+describe('training_analysis', () => {
+  test('returns the in-app digest with findings, and nothing that identifies the user', () => {
+    const r = call('training_analysis')
+    expect(r.window_weeks).toBe(12)
+    expect(r.microcycle.length).toBeGreaterThan(0)
+    expect(r.volume.target).toEqual({ min: 10, max: 20 })
+    expect(Array.isArray(r.findings)).toBe(true)
+    expect(r.recent.length).toBeGreaterThan(0)
+    expect(r.recent[0].exercises[0].exercise).not.toMatch(/^\d+$/)   // a name, not a catalogue id
+    const text = JSON.stringify(r)
+    expect(text).not.toContain('test-uid')                      // the profile id seeded by _seedStateForTests
+    expect(text).not.toMatch(/"(uid|id|email)"/)
+  })
+
+  test('honours the weeks window', () => {
+    const narrow = call('training_analysis', { weeks: 1 })
+    const wide = call('training_analysis', { weeks: 52 })
+    expect(narrow.window_weeks).toBe(1)
+    expect(narrow.adherence.sessions_in_window).toBeLessThanOrEqual(wide.adherence.sessions_in_window)
+  })
+})
+
+/* ---------- suggested_changes ---------- */
+
+describe('suggested_changes', () => {
+  test('turns a low planned-volume group into readable set changes, without writing anything', () => {
+    S.program = { on: true, seq: S.routines.map(r => r.id), anchor: '2026-07-01', strategy: 'full-body' }
+    const legs = S.routines.find(r => /leg/i.test(r.name))
+    legs.ex.forEach(e => { e.sets = 1 })
+    _seedStateForTests(S)
+    const before = JSON.stringify(S)
+    const r = call('suggested_changes')
+    const vol = r.changes.find(c => c.kind === 'volume' && c.group === 'legs')
+    expect(vol).toMatchObject({ direction: 'up', applicable: true })
+    expect(vol.planned_sets_after).toBeGreaterThanOrEqual(10)
+    expect(vol.sets.length).toBeGreaterThan(0)
+    vol.sets.forEach(x => {
+      expect(x.routine).toBe(legs.name)
+      expect(x.to - x.from).toBeGreaterThan(0)
+      expect(typeof x.exercise).toBe('string')
+    })
+    expect(JSON.stringify(S)).toBe(before)
+  })
+
+  test('reports no changes for a profile with nothing to fix, and the no-state sentinel without state', () => {
+    S.workouts = []
+    S.program = null
+    _seedStateForTests(S)
+    expect(call('suggested_changes').changes).toEqual([])
+    _seedStateForTests(null)
+    expect(call('suggested_changes').error).toMatch(/no synced state/)
+    expect(call('training_analysis').error).toMatch(/no synced state/)
+  })
+})
+

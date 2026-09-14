@@ -3,7 +3,7 @@
 // to identical entries, or the two paths drift apart the first time a prescription rule changes.
 // Imports both history.js and progression.js (which itself imports history.js); nothing in
 // either imports this file, so there is no cycle.
-import { buildSets, applyIntensifierPlan } from './history.js'
+import { buildSets, applyIntensifierPlan, sessionSetCount } from './history.js'
 import { nextPrescription, applyPrescription, defaultIncrement } from './progression.js'
 import { applyDeload } from './mesocycle.js'
 
@@ -19,7 +19,10 @@ export function buildSessionEntries(st, r, { deload = 0 } = {}) {
     const step = defaultIncrement(cfg.id, st.unit)
     const built = applyIntensifierPlan(applyPrescription(buildSets(st, cfg, { step, useTarget: excluded }), plan, step), cfg)
     const sets = deload > 0 ? applyDeload(built, deload, step) : built
-    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets }
+    // The set count comes from the exercise's own history, not the routine (sessionSetCount),
+    // so the target records the count this session actually prescribed — that is what
+    // readSession later judges "every planned set done" against.
+    return { id: cfg.id, sg: cfg.sg, target: { ...cfg, sets: sessionSetCount(st, cfg, { useTarget: excluded }) }, plan, sets }
   })
   return { entries, excluded }
 }

@@ -8,6 +8,9 @@ export function buildCompletedWorkout(active, { end = Date.now(), prs = [], snap
       topW: entry.topW || null,
       target: entry.target || null,
     }
+    // The rep aim double progression set for this session: a fatigued session repeats it
+    // rather than guessing it back from the logged reps.
+    if (entry.plan && entry.plan.policy === 'double' && entry.plan.reps > 0) completed.aim = entry.plan.reps
     const snapshot = typeof snapshotFor === 'function' ? snapshotFor(entry) : null
     if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot) && Object.keys(snapshot).length) {
       completed.muscleSnapshot = { ...snapshot }

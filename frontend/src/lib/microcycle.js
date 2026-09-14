@@ -91,8 +91,7 @@ export function sessionsSince(S) {
  */
 export function cyclePosition(S) {
   const len = microcycleLen(S)
-  const done = sessionsSince(S)
-  const sessions = done.length
+  const sessions = sessionsSince(S).filter(w => isPlannedSession(S, w)).length
   return {
     len,
     start: cycleStartOf(S),
@@ -108,6 +107,24 @@ export const trainingSteps = program =>
   (Array.isArray(program?.seq) ? program.seq : []).filter(s => s && s !== REST)
 
 /**
+ * Whether a logged session is one of the block's counted steps.
+ *
+ * A freestyle session — started with "pick as you go", so it carries no routine — is
+ * training done outside the planning. It must not consume a slot of the microcycle nor
+ * move the sequence pointer on: if it did, the planned session it displaced would fall out
+ * of the block and its volume with it. The block still counts `len` planned sessions; the
+ * off-plan one rides along, and everything it trained is added to the block's volume all
+ * the same (see cycleWorkouts).
+ *
+ * Training a routine out of turn is a different thing — that *is* one of the planned
+ * sessions, just not the one the pointer proposed — so it keeps consuming its slot. And
+ * with no sequence to be outside of (no program, or an all-freestyle log) every session is
+ * the plan, or the block would never advance at all.
+ */
+export const isPlannedSession = (S, w) =>
+  !trainingSteps(S && S.program).length || !!(w && w.routineId)
+
+/**
  * The routine id the next session should be, by position in the sequence.
  *
  * Positional on purpose: with Push A, Pull A, Legs, Push B, Pull B, Legs the routine alone
@@ -119,11 +136,25 @@ export function nextStepOf(S) {
   return steps[cyclePosition(S).step % steps.length]
 }
 
-/** The sessions logged so far in the current microcycle, oldest→newest. */
+/**
+ * Everything logged so far in the current microcycle, oldest→newest — the block's volume
+ * window. Off-plan (freestyle) sessions are in it even though they are not steps of the
+ * block: train something extra mid-microcycle and every set of it counts toward this
+ * microcycle's volume.
+ */
 export function cycleWorkouts(S) {
-  const { step } = cyclePosition(S)
+  const len = microcycleLen(S)
   const done = sessionsSince(S)
-  return step === 0 ? [] : done.slice(done.length - step)
+  const planned = []
+  for (let i = 0; i < done.length; i++) if (isPlannedSession(S, done[i])) planned.push(i)
+  const step = planned.length % len
+  // Where the block opened: at its first planned session, or — when the previous block
+  // just closed and this one has not started — right after that closing session, so an
+  // off-plan workout trained in between belongs to the block that is opening.
+  const from = step === 0
+    ? (planned.length ? planned[planned.length - 1] + 1 : 0)
+    : planned[planned.length - step]
+  return done.slice(from)
 }
 
 /**
@@ -134,7 +165,7 @@ export function cycleWorkouts(S) {
  */
 export function cycleStrip(S) {
   const { len, step } = cyclePosition(S)
-  const done = cycleWorkouts(S)
+  const done = cycleWorkouts(S).filter(w => isPlannedSession(S, w))
   const steps = trainingSteps(S && S.program)
   const out = []
   for (let i = 0; i < len; i++) {

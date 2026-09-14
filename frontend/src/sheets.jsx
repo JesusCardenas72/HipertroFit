@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, smOf, matchExercise, exOr } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, smOf, matchExercise, exOr, normalizeStr } from './lib/exercises.js'
 import { activeProfile, exAvailable, ALL_EQUIPMENT, newProfile } from './lib/equipment.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount, DAYN, DAYS, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { programActive, emptyProgram, sessionsPerRound, REST } from './lib/program.js'
 import { STRATEGIES, microcycleLen, strategyOf, cyclePosition } from './lib/microcycle.js'
+import { plannedVolume } from './lib/volume.js'
+import VolumeGroupBars from './components/VolumeGroupBars.jsx'
 import { mesoState, setDeloadPct, DELOAD_PCT } from './lib/mesocycle.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
@@ -21,11 +23,15 @@ import BodyMap from './components/BodyMap.jsx'
 import { exerciseMuscleSnapshot, loadOfWorkouts, MUSCLES, MUSCLE_NAME, normalizeMuscleGroups, hasExplicitMuscleMetadata } from './lib/muscles.js'
 import { parseImport, mergeImport } from './lib/import-csv.js'
 import { importHevyData, HevyApiError, HEVY_DEV_SETTINGS, mergeHevyRoutines } from './lib/import-hevy.js'
+import { addFolder, renameFolder, moveFolder, deleteFolder, FOLDER_NAME_MAX } from './lib/folders.js'
 import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-share.js'
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
 import { normalizeRepRange } from './lib/rep-range.js'
-import { seedConfig, changedGlobals, applyGlobals, isGlobalField, GLOBAL_LABEL } from './lib/exercise-defaults.js'
+import { routineExerciseConfig, classifyExercise, CLASS_NAME, CLASS_REP_RANGE, EXERCISE_CLASSES } from './lib/exercise-class.js'
+import { buildCustomExercise, stepsText, NAME_MAX, DESC_MAX, MAX_IMAGE_BYTES } from './lib/custom-exercise.js'
+import { pictureFromFile, gifFromDataUrl, frameCanvas, frameToJpeg } from './lib/image-file.js'
+import { previousRoutineConfig, seedConfig, changedGlobals, applyGlobals, isGlobalField, GLOBAL_LABEL } from './lib/exercise-defaults.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
 import { isWarmupRow } from './lib/workout-model.js'
@@ -535,7 +541,7 @@ function AddToRoutine({ ex, close }) {
   const pick = rid => {
     close()
     const isNew = rid === '_new'
-    exConfigSheet(ex, null, cfg => {
+    addExerciseToRoutine(ex, isNew ? null : st.routines.find(x => x.id === rid), cfg => {
       update(s => {
         let r = isNew ? { id: uid(), name: t('New routine'), emoji: DEFAULT_GLYPH, ex: [] } : s.routines.find(x => x.id === rid)
         if (isNew) s.routines.push(r)
@@ -544,7 +550,7 @@ function AddToRoutine({ ex, close }) {
       const r = isNew ? S().routines[S().routines.length - 1] : st.routines.find(x => x.id === rid)
       toast(t('“{0}” added to {1}', exerciseNameFor(ex), r ? r.name : t('routine')))
       if (isNew && r) nav('/plan/r/' + r.id)
-    }, null, isNew ? null : st.routines.find(x => x.id === rid))
+    })
   }
   return <>
     <h3 className="capitalize">{t('Add “{0}”', exerciseNameFor(ex))}</h3>
@@ -563,14 +569,21 @@ function AddToRoutine({ ex, close }) {
 export const addToRoutineSheet = ex => ui().openSheet(close => <AddToRoutine ex={ex} close={close} />)
 
 /* ============================ custom exercises (issue #11) ============================ */
-// Name + body part is all it takes — the exercise then behaves like any built-in one
-// (planning, logging, PRs, stats), just without an animation.
+// An exercise that is not in the catalogue is fully yours: every field a catalogue row has
+// (name, body part, equipment, muscles, class, instructions, picture) can be set here, and it
+// then behaves like any built-in one (planning, logging, PRs, stats). Only name and body part
+// are required. The record itself is built by buildCustomExercise (lib/custom-exercise.js).
 function CustomExForm({ existing, prefill, onDone, close }) {
   const nameRef = useRef(null)
+  const fileRef = useRef(null)
   const onNameFocus = useSheetKeyboard(nameRef)
   const [n, setN] = useState(existing ? existing.n : (prefill || ''))
   const [bp, setBp] = useState(existing ? existing.bp : '')
+  const [eq, setEq] = useState(existing && existing.eq && existing.eq !== 'custom' ? existing.eq : '')
+  const [cls, setCls] = useState(existing && existing.cls ? existing.cls : '')
   const [desc, setDesc] = useState(existing ? (existing.desc || '') : '')
+  const [steps, setSteps] = useState(existing ? stepsText(existing.st) : '')
+  const [pic, setPic] = useState(() => ({ img: existing?.img || '', gif: existing?.gif || '', frame: existing?.frame || 0 }))
   const [primaries, setPrimaries] = useState(() => {
     if (existing && Array.isArray(existing.primaries) && existing.primaries.length) return [...existing.primaries]
     const norm = hasExplicitMuscleMetadata(existing || {}) ? normalizeMuscleGroups(existing || {}) : []
@@ -583,35 +596,46 @@ function CustomExForm({ existing, prefill, onDone, close }) {
   })
   const togglePrimary = value => setPrimaries(current => current.includes(value) ? current.filter(m => m !== value) : [...current, value])
   const toggleSecondary = value => setSecondaries(current => current.includes(value) ? current.filter(m => m !== value) : [...current, value])
+  const pickPicture = async e => {
+    const file = e.target.files && e.target.files[0]
+    e.target.value = ''
+    if (!file) return
+    try { setPic(await pictureFromFile(file)) }
+    catch (err) { toast(err.message === 'too-large' ? t('That GIF is too big — keep it under {0} KB', Math.round(MAX_IMAGE_BYTES / 1024)) : t('That file isn’t an image')) }
+  }
+  const draft = id => buildCustomExercise({ id, n, bp, eq, cls, primaries, secondaries, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame })
+  const autoCls = classifyExercise({ ...draft((existing || {}).id), cls: undefined })
   const save = () => {
     const name = n.trim()
     if (!name) { toast(t('Give it a name')); return }
     if (!bp) { toast(t('Pick a body part')); return }
     const dup = allExercises(S()).find(e => e.n.toLowerCase() === name.toLowerCase() && e.id !== (existing || {}).id)
     if (dup) { toast(t('“{0}” already exists', dup.n)); return }
-    const d = desc.trim().slice(0, 1000)
-    const prim = [...primaries]
-    const sm = secondaries.filter(m => !prim.includes(m))
-    const groups = [...prim, ...sm]
-    let id = existing && existing.id
-    if (existing) update(s => { const c = (s.customEx || []).find(x => x.id === id); if (c) {
-      c.n = name; c.bp = bp; c.desc = d; c.tg = prim[0] || ''; c.sm = sm; c.muscleGroups = groups; c.primaries = prim; c.secondaries = sm
-    } })
-    else {
-      id = 'c' + uid()
-      update(s => { (s.customEx = s.customEx || []).push({ id, n: name, bp, desc: d, tg: prim[0] || '', sm, muscleGroups: groups, primaries: prim, secondaries: sm, eq: 'custom', custom: true }) })
-    }
+    const id = existing ? existing.id : 'c' + uid()
+    const record = draft(id)
+    update(s => {
+      s.customEx = s.customEx || []
+      const i = s.customEx.findIndex(x => x.id === id)
+      if (i >= 0) s.customEx[i] = record
+      else if (!existing) s.customEx.push(record)
+    })
     close()
-    toast(existing ? t('Saved') : t('“{0}” created', name))
+    toast(existing ? t('Saved') : t('“{0}” created', record.n))
     onDone && onDone(EXIDX[id])
   }
+  const openFile = () => fileRef.current && fileRef.current.click()
+  const eqOptions = [{ value: '', label: t('custom') }, ...ALL_EQUIPMENT.map(x => ({ value: x, label: t(x) }))]
+  const clsOptions = [{ value: '', label: t('Automatic · {0}', t(CLASS_NAME[autoCls])) },
+    ...EXERCISE_CLASSES.map(c => ({ value: c, label: t(CLASS_NAME[c]), subtitle: t('{0}–{1} reps', CLASS_REP_RANGE[c].repsMin, CLASS_REP_RANGE[c].reps) }))]
   return <>
     <h3>{existing ? t('Edit custom exercise') : t('Create your own exercise')}</h3>
-    <div className="muted small" style={{ marginBottom: 12 }}>{t('Name it and pick a body part — it behaves like any other exercise, just without an animation.')}</div>
-    <input ref={nameRef} className="input" placeholder={t('Exercise name')} value={n} onFocus={onNameFocus} onChange={e => setN(e.target.value)} />
+    <div className="muted small" style={{ marginBottom: 12 }}>{t('Only the name and body part are required — fill in the rest to describe it as fully as a built-in exercise.')}</div>
+    <input ref={nameRef} className="input" maxLength={NAME_MAX} placeholder={t('Exercise name')} value={n} onFocus={onNameFocus} onChange={e => setN(e.target.value)} />
     <div className="chips" style={{ margin: '12px 0' }}>
       {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => setBp(b)}>{t(b)}</button>)}
     </div>
+    <SelectRow title={t('Equipment')} value={eq} options={eqOptions} onChange={setEq}
+      search={{ placeholder: t('Search…'), label: t('Search…'), emptyLabel: t('No match'), match: (o, q) => normalizeStr(o.label + ' ' + o.value).includes(normalizeStr(q.trim())) }} />
     {bp && bp !== 'cardio' && <>
       <MultiSelectRow title={t('Primary muscle groups')} sheetTitle={t('Primary muscle groups')}
         values={primaries}
@@ -621,15 +645,64 @@ function CustomExForm({ existing, prefill, onDone, close }) {
         values={secondaries}
         options={MUSCLES.filter(m => !primaries.includes(m)).map(m => ({ value: m, label: t(MUSCLE_NAME[m]) }))}
         onToggle={toggleSecondary} noneLabel={t('No explicit muscle group')} doneLabel={t('Done')} />
+      <SelectRow title={t('Exercise type')} value={cls} options={clsOptions} onChange={setCls} />
     </>}
-    {bp === 'cardio' && <div className="small dim row" style={{ marginBottom: 10, gap: 5 }}><Icon name="figureRun" style={{ fontSize: 13 }} />{t('Cardio exercises log time + speed instead of weight × reps.')}</div>}
-    <textarea className="input" rows={4} maxLength={1000} placeholder={t('Description (optional) — setup, cues, anything you want to remember')}
+    {bp === 'cardio' && <div className="small dim row" style={{ margin: '10px 0', gap: 5 }}><Icon name="figureRun" style={{ fontSize: 13 }} />{t('Cardio exercises log time + speed instead of weight × reps.')}</div>}
+    <h4 className="sec">{t('Image')}</h4>
+    <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPicture} />
+    {pic.img ? <>
+      <Media ex={{ id: 'preview', n, img: pic.img, gif: pic.gif }} compact />
+      {pic.gif && <GifFramePicker src={pic.gif} frame={pic.frame} onPick={(frame, img) => setPic(p => ({ ...p, frame, img }))} />}
+      <div className="row" style={{ gap: 8, marginBottom: 12 }}>
+        <Button icon="pencil" style={{ flex: 1 }} onClick={openFile}>{t('Change image')}</Button>
+        <Button variant="danger" icon="trash" style={{ flex: 1 }} onClick={() => setPic({ img: '', gif: '', frame: 0 })}>{t('Remove image')}</Button>
+      </div>
+    </> : <Button icon="plus" style={{ marginBottom: 12 }} onClick={openFile}>{t('Add an image')}</Button>}
+    <h4 className="sec">{t('How to')}</h4>
+    <textarea className="input" rows={4} placeholder={t('Instructions (optional) — one step per line')}
+      value={steps} onChange={e => setSteps(e.target.value)} style={{ marginBottom: 10 }} />
+    <textarea className="input" rows={3} maxLength={DESC_MAX} placeholder={t('Description (optional) — setup, cues, anything you want to remember')}
       value={desc} onChange={e => setDesc(e.target.value)} />
     <div style={{ height: 14 }} />
     <Button variant="primary" onClick={save}>{existing ? t('Save') : t('Create exercise')}</Button>
     {existing && <><div style={{ height: 8 }} /><Button variant="danger" icon="trash" onClick={() => { close(); deleteCustomEx(existing) }}>{t('Delete exercise')}</Button></>}
   </>
 }
+// Scrub through an animated GIF and pick the frame that becomes the exercise's still (list
+// thumbnail, paused picture). The frame is drawn straight from the decoder while dragging;
+// the JPEG is only encoded once the slider settles.
+function GifFramePicker({ src, frame, onPick }) {
+  const gif = useMemo(() => gifFromDataUrl(src), [src])
+  const canvasRef = useRef(null)
+  const [cur, setCur] = useState(frame)
+  const count = gif ? gif.frames.length : 0
+  useEffect(() => { setCur(Math.min(frame, Math.max(0, count - 1))) }, [src]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!gif || !canvasRef.current) return
+    frameCanvas(gif, cur, canvasRef.current)
+    if (cur === frame) return
+    const tm = setTimeout(() => onPick(cur, frameToJpeg(gif, cur)), 200)
+    return () => clearTimeout(tm)
+  }, [gif, cur]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (count < 2) return null
+  return <div className="gifpick">
+    <div className="row between" style={{ marginBottom: 8 }}>
+      <span className="small">{t('Thumbnail')}</span>
+      <span className="small dim">{t('Frame {0} of {1}', cur + 1, count)}</span>
+    </div>
+    <div className="row" style={{ gap: 12, alignItems: 'center' }}>
+      <canvas ref={canvasRef} className="gifpick-frame" />
+      <div className="grow">
+        <Slider value={cur} min={0} max={count - 1} step={1} onChange={v => setCur(v)} />
+        <div className="row" style={{ gap: 8, marginTop: 8 }}>
+          <Button icon="chevronLeft" style={{ flex: 1 }} disabled={cur <= 0} onClick={() => setCur(c => Math.max(0, c - 1))}>{t('Previous')}</Button>
+          <Button icon="chevronRight" style={{ flex: 1 }} disabled={cur >= count - 1} onClick={() => setCur(c => Math.min(count - 1, c + 1))}>{t('Next')}</Button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
 export const customExSheet = (existing, onDone, prefill) => ui().openSheet(close => <CustomExForm existing={existing} prefill={prefill} onDone={onDone} close={close} />)
 
 /* ---- manual rename ----
@@ -750,7 +823,7 @@ function ExercisePicker({ onPick, close }) {
     <div className="list">
       {bp !== '★' && <div className="item" {...tappable(() => customExSheet(null, ex => onPick(ex), q.trim()))}>
         <div className="thumb thumb-x"><Icon name="sparkles" /></div>
-        <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, no animation')}</div></div><Icon name="plus" className="chev" />
+        <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name, muscles, equipment, instructions and image')}</div></div><Icon name="plus" className="chev" />
       </div>}
       {f.slice(0, shown).map(e => <div key={e.id} className="item" {...tappable(() => onPick(e))}>
         <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
@@ -1054,6 +1127,13 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
         only visible from the Exercises tab, after the fact. */}
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0 14px' }}>
       {cardio && <span className="tag acc"><Icon name="figureRun" />{t('Cardio')}</span>}
+      {/* The class decides the default rep range for double progression — shown so a 10–20
+          on a curl, or 5–12 on a squat, is explained rather than arbitrary. */}
+      {!cardio && (() => {
+        const kind = classifyExercise(ex)
+        const range = CLASS_REP_RANGE[kind]
+        return <span className="tag acc">{t(CLASS_NAME[kind])} · {range.repsMin}–{range.reps}</span>
+      })()}
       <span className="tag">{t(ex.tg || ex.bp)}</span><span className="tag">{t(ex.eq)}</span>
       {!cardio && (ex.secondaries?.length ? ex.secondaries : smOf(ex)).slice(0, 3)
         .map((s, i) => <span key={i} className="tag dim">{t(s)}</span>)}
@@ -1200,11 +1280,65 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
       placeholder={t('Note (optional) — loading cues, "bar only then +1 plate/side each set", anything worth remembering here')}
       value={c.note || ''} onChange={e => setC(x => ({ ...x, note: e.target.value }))} />
     <Button variant="primary" disabled={progressionStepInvalid} onClick={save}>{existing ? t('Save') : t('Add to routine')}</Button>
-    {ex.custom && <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => { close(); customExSheet(ex) }}>{t('Edit or delete this exercise')}</Button></>}
+    {ex.custom
+      ? <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => { close(); customExSheet(ex) }}>{t('Edit or delete this exercise')}</Button></>
+      : !ex.missing && <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => renameExSheet(ex)}>{t('Rename this exercise')}</Button></>}
     {onDelete && <><div style={{ height: 8 }} /><Button variant="danger" onClick={() => { close(); onDelete() }}>{t('Remove from routine')}</Button></>}
   </>
 }
 export const exConfigSheet = (ex, existing, onSave, onDelete, routine, initial) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} initial={initial} onSave={onSave} onDelete={onDelete} routine={routine} close={close} />)
+
+/* ============================ add an exercise to a routine ============================ */
+// The parameters of a planned exercise, one row each, for the "already set up" notice.
+function plannedRows(ex, cfg, routine, unit) {
+  const mode = isCardio(ex.id) ? 'cardio' : modeOf({ ...cfg, id: ex.id })
+  const rows = []
+  if (mode === 'cardio') {
+    rows.push([t('Intervals'), fmtNum(cfg.sets || 1)], [t('Minutes'), fmtNum(cfg.min || 20)], [t('Speed (km/h)'), fmtNum(cfg.speed || 8)])
+  } else {
+    rows.push([t('Sets'), fmtNum(cfg.sets || 1)])
+    if (mode === 'time') rows.push([t('Seconds'), fmtNum(cfg.sec || 45)])
+    else rows.push([t('Reps'), cfg.prog === 'double' && cfg.repsMin ? `${cfg.repsMin}–${cfg.reps}` : fmtNum(cfg.reps || 0)])
+    const bw = isBw({ ...cfg, id: ex.id })
+    if (!bw || cfg.weight > 0) rows.push([bw ? t('Added ({0})', unit) : t('Weight ({0})', unit), fmtNum(cfg.weight || 0)])
+    const policy = policyFor({ ...cfg, id: ex.id }, routine, mode)
+    rows.push([t('Progression'), cfg.prog ? t(POLICY_NAME[policy]) : t('Follow the routine ({0})', t(POLICY_NAME[policy]))])
+    if (cfg.warmupSets) rows.push([t('Warm-up sets'), fmtNum(cfg.warmupSets)])
+    if (cfg.intensifier?.type) rows.push([t('Intensifier'), t(cfg.intensifier.type === 'dropset' ? 'Drop-set' : 'Rest-pause')])
+  }
+  if (cfg.restSec) rows.push([t('Rest (s)'), fmtNum(cfg.restSec)])
+  if (cfg.note) rows.push([t('Note'), cfg.note])
+  return rows
+}
+
+function ReusedExercise({ ex, found, routine, onAccept, onEdit, close }) {
+  const unit = useStore(s => s.S.unit)
+  return <>
+    <h3 className="capitalize">{exerciseNameFor(ex)}</h3>
+    <div className="muted small" style={{ marginBottom: 12, lineHeight: 1.5 }}>
+      {t('You already set this exercise up in “{0}”. It keeps those parameters — accept them, or review and change them for this routine.', found.routine.name)}
+    </div>
+    <div className="list" style={{ marginBottom: 18 }}>
+      {plannedRows(ex, found.cfg, routine || found.routine, unit).map(([label, value]) =>
+        <div key={label} className="item"><div className="grow"><div className="ss">{label}</div></div><b>{value}</b></div>)}
+    </div>
+    <Button variant="primary" onClick={() => { close(); onAccept() }}>{t('Accept')}</Button>
+    <div style={{ height: 8 }} />
+    <Button icon="pencil" onClick={() => { close(); onEdit() }}>{t('Review and change')}</Button>
+  </>
+}
+
+// Adding an exercise while designing a routine. Set up before in another routine, it keeps what
+// it was given there — the user is told so and can accept it as it is or open the config sheet on
+// it. Never set up, the config sheet opens on the class defaults (routineExerciseConfig).
+export function addExerciseToRoutine(ex, routine, onAdd) {
+  const st = S()
+  const found = previousRoutineConfig(st.routines, ex.id, routine?.id)
+  if (!found) return exConfigSheet(ex, null, onAdd, null, routine, routineExerciseConfig(st, ex))
+  ui().openSheet(close => <ReusedExercise ex={ex} found={found} routine={routine} close={close}
+    onAccept={() => onAdd({ ...found.cfg })}
+    onEdit={() => exConfigSheet(ex, null, onAdd, null, routine, { ...found.cfg })} />)
+}
 
 /* ============================ glyph picker ============================ */
 // Grouped by what the glyph means for a training day, so picking one is a scan
@@ -1353,6 +1487,55 @@ function DayAssign({ day, close }) {
 }
 export const dayAssignSheet = day => ui().openSheet(close => <DayAssign day={day} close={close} />)
 
+/* ============================ routine folders ============================ */
+// New folder (no `folder`) or manage an existing one: rename, reorder, add a routine inside,
+// delete. Deleting only removes the folder — its routines drop back to the loose list.
+function FolderSheet({ folder, close }) {
+  const st = useStore(s => s.S)
+  const nameRef = useRef(null)
+  const live = folder && (st.folders || []).find(f => f.id === folder.id)
+  const idx = live ? st.folders.indexOf(live) : -1
+  const count = live ? st.routines.filter(r => r.folder === live.id).length : 0
+  const save = () => {
+    const name = nameRef.current.value
+    if (!name.trim()) { nameRef.current.focus(); return }
+    update(s => { if (live) renameFolder(s, live.id, name); else addFolder(s, name) })
+    close()
+  }
+  const newRoutineHere = () => {
+    const r = { id: uid(), name: t('New routine'), emoji: DEFAULT_GLYPH, ex: [], folder: live.id }
+    update(s => { s.routines.push(r); const f = s.folders.find(x => x.id === live.id); if (f) f.open = true })
+    close(); nav('/plan/r/' + r.id)
+  }
+  const remove = () => confirmSheet({
+    title: t('Delete folder?'),
+    message: count
+      ? t('“{0}” will be removed. Its {1} routines stay in your plan, outside any folder.', live.name, count)
+      : t('“{0}” will be removed.', live.name),
+    confirmText: t('Delete'), danger: true,
+    onConfirm: () => update(s => deleteFolder(s, live.id)),
+  })
+  if (folder && !live) return null
+  return <>
+    <h3>{live ? t('Edit folder') : t('New folder')}</h3>
+    <TextField ref={nameRef} defaultValue={live?.name || ''} placeholder={t('Folder name')} maxLength={FOLDER_NAME_MAX}
+      autoFocus={!live} onKeyDown={e => { if (e.key === 'Enter') save() }} />
+    <div style={{ height: 12 }} />
+    <Button variant="primary" onClick={save}>{t('Save')}</Button>
+    {live && <>
+      <div style={{ height: 8 }} />
+      <Button variant="tinted" icon="plus" onClick={newRoutineHere}>{t('New routine in this folder')}</Button>
+      {st.folders.length > 1 && <div className="row" style={{ gap: 8, marginTop: 8 }}>
+        <Button variant="ghost" icon="arrowUp" disabled={idx <= 0} onClick={() => update(s => moveFolder(s, live.id, -1))}>{t('Move up')}</Button>
+        <Button variant="ghost" icon="arrowDown" disabled={idx >= st.folders.length - 1} onClick={() => update(s => moveFolder(s, live.id, 1))}>{t('Move down')}</Button>
+      </div>}
+      <div style={{ height: 8 }} />
+      <Button variant="danger" icon="trash" onClick={() => { close(); remove() }}>{t('Delete folder')}</Button>
+    </>}
+  </>
+}
+export const folderSheet = folder => ui().openSheet(close => <FolderSheet folder={folder} close={close} />)
+
 /* ============================ calendar programming ============================ */
 // Build the microcycle as a repeating sequence of training/rest days and project it onto the
 // calendar. Every mutation writes straight to S.program so the week strip, the calendar and the
@@ -1366,6 +1549,7 @@ function ProgramSheet({ close }) {
   const len = microcycleLen(st)
   const pos = cyclePosition(st)
   const routine = id => st.routines.find(r => r.id === id)
+  const planned = plannedVolume(st)
 
   const mut = fn => update(s => { if (!s.program) s.program = emptyProgram(todayISO()); fn(s.program) })
   const addStep = v => mut(p => { p.seq = [...p.seq, v] })
@@ -1398,6 +1582,18 @@ function ProgramSheet({ close }) {
   return <>
     <h3>{t('Programming')}</h3>
     <div className="muted small" style={{ marginBottom: 14 }}>{t('Lay your microcycle out as a repeating sequence of training and rest days. It projects onto the calendar and, while on, overrides the weekly schedule from the start date.')}</div>
+
+    {/* Planned sets per muscle group for one microcycle, recounted on every sequence edit —
+        the same bars as the Home/Stats volume card, fed by the plan instead of the log. */}
+    <div className="card" style={{ marginBottom: 14 }}>
+      <div className="row between" style={{ marginBottom: 8 }}>
+        <h2 style={{ margin: 0 }}>{t('Volume')}</h2>
+        <span className="small muted">{t('{0} sessions / microcycle', planned.sessions)}</span>
+      </div>
+      {planned.total
+        ? <VolumeGroupBars vol={planned} title={false} />
+        : <div className="muted small">{t('Add routines to the sequence to see the sets it plans per muscle group.')}</div>}
+    </div>
 
     <div className="list" style={{ marginBottom: 4 }}>
       <Row title={t('Use programming')} subtitle={programActive(prog) ? t('Overriding the weekly schedule') : t('Weekly schedule is in use')}>

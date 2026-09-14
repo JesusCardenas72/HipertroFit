@@ -116,6 +116,33 @@ describe('the block as trained', () => {
     expect(cycleWorkouts(closed)).toEqual([])
   })
 
+  it('keeps an off-plan session out of the block count but inside its volume', () => {
+    // A freestyle workout carries no routine: it is training done outside the planning.
+    const free = { id: 'free', d: '2026-01-03', start: Date.parse('2026-01-03T10:00:00'), routineId: null, entries: [] }
+    const T = state({ workouts: [w('2026-01-02', 'pushA'), free, w('2026-01-04', 'pullA')] })
+    expect(cyclePosition(T)).toMatchObject({ step: 2, remaining: 4 })   // two planned steps
+    expect(nextStepOf(T)).toBe('legs')                                  // pointer did not skip
+    expect(cycleWorkouts(T).map(x => x.d)).toEqual(['2026-01-02', '2026-01-03', '2026-01-04'])
+    expect(cycleStrip(T).map(s => s.state)).toEqual(['done', 'done', 'next', 'todo', 'todo', 'todo'])
+  })
+
+  it('does not let an off-plan session push a planned one out of the block', () => {
+    const days = ['2026-01-02', '2026-01-05', '2026-01-09', '2026-01-12', '2026-01-18', '2026-01-21']
+    const workouts = days.map(d => w(d))
+    workouts.splice(3, 0, { id: 'free', d: '2026-01-10', start: 1, routineId: null, entries: [] })
+    const T = state({ workouts })
+    expect(cyclePosition(T)).toMatchObject({ cycle: 1, step: 0 })  // six planned: block closed
+    expect(cycleWorkouts(T)).toEqual([])                           // the next one starts empty
+  })
+
+  it('counts every session when there is no plan to be outside of', () => {
+    const free = d => ({ id: d, d, start: 1, routineId: null, entries: [] })
+    const T = state({ program: { seq: [], strategy: 'ppl', cycleStart: '2026-01-01' },
+      workouts: ['2026-01-02', '2026-01-03'].map(free) })
+    expect(cyclePosition(T).step).toBe(2)
+    expect(cycleWorkouts(T).length).toBe(2)
+  })
+
   it('lays the block out as done / next / upcoming slots', () => {
     const strip = cycleStrip(S)
     expect(strip.length).toBe(6)

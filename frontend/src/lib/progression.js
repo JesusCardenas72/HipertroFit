@@ -125,10 +125,30 @@ export function readSession(entry, fallback) {
     mode, goal, reps,
     weight: Math.max(0, ...sets.filter(s => s.done).map(s => s.w || 0)),
     count: reps.length,                                   // the dimension bodyweight work grows (#33)
+    // Sets that session was worth: what it prescribed, or more when sets were added on the day.
+    // It is what the next session starts from, whichever routine it is in (sessionSetCount).
+    setCount: Math.max(planned, reps.length),
     low: reps.length ? Math.min(...reps) : 0,
     amrap: reps.length ? reps[reps.length - 1] : 0,       // Greyskull's final set
+    fatigued: repsFell(sets),
+    // The rep aim double progression asked for that session, when it recorded one.
+    aim: entry && entry.aim > 0 ? entry.aim : 0,
     ok: goal > 0 && enough && reps.length > 0 && reps.every(r => r >= goal)
   }
+}
+
+/**
+ * Reps that fall from one performed set to the next — at the same or a lighter load — mean the
+ * session arrived at those sets tired. Double progression reads that as "not ready": no more
+ * reps, no more weight, however high the numbers were. A heavier set doing fewer reps is not
+ * fatigue, it is the load, so a rise in weight between two sets never counts.
+ */
+export function repsFell(sets) {
+  const done = (sets || []).filter(s => s && s.done && !isWarmupRow(s))
+  for (let i = 1; i < done.length; i++) {
+    if ((done[i].r || 0) < (done[i - 1].r || 0) && (done[i].w || 0) <= (done[i - 1].w || 0)) return true
+  }
+  return false
 }
 
 /** Every past session for one exercise, oldest first. `fallback` — see readSession. */
@@ -143,6 +163,28 @@ export function sessionsFor(S, exId, fallback) {
     if (entry && entry.sets.some(s => s.done && !isWarmupRow(s))) out.push({ d: w.d, ...readSession(entry, fallback) })
   })
   return out
+}
+
+/**
+ * Double progression reads a session differently from a load-every-time policy. Climbing from
+ * 9 to 10 reps at the same weight is the plan working, not a miss — so a session only counts
+ * against the deload when it was fatigued (reps fell set to set) or did no more total reps than
+ * the one before it at that weight. The first session at a weight is a fresh start.
+ *
+ * `topHit` — every planned set at the top of today's range, with no drop between sets — is
+ * judged against the exercise's current range, not the one stored with the old session, so
+ * widening a range never leaves an exercise stuck on "ready".
+ */
+export function judgeDouble(sessions, top) {
+  return sessions.map((s, i) => {
+    const prev = sessions[i - 1]
+    const total = (s.reps || []).reduce((a, r) => a + r, 0)
+    const prevTotal = prev ? (prev.reps || []).reduce((a, r) => a + r, 0) : 0
+    const full = (s.reps || []).length > 0 && s.reps.length >= (s.setCount || 0)
+    const topHit = !s.fatigued && full && s.reps.every(r => r >= top)
+    const climbed = !prev || prev.weight !== s.weight || total > prevTotal
+    return { ...s, topHit, ok: topHit || (!s.fatigued && climbed) }
+  })
 }
 
 // How many sessions in a row ended in a miss, counting back from the most recent.
@@ -203,7 +245,7 @@ export function nextPrescription(S, cfg, routine) {
     // actually progresses once a set of 30 push-ups stops being a strength stimulus.
     const top = cfg.repsMax > 0 ? cfg.repsMax : 0
     if (top > 0 && goal >= top) {
-      const sets = Math.max(1, cfg.sets || last.count || 1) + 1
+      const sets = Math.max(1, last.setCount || cfg.sets || 1) + 1
       const bottom = Math.max(1, Math.min(cfg.reps || top, top))
       if (sets <= MAX_BW_SETS) return { policy, kind: 'up', weight: 0, reps: bottom, sets, why: ['{0} reps in every set — add a set and go back to {1}.', goal, bottom] }
       // Out of sets worth adding: more volume is no longer the answer, load or a harder
@@ -218,12 +260,29 @@ export function nextPrescription(S, cfg, routine) {
     const range = normalizeRepRange(cfg.reps || last.goal || 10, cfg.repsMin, repStep(cfg))
     const top = range.reps
     const bottom = range.repsMin
-    if (last.ok) return { policy, kind: 'up', weight: snap(w + inc, inc), reps: bottom, why: ['Top of the rep range in every set — {0} {1} more, back to {2} reps.', inc, unit, bottom] }
-    if (stalls >= deloadAt) {
-      const dw = deloadTo(w, inc)
-      return { policy, kind: 'deload', weight: dw, reps: bottom, why: ['Stalled {0} sessions — deload to {1} {2}.', stalls, dw, unit] }
+    const judged = judgeDouble(sessions, top)
+    const dstalls = stallCount(judged)
+    const clamp = r => Math.min(top, Math.max(bottom, r))
+    if (judged[judged.length - 1].topHit) {
+      // Semi-automatic: the top of the range earns the next step, but whether that step is a
+      // plate or another set — and how big — is the athlete's call, asked in the session.
+      const sets = Math.max(1, last.setCount || cfg.sets || 1)
+      return {
+        policy, kind: 'decide', weight: w, reps: top,
+        choice: { inc, weight: snap(w + inc, inc), sets, reps: bottom },
+        why: ['Top of the rep range in every set — time to progress: more weight or another set.']
+      }
     }
-    const aim = Math.min(top, Math.max(bottom, last.low + repStep(cfg)))
+    if (dstalls >= deloadAt) {
+      const dw = deloadTo(w, inc)
+      return { policy, kind: 'deload', weight: dw, reps: bottom, why: ['Stalled {0} sessions — deload to {1} {2}.', dstalls, dw, unit] }
+    }
+    if (last.fatigued) {
+      // Reps fell set to set: repeat the aim, never raise it.
+      const aim = clamp(last.aim > 0 ? last.aim : last.low)
+      return { policy, kind: 'hold', fatigue: true, weight: w, reps: aim, why: ['Reps dropped from set to set — you arrived fatigued. Same weight and {0} reps, no overload this time.', aim] }
+    }
+    const aim = clamp(last.low + repStep(cfg))
     return { policy, kind: 'hold', weight: w, reps: aim, why: ['Same weight — aim for {0} reps this time.', aim] }
   }
 
