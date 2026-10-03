@@ -113,6 +113,46 @@ export function unitEntryIdx(entries, unit) {
 }
 
 /**
+ * Where the work is: the exercise the session itself last moved to (completing a set, the
+ * superset hand-over, the move to the next exercise) — not wherever you have browsed since.
+ * Kept as a mark on the entry rather than an index, so it travels with the exercise through a
+ * reorder, a swap or a removal elsewhere in the list. Never reaches history: the finished
+ * session copies only the fields it names (finish-workout.js).
+ */
+export function markResumeAt(entries, idx) {
+  if (!Array.isArray(entries)) return
+  entries.forEach((entry, i) => {
+    if (!entry) return
+    if (i === idx) entry.resume = true
+    else if (entry.resume) delete entry.resume
+  })
+}
+
+/**
+ * The exercise "Resume" lands on: the marked one while it has a set left; inside a superset,
+ * the next member due in its round (warm-ups first, as supersetFlowStep orders them); once
+ * that is spent, the next unfinished exercise after it. With no mark yet — nothing logged — the
+ * first unfinished exercise of the session. Null when every set is done.
+ */
+export function resumeEntryIdx(entries, units) {
+  if (!Array.isArray(entries) || !Array.isArray(units) || !entries.length) return null
+  const at = entries.findIndex(entry => entry?.resume)
+  if (at < 0) {
+    const first = units.find(unit => unit.some(idx => hasWork(entries, idx)))
+    return first ? unitEntryIdx(entries, first) : null
+  }
+  const unit = units.find(candidate => candidate.includes(at)) || [at]
+  if (unit.some(idx => hasWork(entries, idx))) {
+    const pending = unit.some(idx => hasWarmupLeft(entries, idx)) ? hasWarmupLeft : hasWork
+    const pos = unit.indexOf(at)
+    const wrapped = [...unit.slice(pos), ...unit.slice(0, pos)]
+    return wrapped.find(idx => pending(entries, idx)) ?? null
+  }
+  const next = nextUnfinishedUnit(entries, units, at)
+  return next ? unitEntryIdx(entries, next) : null
+}
+
+/**
  * Decide where a newly completed superset set goes next. Spent members are skipped, including
  * across the wrap. A round ends when no later member in display order has work left; this makes
  * the last *active* member the boundary rather than blindly using the group's last array index.

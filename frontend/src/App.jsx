@@ -15,6 +15,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import ScreenSlider from './components/ScreenSlider.jsx'
 import Modals from './components/Modals.jsx'
 import Toast from './components/Toast.jsx'
+import { DeloadNotifier } from './components/Deload.jsx'
 import RestTimer from './components/RestTimer.jsx'
 import TimerFlash from './components/TimerFlash.jsx'
 import Splash from './components/Splash.jsx'
@@ -139,6 +140,7 @@ function Shell() {
       <Modals />
       <Toast />
       <TimerFlash />
+      {authed && !needsMobileOnboarding && <DeloadNotifier />}
     </>
   )
 }

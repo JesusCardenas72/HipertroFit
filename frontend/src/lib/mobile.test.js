@@ -12,6 +12,20 @@ const state = (patch = {}) => ({
 const iso = d => isoOf(d)
 
 describe('buildReminderNotifications', () => {
+  it('announces the sessions left in a deload microcycle as a deload, then reads as usual', () => {
+    const now = new Date(2026, 5, 1, 7, 0) // Monday
+    // A 3-session block not started yet, marked as the deload: the next three reminders say so.
+    const st = state({
+      week: { 1: 'push', 2: 'pull', 3: 'legs', 4: 'push', 5: 'pull' },
+      program: { strategy: 'full-body', seq: ['push', 'pull', 'legs'], cycleStart: '2026-06-01' },
+      meso: { deloads: [0], pct: 0.4 },
+    })
+    const n = buildReminderNotifications(st, now)
+    expect(n.slice(0, 3).every(x => /Deload/.test(x.title))).toBe(true)
+    expect(n[0].body).toContain('40')
+    expect(n[3].title).not.toMatch(/Deload/)
+  })
+
   it('expands the weekly baseline into future dated notifications', () => {
     const now = new Date(2026, 5, 1, 7, 0) // Monday
     const notifications = buildReminderNotifications(state({ week: { 1: 'push', 3: 'pull' } }), now)

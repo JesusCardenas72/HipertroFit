@@ -736,4 +736,7 @@ export default {
   'Add as second workout': 'Aggiungi come secondo allenamento',
   'Finish the current workout first.': 'Termina prima l’allenamento in corso.',
   'Logging a past workout — no rest timers.': 'Allenamento passato — nessun timer di recupero.',
+  'rep': 'rip.',
+  'No overload': 'Nessun sovraccarico',
+  'No overload — accumulated fatigue': 'Nessun sovraccarico per fatica accumulata',
 }

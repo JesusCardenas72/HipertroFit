@@ -39,6 +39,8 @@ export function buildCompletedWorkout(active, { end = Date.now(), prs = [], snap
     entries,
     prs,
     ...(active.excludeFromProgression === true ? { excludeFromProgression: true } : {}),
+    // The cut a deload session was trained at, so history can show it as the deload it was.
+    ...(Number(active.deload) > 0 ? { deload: Number(active.deload) } : {}),
     ...(sessionNote ? { note: sessionNote } : {}),
   }
 }

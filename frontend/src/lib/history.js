@@ -530,11 +530,14 @@ export function streakWeeks(S) {
  * Cascade a weight change forward: following sets of the same warm-up flag that are still
  * undone take the new value (null deletes the key). Done sets are never rewritten.
  */
-export function cascadeWeight(rows, from, value) {
+// `prev`, when given, is the edited row's weight before the edit: only rows still carrying that
+// weight follow it, so rows the plan set apart (a pyramid, a back-off set) keep their own.
+export function cascadeWeight(rows, from, value, prev) {
   const warm = isWarmupRow(rows[from])
   const next = rows.slice()
+  const follows = r => prev === undefined || Math.abs((Number(r.w) || 0) - (Number(prev) || 0)) < 1e-9
   for (let j = from + 1; j < next.length; j++) {
-    if (isWarmupRow(next[j]) === warm && !next[j].done) {
+    if (isWarmupRow(next[j]) === warm && !next[j].done && follows(next[j])) {
       if (value == null) delete next[j].w
       else next[j].w = value
     }

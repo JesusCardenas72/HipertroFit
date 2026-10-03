@@ -736,4 +736,7 @@ export default {
   'Add as second workout': 'İkinci antrenman olarak ekle',
   'Finish the current workout first.': 'Önce mevcut antrenmanı bitir.',
   'Logging a past workout — no rest timers.': 'Geçmiş antrenman kaydediliyor — dinlenme zamanlayıcısı yok.',
+  'rep': 'tekrar',
+  'No overload': 'Yüklenme yok',
+  'No overload — accumulated fatigue': 'Yüklenme yok — birikmiş yorgunluk',
 }

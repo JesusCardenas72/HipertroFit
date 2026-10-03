@@ -736,4 +736,7 @@ export default {
   'Add as second workout': 'दूसरे वर्कआउट के रूप में जोड़ें',
   'Finish the current workout first.': 'पहले मौजूदा वर्कआउट पूरा करें।',
   'Logging a past workout — no rest timers.': 'पिछला वर्कआउट दर्ज हो रहा है — कोई रेस्ट टाइमर नहीं।',
+  'rep': 'रेप',
+  'No overload': 'कोई ओवरलोड नहीं',
+  'No overload — accumulated fatigue': 'जमा थकान के कारण कोई ओवरलोड नहीं',
 }

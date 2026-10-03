@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { insertionIndexAfterCurrentUnit, nextUnfinishedUnit, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, unitEntryIdx } from './supersetFlow.js'
+import { insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, unitEntryIdx } from './supersetFlow.js'
 
 const entry = done => ({ sets: done.map(value => ({ done: value })) })
 
@@ -216,5 +216,47 @@ describe('restSecFor', () => {
     expect(restSecFor(entries, [], 90)).toBe(90)
     expect(restSecFor(entries, [7], 90)).toBe(90)
     expect(restSecFor(undefined, [0], undefined)).toBe(0)
+  })
+})
+
+describe('resumeEntryIdx', () => {
+  const marked = (entries, idx) => { markResumeAt(entries, idx); return entries }
+  const warm = done => ({ done, warmup: true })
+
+  it('starts at the first unfinished exercise when nothing has been logged yet', () => {
+    const entries = [entry([true, true]), entry([false]), entry([false])]
+    expect(resumeEntryIdx(entries, [[0], [1], [2]])).toBe(1)
+  })
+
+  it('returns to the marked exercise wherever you browsed, while it has a set left', () => {
+    const entries = marked([entry([true, false]), entry([false]), entry([false])], 0)
+    expect(resumeEntryIdx(entries, [[0], [1], [2]])).toBe(0)
+  })
+
+  it('moves on to the next unfinished exercise once the marked one is spent', () => {
+    const entries = marked([entry([true]), entry([true]), entry([false])], 0)
+    expect(resumeEntryIdx(entries, [[0], [1], [2]])).toBe(2)
+  })
+
+  it('follows the mark through a superset round, skipping a spent member', () => {
+    const entries = marked([entry([true, false]), entry([true, true]), entry([false])], 1)
+    expect(resumeEntryIdx(entries, [[0, 1], [2]])).toBe(0)
+  })
+
+  it('keeps a superset in its warm-up phase', () => {
+    const entries = marked([{ sets: [warm(true), { done: false }] }, { sets: [warm(false), { done: false }] }], 0)
+    expect(resumeEntryIdx(entries, [[0, 1]])).toBe(1)
+  })
+
+  it('has nowhere to go when every set is done', () => {
+    const entries = marked([entry([true]), entry([true])], 1)
+    expect(resumeEntryIdx(entries, [[0], [1]])).toBe(null)
+  })
+
+  it('keeps a single mark', () => {
+    const entries = [entry([false]), entry([false])]
+    markResumeAt(entries, 0)
+    markResumeAt(entries, 1)
+    expect(entries.map(e => !!e.resume)).toEqual([false, true])
   })
 })

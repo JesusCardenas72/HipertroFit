@@ -736,4 +736,7 @@ export default {
   'Add as second workout': '두 번째 운동으로 추가',
   'Finish the current workout first.': '먼저 진행 중인 운동을 마치세요.',
   'Logging a past workout — no rest timers.': '지난 운동 기록 중 — 휴식 타이머 없음.',
+  'rep': '회',
+  'No overload': '과부하 없음',
+  'No overload — accumulated fatigue': '누적 피로로 과부하 없음',
 }

@@ -40,6 +40,11 @@
   --blue:#0a84ff; --green:#30d158; --red:#ff453a; --orange:#ff9f0a;
   --yellow:#ffd60a; --teal:#40c8e0; --indigo:#5e5ce6; --pink:#ff375f;
   --purple:#bf5af2; --mint:#63e6e2; --brown:#ac8e68; --grey:#8e8e93;
+  /* deload: indigo, which is never an accent choice, so a deload cannot be mistaken for the
+     app's own colour whatever accent is picked */
+  --deload:var(--indigo);
+  --deload-soft:color-mix(in srgb,var(--deload) 16%,transparent);
+  --deload-line:color-mix(in srgb,var(--deload) 55%,transparent);
 
   /* accent (per-account, synced) */
   --acc:  var(--green);
@@ -383,7 +388,7 @@ h4.sec{
    between them. Five tabs cannot be given more room, so the label gives way instead — the
    icon above it is what identifies the tab at a glance anyway. :not(.cir) leaves the Start
    button’s disc alone; it is a span too. */
-#tabbar button>span:not(.cir){
+#tabbar button>span:not(.cir):not(.tabicn){
   max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 /* The inactive tint is semi-transparent, so wherever two strokes cross inside an
@@ -715,6 +720,14 @@ h4.sec{
 }
 .giftoggle.inline:active{transform:scale(.94)}
 .giftoggle.inline .icn{font-size:13px}
+/* the position line above the card stays a single row on a phone: the chips keep their
+   size and only the "Between exercises" label gives way, truncating with an ellipsis */
+.wpos{flex-wrap:nowrap;min-width:0}
+.wpos>*{white-space:nowrap;flex-shrink:0}
+.wpos>.giftoggle.inline{min-width:0}
+.wpos>[data-testid="rest-ex"]{flex-shrink:1;overflow:hidden}
+.wpos>[data-testid="rest-ex"] .icn{flex-shrink:0}
+.wpos>[data-testid="rest-ex"]>span{overflow:hidden;text-overflow:ellipsis}
 /* superset: both exercises are on screen together, so the animations have to give way —
    at 180px you had to scroll a full screen between two exercises done back-to-back */
 .exmedia.compact img{height:120px}
@@ -770,11 +783,20 @@ h4.sec{
 .setrow.eff3,.sethead.eff3{gap:6px}
 .setrow.eff3 .stp.w,.sethead.eff3 .w-sp{flex:1.2}
 .setrow.eff3 .stp.r,.sethead.eff3 .r-sp{flex:1}
-.setrow.eff3 .stp.eff,.sethead.eff3 .eff-sp{flex:.85}
+.setrow.eff3 .stp.eff,.setrow.eff3 .eff-sp,.sethead.eff3 .eff-sp{flex:.85}
 .setrow.eff3 .stp{flex-direction:column-reverse;align-items:stretch}
 .setrow.eff3 .stp button{width:100%;height:24px;font-size:13px}
 .setrow.eff3 .stp .num{font-size:16px;min-height:36px}
 .setrow.eff3 .stp .val{padding:0 2px}
+/* the set to do next: a soft accent wash and a ringed number, eased in and out as it moves on */
+/* the wash spills 6px past the row with a spread shadow, so marking a row never shifts the layout */
+.setrow{border-radius:4px;transition:background var(--med) var(--ease),box-shadow var(--med) var(--ease),opacity var(--med) var(--ease)}
+.setrow.next{
+  --next-wash:color-mix(in srgb,var(--acc) 9%,transparent);
+  background:var(--next-wash);box-shadow:0 0 0 6px var(--next-wash);
+}
+.setrow.next .n{box-shadow:0 0 0 2px var(--acc);color:var(--acc);font-weight:600}
+.setrow.next::before,.setrow.next+.setrow::before{opacity:0}
 .setrow.done .n{background:var(--acc);color:var(--on-acc)}
 .setrow.done{opacity:.45}
 /* drop-set drops / rest-pause bursts riding on a work row, editable like the row itself
@@ -785,18 +807,28 @@ h4.sec{
 .subrow .stp.mini button{width:26px;height:30px}
 .subrow .stp.mini .num{font-size:13px;min-height:30px}
 .subrow .iconbtn{width:26px;height:26px;font-size:11px;flex:none}
-/* What the same set position did last session, sitting under the row it refers to, with the
-   chip that writes the progression's answer into that row. Indented to the steppers' column so
-   it reads as part of the row and not as a new one. */
-.setprev{display:flex;align-items:center;gap:6px;padding:1px 0 5px 32px;font-size:12px;color:var(--label-2)}
-.setprev .subn{flex:none;display:inline-flex;align-items:center;gap:3px}
+/* What the same set position did last session, one value straight above each stepper it
+   refers to — weight over weight, reps over reps, effort over effort. It shares the row's flex
+   numbers (and the eff3 variant) so every figure stays centred over its own column. The chip
+   that writes the progression's target back into a row that drifted from it sits underneath. */
+.setprev{display:flex;align-items:center;gap:8px;padding:4px 0 0;font-size:12px;color:var(--label-2)}
+.setprev .subn{width:24px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--label-3)}
 .setprev .subn svg{width:11px;height:11px}
-.setprev .pv{font-variant-numeric:tabular-nums;text-transform:none;color:var(--label);font-weight:500}
-.setprev .chip.add{
-  margin-left:auto;display:inline-flex;align-items:center;gap:3px;flex:none;
+.setprev .pv{min-width:0;text-align:center;font-variant-numeric:tabular-nums;color:var(--label-2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setprev .pv.w{flex:1.4}
+.setprev .pv.r{flex:1}
+.setprev .pv.eff{flex:1.1}
+.setprev .ck-sp{width:30px;flex:none}
+.setprev.eff3{gap:6px}
+.setprev.eff3 .pv.w{flex:1.2}
+.setprev.eff3 .pv.r{flex:1}
+.setprev.eff3 .pv.eff{flex:.85}
+.setsug{display:flex;justify-content:flex-end;padding:0 0 5px 32px}
+.setsug .chip.add{
+  display:inline-flex;align-items:center;gap:3px;flex:none;
   color:var(--acc);text-transform:none;font-size:11px;font-weight:500;padding:3px 9px;
 }
-.setprev .chip.add svg{width:11px;height:11px}
+.setsug .chip.add svg{width:11px;height:11px}
 .setextra{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px 32px}
 .setextra .chip.add{display:inline-flex;align-items:center;gap:4px;color:var(--acc)}
 .setextra .chip.add svg{width:13px;height:13px}
@@ -1415,9 +1447,254 @@ h4.sec{
 .dpask{width:100%;display:flex;align-items:center;gap:8px;margin:8px 0 4px;padding:10px 12px;border-radius:12px;
   color:var(--green);font-weight:600;font-size:14px;text-align:left;
   background:color-mix(in srgb,var(--green) 12%,transparent);border:1px solid color-mix(in srgb,var(--green) 45%,transparent)}
+/* active workout: the exercise name doubles as the fold toggle for its header details */
+.exhead-tg{flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:0;text-align:left;
+  font-weight:600;letter-spacing:-.02em;text-transform:capitalize;line-height:1.2;color:inherit;background:none;border:0;cursor:pointer}
+.exhead-chev{flex:none;font-size:.8em;color:var(--label-2)}
 .dpask svg{flex:none}
 .dpask span{flex:1}
 
 /* custom exercise: choosing which frame of an animated GIF is the thumbnail */
 .gifpick{background:var(--surface-2);border-radius:var(--r-lg);padding:12px;margin-bottom:10px}
 .gifpick-frame{width:88px;height:auto;max-height:120px;background:#fff;border-radius:10px;flex:none}
+
+/* ---------- deload: one colour, one icon, the word itself (components/Deload.jsx) ---------- */
+.tag.deload{color:var(--deload);background:var(--deload-soft);display:inline-flex;align-items:center;gap:4px;font-weight:600}
+.tag.deload svg{width:12px;height:12px}
+.deload-band{
+  border-radius:var(--r);padding:10px 12px;margin-bottom:12px;
+  background:var(--deload-soft);box-shadow:inset 0 0 0 1.5px var(--deload-line);color:var(--label);
+}
+.deload-band.soft{background:transparent;box-shadow:inset 0 0 0 1px var(--deload-line)}
+.deload-band-hd{display:flex;align-items:center;gap:7px;margin-bottom:3px;color:var(--deload);text-transform:uppercase;letter-spacing:.04em;font-size:13px}
+.deload-band-hd b{font-weight:700}
+.deload-band .small{color:var(--label-2)}
+.deload-pct{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;background:var(--deload);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;letter-spacing:0}
+.deload-link{margin-top:6px;background:none;border:0;padding:0;color:var(--deload);font-weight:600;font-size:13px;cursor:pointer}
+.card.deload{box-shadow:inset 0 0 0 1.5px var(--deload-line)}
+.wday.deload .num{color:var(--deload)}
+.wday.deload .dot{background:var(--deload)}
+.wday.deload .lbl{color:var(--deload);font-weight:700}
+.wday.today.deload .num{background:var(--deload);color:#fff}
+.btn.deload-btn,.btn.primary.deload-btn{background:var(--deload);color:#fff}
+.deload-hero{width:56px;height:56px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--deload);color:#fff;font-size:26px}
+.item.deload{box-shadow:inset 3px 0 0 var(--deload)}
+.wtop.deload .wprog i{background:var(--deload)}
+.tabicn{position:relative;display:inline-flex}
+.tab-deload{
+  position:absolute;top:-4px;right:-9px;width:16px;height:16px;border-radius:50%;
+  background:var(--deload);color:#fff;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 2px var(--bg-el);
+}
+#tabbar button .tab-deload .icn{font-size:11px;color:#fff;--icon-stroke:2.4}
+.sub .tag.deload{margin-left:6px;vertical-align:1px;font-size:11px;padding:2px 8px}
+.wday-dl{display:flex;justify-content:center;color:var(--deload);font-size:11px;line-height:1;height:6px;align-items:center;--icon-stroke:2.6}
+
+/* ------------------------------------------------------------ set drum --- */
+/* The revolver drum (components/SetDrum.jsx, lib/drum.js): the set being worked drawn as large
+   as the screen allows, its neighbours tilted away above and below as on a cylinder, and the
+   whole drum as a rail of pips down the left edge. Superset members keep one colour each —
+   A takes the accent, B teal, C orange, D pink — on the rail, the tabs and the hero's letter. */
+.drum{--mc:var(--acc);margin-top:2px}
+.drum .m0,.ss-card .m0{--mc:var(--acc)}
+.drum .m1,.ss-card .m1{--mc:var(--teal)}
+.drum .m2,.ss-card .m2{--mc:var(--orange)}
+.drum .m3,.ss-card .m3{--mc:var(--pink)}
+.drum-head{animation:drumFade var(--med) var(--ease)}
+@keyframes drumFade{from{opacity:0;transform:translateY(-4px)}}
+
+/* one row per member, stacked, so each exercise's name reads in full; kept tight so the tabs
+   add as little height as possible above the drum */
+.drum-tabs{display:flex;flex-direction:column;gap:4px;margin:8px 0 2px}
+.drum-tab{
+  width:100%;min-width:0;display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:10px;
+  background:var(--surface-2);color:var(--label-2);font-size:12.5px;
+  transition:background var(--med) var(--ease),box-shadow var(--med) var(--ease),color var(--fast);
+}
+.drum-tab b{width:20px;height:20px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:11px;
+  background:color-mix(in srgb,var(--mc) 22%,transparent);color:var(--mc)}
+.drum-tab span{flex:1;min-width:0;line-height:1.25;overflow-wrap:anywhere;text-align:left;text-transform:capitalize}
+.drum-tab i{font-style:normal;font-variant-numeric:tabular-nums;color:var(--label-3);font-size:12px;display:inline-flex}
+.drum-tab.on{color:var(--label);background:color-mix(in srgb,var(--mc) 13%,var(--surface));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--mc) 55%,transparent)}
+
+.drum-body{position:relative;display:flex;gap:14px;margin-top:6px}
+
+/* the rail: a brushed capsule with the drum's axis down its middle, as tall as the hero — a
+   window onto five pips (two sets before, the live one, two after) that rolls with the drum */
+.drum-rail{
+  position:relative;flex:none;align-self:flex-start;width:36px;overflow:hidden;border-radius:99px;touch-action:none;
+  background:linear-gradient(90deg,var(--surface-2),var(--surface) 46%,var(--surface-2));
+  box-shadow:inset 0 0 0 var(--hair) var(--sep),inset 0 14px 16px -12px rgba(0,0,0,.55),inset 0 -14px 16px -12px rgba(0,0,0,.55);
+}
+.drum-axis{position:absolute;top:14px;bottom:14px;left:50%;width:1px;background:var(--sep);transform:translateX(-50%)}
+.drum-track{
+  position:absolute;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:var(--pip-gap);
+  will-change:transform;
+}
+.drum-rail::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(var(--surface-2),transparent 18%,transparent 82%,var(--surface-2))}
+.drum-pip{
+  position:relative;width:var(--pip);height:var(--pip);flex:none;border-radius:50%;display:grid;place-items:center;
+  font-size:calc(var(--pip) * .44);font-weight:600;font-variant-numeric:tabular-nums;color:var(--label-2);
+  background:var(--bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--mc) 50%,var(--sep));
+  transition:transform var(--med) cubic-bezier(.2,1.4,.4,1),background var(--fast),box-shadow var(--fast),color var(--fast);
+}
+.drum-pip .icn{font-size:calc(var(--pip) * .52);--icon-stroke:2.4}
+.drum-pip.warm{color:var(--orange)}
+.drum-pip.done{background:var(--mc);color:var(--on-acc);box-shadow:none}
+.drum-pip.todo:not(.on){animation:pipPulse 1.8s ease-in-out infinite}
+.drum-pip.aim{transform:scale(1.18);box-shadow:inset 0 0 0 2px var(--mc)}
+.drum-pip.on{
+  transform:scale(1.25);color:var(--label);z-index:1;
+  box-shadow:0 0 0 2px var(--mc),0 0 16px color-mix(in srgb,var(--mc) 65%,transparent);
+}
+.drum-pip.on.done{color:var(--on-acc)}
+@keyframes pipPulse{
+  0%,100%{box-shadow:inset 0 0 0 1.5px var(--mc)}
+  50%{box-shadow:inset 0 0 0 1.5px var(--mc),0 0 0 4px color-mix(in srgb,var(--mc) 28%,transparent)}
+}
+
+/* the fuse: rail pip to hero, dashed and running, solid once a drag is armed to fire */
+.drum-fuse{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:30}
+.drum-fuse path{fill:none;stroke:var(--acc);stroke-width:1.5;stroke-linecap:round;stroke-dasharray:2 5;opacity:.75;
+  animation:fuseRun 1s linear infinite}
+.drum-fuse circle{fill:var(--acc)}
+.drum-fuse.armed path{stroke-dasharray:none;opacity:1;stroke-width:2}
+@keyframes fuseRun{to{stroke-dashoffset:-14}}
+
+/* the stage: perspective gives the tilt its depth, the mask shades the drum's curve away */
+.drum-stage{
+  position:relative;flex:1;min-width:0;perspective:900px;perspective-origin:50% var(--mid,50%);touch-action:none;outline:none;user-select:none;-webkit-user-select:none;
+  cursor:grab;transition:transform var(--med) var(--ease);
+  -webkit-mask-image:linear-gradient(transparent,#000 var(--fade-a,13%),#000 calc(100% - var(--fade-b,13%)),transparent);
+          mask-image:linear-gradient(transparent,#000 var(--fade-a,13%),#000 calc(100% - var(--fade-b,13%)),transparent);
+}
+.drum-stage.grabbing{cursor:grabbing;transition:none}
+.drum-stage.solo{-webkit-mask-image:none;mask-image:none}
+.drum-ch{
+  position:absolute;left:0;right:0;top:var(--mid,50%);transform-origin:50% 50%;will-change:transform,opacity;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  /* no transitions: the drum is placed frame by frame (SetDrum), place, tilt and size in step;
+     the 900px perspective on .drum-stage is the one lib/drum.test.js checks for overlap */
+}
+/* while turning, a chamber is its full-size set and its capsule at once: the clip on .drum-ch
+   opens from one to the other, and the two cross-fade as it goes */
+.drum-capsule{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);pointer-events:none}
+.drum-ch.strip{cursor:pointer}
+.drum.inert .drum-stage{cursor:default}
+
+.drum-strip{
+  height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;border-radius:15px;
+  background:var(--surface);box-shadow:inset 0 0 0 var(--hair) var(--sep);color:var(--label-2);font-size:14px;
+  transition:box-shadow var(--fast),background var(--fast);
+}
+.drum-strip .ds-k{display:flex;align-items:center;gap:4px;flex:none;min-width:70px;font-size:11px;font-weight:500;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--label-3)}
+.drum-strip .ds-k .icn{font-size:12px}
+.drum-strip .ds-v{flex:1;min-width:0;font-weight:500;color:var(--label);font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drum-strip.done .ds-v{color:var(--label-2)}
+.drum-strip.warm .ds-k{color:var(--orange)}
+.drum-strip .ds-ok{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;
+  background:var(--acc);color:var(--on-acc);--icon-stroke:2.8}
+.drum-strip .ds-go{color:var(--label-3);flex:none}
+.drum-ch.armed .drum-strip{
+  background:color-mix(in srgb,var(--acc) 11%,var(--surface));
+  box-shadow:inset 0 0 0 1.5px var(--acc),0 0 26px color-mix(in srgb,var(--acc) 38%,transparent);
+}
+
+/* the hero: one set, numbers you can read from the bench */
+.dh{
+  --hc:var(--acc);position:relative;overflow:hidden;border-radius:22px;padding:14px 14px 12px;
+  background:radial-gradient(130% 85% at 100% 0%,color-mix(in srgb,var(--hc) 13%,transparent),transparent 62%),var(--surface);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hc) 40%,transparent),0 20px 44px -22px rgba(0,0,0,.8),
+    0 0 0 5px color-mix(in srgb,var(--hc) 6%,transparent);
+  transition:box-shadow var(--med) var(--ease);
+}
+.dh.warm{--hc:var(--orange)}
+.dh.done{--hc:var(--label-3)}
+.dh > *{position:relative}
+.dh .dh-wm{
+  position:absolute;right:-4px;top:-34px;font-size:178px;font-weight:800;line-height:1;letter-spacing:-.07em;
+  color:transparent;-webkit-text-stroke:1.5px color-mix(in srgb,var(--hc) 24%,transparent);
+  pointer-events:none;font-variant-numeric:tabular-nums;user-select:none;
+}
+.dh .dh-stamp{
+  position:absolute;right:16px;top:44px;z-index:1;padding:3px 10px;border:2px solid var(--acc);border-radius:8px;
+  color:var(--acc);font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  transform:rotate(-11deg);opacity:.85;pointer-events:none;animation:stampIn 380ms cubic-bezier(.2,1.6,.4,1);
+}
+@keyframes stampIn{from{opacity:0;transform:rotate(-11deg) scale(2.2)}}
+.dh-top{display:flex;align-items:center;gap:8px;min-height:32px}
+.dh-kind{display:flex;align-items:center;gap:5px;flex:none;font-size:13px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--hc)}
+.dh-kind small{font-size:13px;font-weight:500;color:var(--label-3);letter-spacing:.02em}
+.dh-ex{flex:1;min-width:0;font-size:13px;color:var(--label-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:capitalize}
+.dh-del{margin-left:auto;color:var(--label-3);background:transparent}
+.dh-let{width:24px;height:24px;border-radius:7px;flex:none;display:grid;place-items:center;font-size:13px;font-weight:700;
+  background:color-mix(in srgb,var(--mc) 22%,transparent);color:var(--mc)}
+.dh-let.sm{width:20px;height:20px;border-radius:6px;font-size:11px}
+.dh-ref{display:flex;flex-direction:column;gap:4px;margin:6px 0 2px;font-size:13px;color:var(--label-2)}
+.dh-line{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap;min-height:26px}
+.dh-line b{font-weight:500;font-variant-numeric:tabular-nums}
+.dh-tag{display:inline-flex;align-items:center;gap:4px;min-width:84px;font-size:11px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--label-3)}
+.dh-line.prev b{color:var(--label-2)}
+.dh-line.goal .dh-tag{color:var(--hc)}
+.dh-line.goal b{color:var(--label);font-weight:700;font-size:15px}
+.dh-delta{padding:1px 7px;border-radius:999px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;
+  color:var(--acc);background:color-mix(in srgb,var(--acc) 16%,transparent)}
+.dh-delta.none{color:var(--yellow);background:color-mix(in srgb,var(--yellow) 16%,transparent)}
+.dh-apply{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:4px 11px;font-size:12px;font-weight:600;color:var(--acc)}
+.dh-apply svg{width:12px;height:12px}
+.dh-cols{display:flex;gap:10px;margin-top:10px}
+.dh-col{flex:1;min-width:0;display:flex;flex-direction:column;border-radius:17px;overflow:hidden;
+  background:color-mix(in srgb,var(--surface-2) 88%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep)}
+.dh-col.eff{flex:.78}
+.dh-l{padding:9px 4px 0;font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--label-3);
+  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh-b{height:42px;display:grid;place-items:center;color:var(--label-2);font-size:19px;--icon-stroke:2.2;
+  transition:background var(--fast),color var(--fast)}
+.dh-b:active{background:var(--surface-3);color:var(--hc)}
+.dh-v{display:flex}
+.dh-v .num{
+  width:100%;min-width:0;min-height:56px;padding:0;background:none;border:none;outline:none;text-align:center;
+  color:var(--label);font-size:48px;font-weight:600;line-height:1;letter-spacing:-.045em;font-variant-numeric:tabular-nums;
+  -moz-appearance:textfield;appearance:textfield;cursor:text;transition:color var(--fast);
+}
+.dh.n1 .dh-v .num{font-size:62px;min-height:68px}
+.dh.n3 .dh-v .num{font-size:34px;min-height:48px}
+.dh-v .num:focus{color:var(--hc)}
+.dh.done .dh-v .num{color:var(--label-2)}
+.dh-int{margin-top:6px}
+.dh-int .subrow{padding-left:0}
+.dh-int .setextra{margin-top:4px}
+.dh-act{display:flex;gap:10px;margin-top:12px}
+.dh-go{
+  flex:1;height:56px;border-radius:17px;display:flex;align-items:center;justify-content:center;gap:10px;
+  font-size:16px;font-weight:600;letter-spacing:-.01em;background:var(--hc);color:var(--on-acc);
+  box-shadow:0 12px 26px -14px var(--hc);transition:transform var(--fast),background var(--med),color var(--med);
+}
+.dh-go:active{transform:scale(.97)}
+.dh-go-ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:15px;
+  background:rgba(0,0,0,.18);--icon-stroke:2.8}
+.dh-go.on{background:var(--surface-2);color:var(--label-2);box-shadow:none;font-weight:500;font-size:14px}
+.dh-go.on .dh-go-ic{background:var(--acc);color:var(--on-acc)}
+.dh-play{width:56px;height:56px;flex:none;border-radius:17px;display:grid;place-items:center;font-size:21px;
+  background:var(--surface-2);color:var(--hc)}
+.dh-play:disabled{opacity:.4}
+
+
+.drum-tools{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.ss-card.drum-ss .drum-head .exmedia.compact img{height:110px}
+.deload-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
+.deload-actions .deload-link{margin-top:0}
+.deload-exit{
+  display:inline-flex;align-items:center;gap:4px;flex:none;cursor:pointer;
+  background:var(--surface-2);color:var(--label);border:0;border-radius:99px;
+  padding:4px 11px;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;
+}
+.deload-exit svg{width:11px;height:11px}
+.deload-band-hd .deload-exit{margin-left:auto}
+.deload-band-hd .deload-pct+.deload-exit{margin-left:8px}

@@ -3,8 +3,10 @@ import { t } from '../lib/i18n.js'
 import { todayISO } from '../lib/format.js'
 import { effectiveRoutine, nextSessionRoutine } from '../lib/history.js'
 import { cyclePosition, cycleStrip, strategyOf, STRATEGIES } from '../lib/microcycle.js'
-import { mesoState, acceptDeload, postponeDeload, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
+import { mesoState, acceptDeload, postponeDeload, isDeloadWorkout, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
+import { DeloadBadge, DeloadStatus, deloadControlSheet } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
+import { useUI } from '../store/useUI.js'
 import { dayOverrideSheet, startFlow, loadStarterPlan, programSheet } from '../sheets.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
@@ -34,7 +36,7 @@ export default function MicrocycleCard() {
   const next = planned || nextSessionRoutine(S)
   const doneToday = S.workouts.filter(w => w.d === today).at(-1) || null
   const onToday = () => {
-    if (S.active) nav('/workout')
+    if (S.active) { useUI.getState().resumeWorkout(); nav('/workout') }
     else if (next) startFlow(next.id)
     else dayOverrideSheet(today)
   }
@@ -49,32 +51,48 @@ export default function MicrocycleCard() {
     <div style={{ height: 8 }} /><Button onClick={() => nav('/plan')}>{t('Build my own plan')}</Button>
   </div>
 
-  return <div className="card">
-    <div className="row between" style={{ marginBottom: 8 }}>
-      <div className="row" style={{ gap: 7, minWidth: 0 }}>
-        <div className="small muted" style={{ fontWeight: 500 }}>
+  return <div className={'card' + (meso.deload ? ' deload' : '')}>
+    <DeloadStatus />
+    {/* One line, centred on its height: the title gives way (ellipsis) before the buttons wrap. */}
+    <div className="row between" style={{ marginBottom: 8, flexWrap: 'nowrap', alignItems: 'center' }}>
+      <div className="row" style={{ gap: 7, minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap' }}>
+        <div className="small muted" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(meso.deload ? { color: 'var(--deload)' } : {}) }}>
           {t('Microcycle')} #{pos.cycle + 1} · {t(STRATEGY_NAME[strategyOf(S)] || 'Custom')}
         </div>
       </div>
-      <button className="iconbtn" style={{ width: 30, height: 30, fontSize: 15 }}
-        onClick={programSheet} aria-label={t('Programming')}><Icon name="calendar" /></button>
+      <div className="row" style={{ gap: 4, flex: 'none', flexWrap: 'nowrap', alignItems: 'center' }}>
+        {/* Always reachable: force a deload now or for the next microcycle, or take it back. */}
+        <button className="iconbtn" style={{ width: 'auto', height: 30, padding: '0 11px', borderRadius: 99, gap: 5, fontSize: 13, color: meso.deload || meso.next ? 'var(--deload)' : undefined }}
+          onClick={deloadControlSheet} title={t('Deload')}><Icon name="arrowDown" />{t('Deload')}</button>
+        <button className="iconbtn" style={{ width: 30, height: 30, fontSize: 15 }}
+          onClick={programSheet} aria-label={t('Programming')}><Icon name="calendar" /></button>
+      </div>
     </div>
 
     <div className="week">
       {strip.map(slot => {
         const r = routineOf(slot.routineId)
         const label = slot.state === 'done' && slot.workout ? (slot.workout.name || t('Workout done')) : (r ? r.name : t('Rest day'))
-        return <div key={slot.i} className={'wday' + (slot.state === 'next' ? ' today' : '')}
-          title={label} {...tappable(slot.state === 'todo' || slot.state === 'next' ? programSheet : undefined)}>
+        // A slot is a deload when it was trained as one, or — not trained yet — when this
+        // microcycle is the deload.
+        const dl = slot.workout ? isDeloadWorkout(slot.workout) : meso.deload
+        return <div key={slot.i} className={'wday' + (slot.state === 'next' ? ' today' : '') + (dl ? ' deload' : '')}
+          title={dl ? label + ' · ' + t('Deload') : label} {...tappable(slot.state === 'todo' || slot.state === 'next' ? programSheet : undefined)}>
           <div className="lbl">{slot.i + 1}</div>
           <div className="num"><Icon name={r ? glyphOf(r.emoji) : slot.state === 'done' ? 'checkCircle' : 'moon'} /></div>
-          <div className={'dot' + (slot.state === 'done' ? ' done' : slot.state === 'next' ? ' plan' : '')} />
+          {/* A deload slot says so with the deload arrow under it, not with a colour alone. */}
+          {dl ? <div className="wday-dl" aria-label={t('Deload')}><Icon name="arrowDown" /></div>
+            : <div className={'dot' + (slot.state === 'done' ? ' done' : slot.state === 'next' ? ' plan' : '')} />}
         </div>
       })}
     </div>
+    {strip.some(slot => (slot.workout ? isDeloadWorkout(slot.workout) : meso.deload)) &&
+      <div className="small row" style={{ justifyContent: 'center', gap: 4, color: 'var(--deload)', fontWeight: 600 }}>
+        <Icon name="arrowDown" />{t('Deload session')}
+      </div>}
     <div className="muted small" style={{ textAlign: 'center', marginTop: 2 }}>
       {t('Session {0} of {1}', Math.min(pos.step + 1, pos.len), pos.len)}
-      {meso.deload ? ' · ' + t('Deload') : ''}
+      {meso.deload ? <b style={{ color: 'var(--deload)' }}> · {t('Deload')}</b> : ''}
     </div>
 
     {/* Once today's session is logged the row stops asking for it — the strip already knows. */}
@@ -93,6 +111,7 @@ export default function MicrocycleCard() {
       </div>
       {S.active ? <span className="tag" style={{ color: 'var(--orange)', background: 'color-mix(in srgb,var(--orange) 16%,transparent)' }}>{t('Resume')}</span>
         : doneToday ? <span className="tag" style={{ color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 16%,transparent)' }}>{t('Done')}</span>
+        : next && meso.deload ? <DeloadBadge>{t('Start deload')}</DeloadBadge>
         : next ? <span className="tag acc">{t('Start')}</span>
         : <Icon name="plus" className="chev" />}
     </div>

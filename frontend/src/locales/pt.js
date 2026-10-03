@@ -736,4 +736,7 @@ export default {
   'Add as second workout': 'Adicionar como segundo treino',
   'Finish the current workout first.': 'Termina primeiro o treino em curso.',
   'Logging a past workout — no rest timers.': 'A registar um treino passado — sem temporizadores de descanso.',
+  'rep': 'rep',
+  'No overload': 'Sem sobrecarga',
+  'No overload — accumulated fatigue': 'Sem sobrecarga por fadiga acumulada',
 }

@@ -6,6 +6,7 @@ import { lastBW, streakWeeks, setLabel, modeOf, effortOf, metricModeForEntry, me
 import { fmtNum, fmtDate, fmtVol, todayISO } from '../lib/format.js'
 import { t, exerciseNameFor, getLang } from '../lib/i18n.js'
 import { bwSheet, goalSheet, calendarSheet, workoutDetailSheet, WorkoutRow, bwDeltaColor } from '../sheets.jsx'
+import { DeloadStatus, DeloadTitleTag } from '../components/Deload.jsx'
 import LineChart from '../components/LineChart.jsx'
 import Heatmap from '../components/Heatmap.jsx'
 import Icon from '../components/Icon.jsx'
@@ -469,11 +470,12 @@ export default function Stats() {
   if (showEff) exOpts.push({ value: 'effort', label: t('Effort') })
 
   return <>
-    <div className="hdr"><div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}</div></div>
+    <div className="hdr"><div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}<DeloadTitleTag /></div></div>
       <div className="row" style={{ gap: 8 }}>
         <button className="iconbtn" onClick={aiAnalysisSheet} aria-label={t('Analyze with AI')}><Icon name="sparkles" /></button>
         <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button>
       </div></div>
+    <DeloadStatus />
 
     <div className="tiles">
       <div className="tile"><div className="l"><Icon name="dumbbell" />{t('Workouts')}</div><div className="v">{workouts.length}</div></div>

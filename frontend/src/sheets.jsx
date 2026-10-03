@@ -8,8 +8,10 @@ import { programActive, emptyProgram, sessionsPerRound, REST } from './lib/progr
 import { STRATEGIES, microcycleLen, strategyOf, cyclePosition } from './lib/microcycle.js'
 import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
-import { mesoState, setDeloadPct, DELOAD_PCT } from './lib/mesocycle.js'
+import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT } from './lib/mesocycle.js'
+import { DeloadBadge } from './components/Deload.jsx'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
+import { seedTargets } from './lib/set-reference.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, exerciseNameFor, exerciseNameOverrideFor, catalogueNameFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
@@ -89,9 +91,9 @@ function WeightInput({ value, setValue, unit }) {
   const onSlide = v => setValue(clamp(v))
   return <>
     <div className="bwstep">
-      <button className="bw-pm" onClick={() => onSlide(value - 0.1)} aria-label="minus 0.1"><Icon name="minus" /></button>
+      <button className="bw-pm" onClick={() => onSlide(value - 0.1)} aria-label={t('minus 0.1')}><Icon name="minus" /></button>
       <div className="bw-read">{fmtNum(value)}<span className="u"> {unit}</span></div>
-      <button className="bw-pm" onClick={() => onSlide(value + 0.1)} aria-label="plus 0.1"><Icon name="plus" /></button>
+      <button className="bw-pm" onClick={() => onSlide(value + 0.1)} aria-label={t('plus 0.1')}><Icon name="plus" /></button>
     </div>
     <div className="chips" style={{ justifyContent: 'center', margin: '8px 0' }}>
       <button className="chip" onClick={() => onSlide(value - 1)}>−1</button>
@@ -857,7 +859,8 @@ export function swapActiveWorkoutExercise(index) {
       id: ex.id,
       target: { ...cfg },
       plan,
-      sets: applyIntensifierPlan(freestyle ? built : applyPrescription(built, plan, step), full)
+      sets: applyIntensifierPlan(freestyle ? built : seedTargets(applyPrescription(built, plan, step),
+        lastEntryFor(st, ex.id)?.sets, { mode: modeOf(full), plan, effort: effortOf(st), step }), full)
     }
     const current = S().active?.entries?.[index]
     if (!current) return
@@ -1686,6 +1689,7 @@ function WorkoutDetail({ w, close }) {
   }, [])
   return <>
     <h3>{w.name}</h3>
+    {isDeloadWorkout(w) && <div style={{ marginBottom: 8 }}><DeloadBadge pct={w.deload}>{t('Deload session')}</DeloadBadge></div>}
     <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(w.d, true), ...durPart(w.end - w.start), fmtVol(w.vol, st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
     {w.entries.map((e, i) => {
       const ex = EXIDX[e.id]
@@ -1734,9 +1738,9 @@ function Calendar({ start, close }) {
   }
   return <>
     <div className="row between" style={{ marginBottom: 2 }}>
-      <button className="iconbtn" onClick={() => setCur(new Date(y, mo - 1, 1))} aria-label="Previous month"><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" onClick={() => setCur(new Date(y, mo - 1, 1))} aria-label={t('Previous month')}><Icon name="chevronLeft" /></button>
       <h3 style={{ margin: 0 }}>{t(MONTHS_LONG[mo])} {y}</h3>
-      <button className="iconbtn" onClick={() => setCur(new Date(y, mo + 1, 1))} aria-label="Next month"><Icon name="chevronRight" /></button>
+      <button className="iconbtn" onClick={() => setCur(new Date(y, mo + 1, 1))} aria-label={t('Next month')}><Icon name="chevronRight" /></button>
     </div>
     <div className="small muted" style={{ textAlign: 'center' }}>{monthWs.length ? `${t(monthWs.length === 1 ? '{0} workout' : '{0} workouts', monthWs.length)} · ${fmtDur(monthMs)} · ${fmtVol(monthVol, st.unit)}` : t('No workouts this month')}</div>
     <div className="cal-grid">{['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(l => <div key={l} className="cal-h">{t(l)}</div>)}{cells}</div>
@@ -1754,9 +1758,10 @@ export const calendarSheet = start => ui().openSheet(close => <Calendar start={s
 export function WorkoutRow({ w, onClick }) {
   const st = useStore(s => s.S)
   const glyph = glyphOf((st.routines.find(r => r.id === w.routineId) || {}).emoji)
-  return <div className="item" {...tappable(onClick)}>
-    <span className="lrow-i" style={{ width: 34, height: 34, borderRadius: 8, fontSize: 19 }}><Icon name={glyph} /></span>
-    <div className="grow"><div className="tt">{w.name}</div>
+  const dl = isDeloadWorkout(w)
+  return <div className={'item' + (dl ? ' deload' : '')} {...tappable(onClick)}>
+    <span className="lrow-i" style={{ width: 34, height: 34, borderRadius: 8, fontSize: 19, ...(dl ? { background: 'var(--deload)', color: '#fff' } : {}) }}><Icon name={glyph} /></span>
+    <div className="grow"><div className="tt">{w.name}{dl && <> <DeloadBadge pct={w.deload} /></>}</div>
       <div className="ss">{[fmtDate(w.d, true), ...durPart(w.end - w.start), t('{0} sets', setsDone(w)), fmtVol(w.vol, st.unit)].join(' · ')}</div></div>
     {w.prs && w.prs.length > 0 && <span className="pr"><Icon name="trophy" />{w.prs.length} PR</span>}
     <Icon name="chevronRight" className="chev" />
@@ -1807,7 +1812,8 @@ export function beginWorkout(routineId, bw, deload = 0) {
     s.active = {
       id: uid(), d: todayISO(), start: Date.now(), routineId,
       name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries,
-      ...(excluded ? { excludeFromProgression: true } : {})
+      ...(excluded ? { excludeFromProgression: true } : {}),
+      ...(deload > 0 ? { deload } : {})
     }
   })
   useUI.getState().stopRest()
@@ -1921,7 +1927,16 @@ function TopWeight({ entryIdx, close }) {
     if (advance && unitDone) {
       if (workoutDone) workoutCompleteSheet()               // no unfinished unit → finish/continue prompt
       else update(s => { s.active.cur = unitEntryIdx(s.active.entries, nextUnit) })
-    } else toast(t('Tracked — next time starts at {0}', fmtNum(S().exWeights[entry.id].w) + ' ' + st.unit))
+    } else {
+      toast(t('Tracked — next time starts at {0}', fmtNum(S().exWeights[entry.id].w) + ' ' + st.unit))
+      // Superset with partners still to do: land on the next member with sets left, wrapping.
+      if (!unitDone && unit.length > 1) {
+        const pos = unit.indexOf(entryIdx)
+        const next = [...unit.slice(pos + 1), ...unit.slice(0, pos)]
+          .find(i => A.entries[i].sets.some(s => !s.done))
+        if (next != null) update(s => { if (s.active) s.active.cur = next })
+      }
+    }
   }
   return <>
     <h3 className="capitalize row" style={{ gap: 8 }}><Icon name="checkCircle" style={{ color: 'var(--acc)' }} />{t('{0} done', exerciseNameFor(ex))}</h3>

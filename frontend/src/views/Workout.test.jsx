@@ -43,8 +43,10 @@ const mocks = vi.hoisted(() => {
     shiftRestOwner: vi.fn(),
     startWork: vi.fn(),
     toast: state.toast,
-    sheets: [],
+    sheets: state.sheets || [],
     openSheet: state.openSheet,
+    resumeId: state.resumeId || 0,
+    resumePending: !!state.resumePending,
   })
   return state
 })
@@ -57,6 +59,7 @@ vi.mock('../store/useStore.js', () => {
 vi.mock('../store/useUI.js', () => {
   const useUI = selector => selector ? selector(mocks.uiSnapshot()) : mocks.uiSnapshot()
   useUI.getState = mocks.uiSnapshot
+  useUI.setState = patch => { Object.assign(mocks, patch) }
   return { useUI }
 })
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
@@ -191,10 +194,16 @@ async function rerenderAt(cur) {
   await act(async () => { root.render(React.createElement(Workout)) })
 }
 
+// The centring scroll waits a beat (see Workout.jsx) so a closing sheet cannot cut it short.
+const settleScroll = () => act(async () => { await new Promise(r => setTimeout(r, 400)) })
+
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.timer = null
   mocks.work = null
+  mocks.sheets = []
+  mocks.resumeId = 0
+  mocks.resumePending = false
   mocks.scrollCalls.length = 0
 })
 
@@ -768,6 +777,49 @@ describe('superset flow survives an exercise being removed mid-session', () => {
   })
 })
 
+describe('Resume', () => {
+  it('centres the next set to do when the session opens', async () => {
+    await mount([exercise('bench', [true, true, false])])
+    await settleScroll()
+
+    expect(mocks.scrollCalls).toEqual([
+      { node: container.querySelector('.setrow.next'), options: { behavior: 'smooth', block: 'center' } },
+    ])
+    expect(mocks.scrollCalls[0].node.dataset.swipeSet).toBe('2')
+  })
+
+  it('goes back from a finished exercise to the next set to do', async () => {
+    mocks.resumePending = true
+    await mount([
+      exercise('bench', [true, true]),
+      exercise('row', [true, false]),
+    ], 0)
+    await rerenderAt(mocks.S.active.cur)
+    await settleScroll()
+
+    expect(mocks.S.active.cur).toBe(1)
+    expect(mocks.resumePending).toBe(false)
+    const next = container.querySelector('.setrow.next')
+    expect(next.dataset.swipeSet).toBe('1')
+    expect(mocks.scrollCalls.at(-1)).toEqual({ node: next, options: { behavior: 'smooth', block: 'center' } })
+  })
+
+  it('goes back from an unfinished exercise you browsed to, to the one you are doing', async () => {
+    mocks.resumePending = true
+    await mount([
+      exercise('bench', [true, false], { resume: true }),
+      exercise('row', [false, false]),
+    ], 1)
+    await rerenderAt(mocks.S.active.cur)
+    await settleScroll()
+
+    expect(mocks.S.active.cur).toBe(0)
+    const next = container.querySelector('.setrow.next')
+    expect(next.dataset.swipeSet).toBe('1')
+    expect(mocks.scrollCalls.at(-1)).toEqual({ node: next, options: { behavior: 'smooth', block: 'center' } })
+  })
+})
+
 describe('superset actionable-set centring', () => {
   it('centres the newly active exercise first incomplete set row', async () => {
     await mount([
@@ -777,6 +829,7 @@ describe('superset actionable-set centring', () => {
     mocks.scrollCalls.length = 0
 
     await rerenderAt(1)
+    await settleScroll()
 
     // Every set of the exercise is on the card; the first one still to do is the one centred.
     const rows = container.querySelector('[data-exidx="1"]').querySelectorAll('.setrow')
@@ -794,6 +847,7 @@ describe('superset actionable-set centring', () => {
     mocks.scrollCalls.length = 0
 
     await rerenderAt(1)
+    await settleScroll()
 
     // Nothing left to do in it, so the last set — the one worth correcting — is centred.
     const rows = container.querySelector('[data-exidx="1"]').querySelectorAll('.setrow')
@@ -811,6 +865,7 @@ describe('superset actionable-set centring', () => {
     mocks.scrollCalls.length = 0
 
     await rerenderAt(1)
+    await settleScroll()
 
     const wrapper = container.querySelector('[data-exidx="1"]')
     expect(mocks.scrollCalls).toEqual([
@@ -818,16 +873,71 @@ describe('superset actionable-set centring', () => {
     ])
   })
 
-  it('does not auto-scroll set rows for ordinary exercise navigation', async () => {
+  it('centres the first set still to do when moving on to an ordinary exercise', async () => {
     await mount([
-      exercise('bench', [true, false]),
-      exercise('row', [false, false]),
+      exercise('bench', [true, true]),
+      exercise('row', [true, false, false]),
     ])
     mocks.scrollCalls.length = 0
 
     await rerenderAt(1)
+    await settleScroll()
+
+    const rows = container.querySelectorAll('.setrow')
+    expect(rows).toHaveLength(3)
+    expect(mocks.scrollCalls).toEqual([
+      { node: rows[1], options: { behavior: 'smooth', block: 'center' } },
+    ])
+  })
+
+  it('follows the next set down the exercise when a set is completed', async () => {
+    await mount([exercise('bench', [true, false, false])])
+    mocks.scrollCalls.length = 0
+
+    await toggleSetOf(0, 1)
+    await rerenderAt(0)
+    await settleScroll()
+
+    const rows = container.querySelectorAll('.setrow')
+    expect(mocks.scrollCalls).toEqual([
+      { node: rows[2], options: { behavior: 'smooth', block: 'center' } },
+    ])
+    // Only the set to do next carries the mark.
+    expect([...rows].map(r => r.classList.contains('next'))).toEqual([false, false, true])
+  })
+
+  it('does not scroll when a set is unchecked', async () => {
+    await mount([exercise('bench', [true, true, false])])
+    await settleScroll()
+    mocks.scrollCalls.length = 0
+
+    await toggleSetOf(0, 1)
+    await rerenderAt(0)
+    await settleScroll()
 
     expect(mocks.scrollCalls).toEqual([])
+  })
+
+  it('waits for an open sheet to close before centring', async () => {
+    await mount([
+      exercise('bench', [true, false], { sg: 'g1' }),
+      exercise('row', [true, false], { sg: 'g1' }),
+    ])
+    mocks.scrollCalls.length = 0
+
+    // The move happens under the top-weight sheet: nothing may scroll while it is open.
+    mocks.sheets = [{ id: 1 }]
+    await rerenderAt(1)
+    await settleScroll()
+    expect(mocks.scrollCalls).toEqual([])
+
+    mocks.sheets = []
+    await rerenderAt(1)
+    await settleScroll()
+    const rows = container.querySelector('[data-exidx="1"]').querySelectorAll('.setrow')
+    expect(mocks.scrollCalls).toEqual([
+      { node: rows[1], options: { behavior: 'smooth', block: 'center' } },
+    ])
   })
 })
 

@@ -110,7 +110,10 @@ export const useUI = create((set, get) => ({
                        // kind: 'sets' (between two sets) | 'exercise' (after an exercise is finished)
   work: null,          // work countdown DURING a timed set (issue #16) — { left, total, endsAt, label }
   timerFlashId: 0,     // changing the id remounts the four-pulse visual alert
+  resumeId: 0,         // bumped by "Resume": the workout screen re-centres the set to do next
+  resumePending: false, // set with it, consumed by the workout screen once it has acted on it
 
+  resumeWorkout() { set(s => ({ resumeId: s.resumeId + 1, resumePending: true })) },
   flashTimer() {
     if (!useStore.getState().S.timerFlash) return
     set(s => ({ timerFlashId: s.timerFlashId + 1 }))

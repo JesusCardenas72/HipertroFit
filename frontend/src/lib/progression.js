@@ -203,7 +203,9 @@ export function stallCount(sessions) {
  * Returns `{ weight, reps, sec, why, kind }` — `kind` being one of
  * first | up | hold | deload | off, and `why` a translatable template + args so the app can
  * always answer "why this number?". A field the policy has no opinion on comes back
- * undefined and the caller keeps whatever the plan said.
+ * undefined and the caller keeps whatever the plan said. A `hold`/`decide` on a loaded lift
+ * also carries `top` (the most reps the plan asks for) and `stride` (the rep step), so each set
+ * row can still overload with a rep when the session as a whole holds (see targetFor).
  */
 export function nextPrescription(S, cfg, routine) {
   const mode = modeOf(cfg)
@@ -268,7 +270,7 @@ export function nextPrescription(S, cfg, routine) {
       // plate or another set — and how big — is the athlete's call, asked in the session.
       const sets = Math.max(1, last.setCount || cfg.sets || 1)
       return {
-        policy, kind: 'decide', weight: w, reps: top,
+        policy, kind: 'decide', weight: w, reps: top, top, stride: repStep(cfg),
         choice: { inc, weight: snap(w + inc, inc), sets, reps: bottom },
         why: ['Top of the rep range in every set — time to progress: more weight or another set.']
       }
@@ -283,7 +285,7 @@ export function nextPrescription(S, cfg, routine) {
       return { policy, kind: 'hold', fatigue: true, weight: w, reps: aim, why: ['Reps dropped from set to set — you arrived fatigued. Same weight and {0} reps, no overload this time.', aim] }
     }
     const aim = clamp(last.low + repStep(cfg))
-    return { policy, kind: 'hold', weight: w, reps: aim, why: ['Same weight — aim for {0} reps this time.', aim] }
+    return { policy, kind: 'hold', weight: w, reps: aim, top, stride: repStep(cfg), why: ['Same weight — aim for {0} reps this time.', aim] }
   }
 
   // linear + greyskull
@@ -308,7 +310,7 @@ export function nextPrescription(S, cfg, routine) {
         : ['Missed reps — reset to {0} {1} and work back up.', dw, unit]
     }
   }
-  return { policy, kind: 'hold', weight: w, why: ['Missed reps last time — same weight again ({0} of {1} to go).', deloadAt - stalls, deloadAt] }
+  return { policy, kind: 'hold', weight: w, top: last.goal || cfg.reps || undefined, stride: repStep(cfg), why: ['Missed reps last time — same weight again ({0} of {1} to go).', deloadAt - stalls, deloadAt] }
 }
 
 /**

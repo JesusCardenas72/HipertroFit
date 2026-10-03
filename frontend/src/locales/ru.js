@@ -736,4 +736,7 @@ export default {
   'Add as second workout': 'Добавить как вторую тренировку',
   'Finish the current workout first.': 'Сначала заверши текущую тренировку.',
   'Logging a past workout — no rest timers.': 'Запись прошлой тренировки — без таймеров отдыха.',
+  'rep': 'повт.',
+  'No overload': 'Без прогрессии',
+  'No overload — accumulated fatigue': 'Без прогрессии — накопленная усталость',
 }

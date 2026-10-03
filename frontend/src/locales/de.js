@@ -753,4 +753,7 @@ export default {
   'Add as second workout': 'Als zweites Training hinzufügen',
   'Finish the current workout first.': 'Beende zuerst das laufende Training.',
   'Logging a past workout — no rest timers.': 'Vergangenes Training — keine Pausen-Timer.',
+  'rep': 'Wdh.',
+  'No overload': 'Keine Steigerung',
+  'No overload — accumulated fatigue': 'Keine Steigerung – angesammelte Ermüdung',
 }

@@ -27,6 +27,8 @@ let container
 
 function renderWorkout(entries, cur = 0) {
   const S = clone(DEF)
+  // These pin the list view: every set of the exercise down one card (the drum has its own tests).
+  S.setView = 'list'
   S.active = {
     id: 'swipe-test', d: '2026-08-11', start: Date.now(), routineId: null,
     name: 'Swipe test', bw: null, cur, entries,

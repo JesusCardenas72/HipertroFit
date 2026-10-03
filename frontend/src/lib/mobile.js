@@ -12,6 +12,7 @@
 import { t } from './i18n-core.js'
 import { isoOf, todayISO } from './format.js'
 import { effectiveRoutineId } from './history.js'
+import { mesoState } from './mesocycle.js'
 
 export const MOBILE = import.meta.env.VITE_MOBILE === '1'
 
@@ -71,6 +72,10 @@ export function buildReminderNotifications(S, now = new Date()) {
   if (!Number.isInteger(hour) || !Number.isInteger(minute)) return []
   const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12)
   const notifications = []
+  // In a deload microcycle the sessions still to train in it are announced as the deload they
+  // are; once those are used up the reminders read as usual (the plan resyncs on every change).
+  const meso = Array.isArray(S.workouts) ? mesoState(S) : null
+  let deloadLeft = meso && meso.deload ? meso.remaining : 0
   for (let offset = 0; offset < REMINDER_WINDOW_DAYS; offset++) {
     const day = new Date(date)
     day.setDate(date.getDate() + offset)
@@ -82,10 +87,13 @@ export function buildReminderNotifications(S, now = new Date()) {
     const at = new Date(day)
     at.setHours(hour, minute, 0, 0)
     if (at <= now) continue
+    const deload = deloadLeft-- > 0
     notifications.push({
       id: REMINDER_ID_BASE + offset,
-      title: t('Workout day'),
-      body: t('{0} is on the plan today — let’s go!', routine.name),
+      title: deload ? t('Workout day · Deload') : t('Workout day'),
+      body: deload
+        ? t('{0} today, as a deload: about {1}% less weight, reps and sets.', routine.name, Math.round(meso.pct * 100))
+        : t('{0} is on the plan today — let’s go!', routine.name),
       schedule: { at, allowWhileIdle: true },
     })
   }
@@ -244,4 +252,29 @@ export async function writeAutoBackup(state) {
       recursive: true,
     })
   } catch (e) { /* best effort — the private mirror in Directory.Data still has the data */ }
+}
+// A one-off system notification, shown right away: a native local notification on the mobile
+// build, the service worker's (or the plain Notification API's) on the web/PWA. Asks for the
+// permission once if it was never answered; a refusal is respected silently. Never throws —
+// the in-app message is shown either way, this is the copy that stays in the tray.
+export async function notifyNow({ id, title, body }) {
+  try {
+    if (MOBILE) {
+      const { LocalNotifications } = await import('@capacitor/local-notifications')
+      let perm = await LocalNotifications.checkPermissions()
+      if (perm.display === 'prompt' || perm.display === 'prompt-with-rationale') perm = await LocalNotifications.requestPermissions()
+      if (perm.display !== 'granted') return false
+      await LocalNotifications.schedule({ notifications: [{ id, title, body, schedule: { at: new Date(Date.now() + 1000), allowWhileIdle: true } }] })
+      return true
+    }
+    if (typeof window === 'undefined' || !('Notification' in window)) return false
+    let perm = Notification.permission
+    if (perm === 'default') perm = await Notification.requestPermission()
+    if (perm !== 'granted') return false
+    // Android Chrome forbids the Notification constructor — the service worker shows it there.
+    const reg = navigator.serviceWorker ? await navigator.serviceWorker.getRegistration() : null
+    if (reg?.showNotification) await reg.showNotification(title, { body, tag: 'opengym-' + id })
+    else new Notification(title, { body, tag: 'opengym-' + id })
+    return true
+  } catch (e) { return false }
 }

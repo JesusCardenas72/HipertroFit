@@ -749,4 +749,7 @@ export default {
   'Add as second workout': 'เพิ่มเป็นการฝึกครั้งที่สอง',
   'Finish the current workout first.': 'จบการฝึกปัจจุบันก่อน',
   'Logging a past workout — no rest timers.': 'กำลังบันทึกการฝึกย้อนหลัง — ไม่มีตัวจับเวลาพัก',
+  'rep': 'ครั้ง',
+  'No overload': 'ไม่มีการเพิ่มโหลด',
+  'No overload — accumulated fatigue': 'ไม่เพิ่มโหลดเพราะความล้าสะสม',
 }

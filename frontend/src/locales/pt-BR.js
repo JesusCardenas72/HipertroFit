@@ -355,6 +355,10 @@ export const PT_BR_OVERRIDES = {
   'Pick a day up to today': 'Escolha um dia até hoje',
   'Finish the current workout first.': 'Termine primeiro o treino atual.',
   'Logging a past workout — no rest timers.': 'Registrando um treino passado — sem temporizadores de descanso.',
+  'rep': 'rep',
+  'No overload': 'Sem sobrecarga',
+  'No overload — accumulated fatigue': 'Sem sobrecarga por fadiga acumulada',
 }
 
-export default { ...pt, ...PT_BR_OVERRIDES }
+export default { ...pt, ...PT_BR_OVERRIDES,
+}

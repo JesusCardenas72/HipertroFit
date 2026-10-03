@@ -10,6 +10,7 @@
 // live here with a test beside it, not inside a component.
 
 import { isWarmupRow } from './workout-model.js'
+import { rerampWarmups } from './history.js'
 
 const num = v => (v == null || v === '' ? null : Number(v))
 const same = (a, b) => {
@@ -57,26 +58,123 @@ export function referenceSet(prevSets, workIndex) {
  * already right — the caller uses that to decide whether the "apply" chip is worth showing at
  * all. A logged set and a warm-up return null: neither is a row a prescription speaks to.
  */
-export function suggestionFor({ mode = 'reps', plan = null, row = {}, reference = null } = {}) {
+export function suggestionFor({ mode = 'reps', plan = null, row = {}, reference = null, effort = null, base = null, step = 2.5 } = {}) {
   if (!row || row.done || isWarmupRow(row)) return null
+  const want = targetFor({ mode, plan, reference, effort, base, step })
+  if (!want) return null
+  const diff = {}
+  for (const k of Object.keys(want)) if (!same(row[k], want[k])) diff[k] = want[k]
+  return Object.keys(diff).length ? diff : null
+}
+
+// How much harder one session asks for when weight and reps stay put: one rep closer to
+// failure, which is a whole point on either scale (RIR 2 → 1, RPE 8 → 9).
+const EFFORT_SCALE = { rir: { f: 'rir', dir: -1, min: 0, max: 10 }, rpe: { f: 'rpe', dir: 1, min: 6, max: 10 } }
+
+/** The heaviest work set last session — the weight the prescription was decided from. */
+export function topWeight(prevSets) {
+  const ws = (Array.isArray(prevSets) ? prevSets : []).filter(s => s && !isWarmupRow(s)).map(s => num(s.w)).filter(w => w != null)
+  return ws.length ? Math.max(...ws) : null
+}
+
+/**
+ * The weight one set position should carry. The prescription speaks about the session's top
+ * weight (`base`, the heaviest set last time); a set that sat below it last session — a pyramid,
+ * a back-off set — moves by the same amount instead of being flattened onto one number. That is
+ * what keeps a 110/120/130 ramp from coming back as 130/130/130, or a row from being offered
+ * less than it lifted last time. A deload scales each set by the same fraction instead.
+ */
+function positionWeight(plan, reference, base, step) {
+  const pw = plan?.weight != null ? num(plan.weight) : null
+  const rw = num(reference?.w)
+  if (pw == null) return rw
+  if (rw == null || !(base > 0) || rw >= base) return pw
+  if (plan.kind === 'deload') {
+    const v = rw * pw / base
+    return step > 0 ? Math.round(Math.round(v / step) * step * 10) / 10 : Math.round(v * 10) / 10
+  }
+  return Math.max(0, Math.round((rw + pw - base) * 10) / 10)
+}
+
+/**
+ * Every value a work row should carry to follow the progression — weight, reps (or seconds) and,
+ * when the profile logs it, the effort (`effort`: 'rir' | 'rpe').
+ *
+ * The plan decides weight and reps as described on suggestionFor, but a session-wide plan can
+ * still leave one set exactly where it was — double progression aims at the weakest set, and a
+ * "decide" at the top of the range holds everything until the athlete picks. A policy that
+ * holds the load (`hold`, or an undecided `decide`) therefore owes every set one lever, in
+ * order: never fewer reps than that set did at the same weight; one more rep, up to the plan's
+ * `top`; failing that, one rep closer to failure on the effort scale. When weight or reps go up
+ * the effort stays where it was — more load at the same effort is the overload. A deload, a
+ * fatigued session, a plan that already moved (`up`) or progression off never push. No logged
+ * effort last time means nothing to aim at, so none is set.
+ */
+export function targetFor({ mode = 'reps', plan = null, reference = null, effort = null, base = null, step = 2.5 } = {}) {
   // Cardio has no overload rule in the engine (nextPrescription only decides weight/reps/sec),
   // so there is nothing to suggest beyond what the plan already wrote into the row.
   if (mode === 'cardio') return null
   const want = {}
   if (mode === 'time') {
     const sec = plan?.sec != null ? plan.sec : num(reference?.sec)
-    const w = plan?.weight != null ? plan.weight : num(reference?.w)
+    const w = positionWeight(plan, reference, base, step)
     if (sec != null && sec > 0) want.sec = sec
     if (w != null) want.w = w
-  } else {
-    const w = plan?.weight != null ? plan.weight : num(reference?.w)
-    const r = plan?.reps != null ? plan.reps : num(reference?.r)
-    if (w != null) want.w = w
-    if (r != null && r > 0) want.r = r
+    return Object.keys(want).length ? want : null
   }
-  const diff = {}
-  for (const k of Object.keys(want)) if (!same(row[k], want[k])) diff[k] = want[k]
-  return Object.keys(diff).length ? diff : null
+  const w = positionWeight(plan, reference, base, step)
+  let r = plan?.reps != null ? plan.reps : num(reference?.r)
+  const rw = num(reference?.w), rr = num(reference?.r)
+  const sameLoad = w == null || rw == null || same(w, rw)
+  const owes = !!plan && (plan.kind === 'hold' || plan.kind === 'decide') && !plan.fatigue && sameLoad
+  if (owes && rr != null && r != null && r < rr) r = rr
+  const top = num(plan?.top)
+  if (owes && rr != null && r != null && same(r, rr) && top > 0 && r < top) r = Math.min(top, r + (plan.stride > 0 ? plan.stride : 1))
+  if (w != null) want.w = w
+  if (r != null && r > 0) want.r = r
+  const e = EFFORT_SCALE[effort]
+  const prev = e && reference ? num(reference[e.f]) : null
+  if (prev != null) {
+    const sameReps = r == null || rr == null || same(r, rr)
+    const next = owes && sameReps ? prev + e.dir : prev
+    want[e.f] = Math.min(e.max, Math.max(e.min, next))
+  }
+  return Object.keys(want).length ? want : null
+}
+
+/**
+ * Which lever today's target moves against the same set last time, as `{ f, d }` pairs —
+ * `w` in load units, `r` in reps, `rir`/`rpe` in points (RIR going down reads as -1). Empty
+ * when nothing moves: the row card says so instead of showing two identical numbers.
+ */
+export function overloadOf(target, reference) {
+  if (!target || !reference) return []
+  const out = []
+  for (const f of ['w', 'r', 'sec', 'rir', 'rpe']) {
+    const a = num(target[f]), b = num(reference[f])
+    if (a == null || b == null || same(a, b)) continue
+    out.push({ f, d: Math.round((a - b) * 10) / 10 })
+  }
+  return out
+}
+
+/**
+ * Write the progression's targets into a freshly built list, so the steppers already hold the
+ * numbers to lift instead of a chip having to be tapped first. Only undone work rows are touched,
+ * each against the set in its own position last session (referenceSet). A plan that is off, a
+ * first session or no plan at all leaves the rows exactly as they were built.
+ */
+export function seedTargets(sets, prevSets, { mode = 'reps', plan = null, effort = null, step = 2.5 } = {}) {
+  const rows = Array.isArray(sets) ? sets : []
+  if (!plan || plan.kind === 'off' || plan.kind === 'first') return rows
+  const base = topWeight(prevSets)
+  const out = rows.map((row, i) => {
+    if (!row || row.done || isWarmupRow(row)) return row
+    const want = targetFor({ mode, plan, reference: referenceSet(prevSets, workIndexOf(rows, i)), effort, base, step })
+    return want ? { ...row, ...want } : row
+  })
+  // The first work set may now sit below the top weight, so the warm-ups ramp toward it again.
+  return out.some(isWarmupRow) ? rerampWarmups(out, step) : out
 }
 
 /**

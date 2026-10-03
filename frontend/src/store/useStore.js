@@ -31,6 +31,9 @@ export const DEF = {
   // postponed, and the last reduction the user chose. See lib/mesocycle.js.
   meso: null,
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
+  // How the active workout draws its sets: 'drum' (one at a time, full size — components/SetDrum)
+  // or 'list' (every set of the exercise down one card).
+  setView: 'drum',
   // effort: which per-set effort scale is logged — 'none' | 'rir' | 'rpe'. null, not 'none', so
   // that a profile which never chose (loaded state is overlaid on DEF, on every path: local,
   // server pull, backup import) still falls back to the `showRir` boolean this replaced and

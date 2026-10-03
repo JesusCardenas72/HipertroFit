@@ -765,6 +765,13 @@ describe('session row helpers', () => {
     expect(next[1].w).toBe(20)             // different flag (warm-up) untouched
   })
 
+  it('cascadeWeight with the previous weight only moves the rows that carried it', () => {
+    const rows = [{ w: 110, done: false }, { w: 110, done: false }, { w: 120, done: false }, { w: 130, done: false }]
+    rows[0].w = 112.5
+    const next = cascadeWeight(rows, 0, 112.5, 110)
+    expect(next.map(r => r.w)).toEqual([112.5, 112.5, 120, 130])
+  })
+
   it('cascadeWeight deleting the weight removes the key from following undone rows only', () => {
     const rows = [
       { w: 60, done: true },

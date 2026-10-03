@@ -24,7 +24,7 @@ export const DELOAD_MAX = 5
 export const DELOAD_PCT = { min: 0.25, max: 0.5, def: 0.4 }
 
 /** A fresh mesocycle record: nothing deloaded, nothing postponed. */
-export const emptyMeso = () => ({ deloads: [], postponed: [], pct: DELOAD_PCT.def })
+export const emptyMeso = () => ({ deloads: [], postponed: [], notified: [], pct: DELOAD_PCT.def })
 
 /** S.meso, defaulted and sanity-checked — old states have no such key at all. */
 export function mesoOf(S) {
@@ -33,6 +33,8 @@ export function mesoOf(S) {
   return {
     deloads: Array.isArray(m.deloads) ? m.deloads.filter(Number.isInteger) : [],
     postponed: Array.isArray(m.postponed) ? m.postponed.filter(Number.isInteger) : [],
+    // Deload microcycles whose start the user has already been told about (deloadNotice).
+    notified: Array.isArray(m.notified) ? m.notified.filter(Number.isInteger) : [],
     pct: pct >= DELOAD_PCT.min && pct <= DELOAD_PCT.max ? pct : DELOAD_PCT.def,
   }
 }
@@ -61,6 +63,7 @@ export function mesoState(S) {
   return {
     cycle, step, len, remaining, streak, target,
     deload: current,                 // the microcycle being trained right now is the deload
+    next: meso.deloads.includes(cycle + 1), // the one after this is already marked as a deload
     scheduled,                       // this one or the next is already marked
     mandatory,
     suggest: !scheduled && streak >= DELOAD_AFTER && (mandatory || !postponedHere),
@@ -83,6 +86,76 @@ export function postponeDeload(S) {
   if (meso.postponed.includes(cycle)) return meso
   return { ...meso, postponed: [...meso.postponed, cycle] }
 }
+
+const addCycle = (meso, c) => (meso.deloads.includes(c) ? meso : { ...meso, deloads: [...meso.deloads, c].sort((a, b) => a - b) })
+
+/**
+ * Force the deload on the microcycle being trained right now — at its start or half-way
+ * through. Sessions already logged in it keep the load they were trained at; every session
+ * started from here on comes down. No suggestion or streak is needed: it is the user's call.
+ */
+export function forceDeloadNow(S) {
+  return addCycle(mesoOf(S), cyclePosition(S).cycle)
+}
+
+/** Force the deload on the microcycle after this one, whatever the streak says. */
+export function forceDeloadNext(S) {
+  return addCycle(mesoOf(S), cyclePosition(S).cycle + 1)
+}
+
+/**
+ * Take a deload back: the current microcycle and the next one, whichever are marked. A
+ * cancelled deload is never asked about again for the same microcycle — it is postponed.
+ */
+export function cancelDeload(S) {
+  const meso = mesoOf(S)
+  const { cycle } = cyclePosition(S)
+  return {
+    ...meso,
+    deloads: meso.deloads.filter(d => d !== cycle && d !== cycle + 1),
+    postponed: meso.postponed.includes(cycle) ? meso.postponed : [...meso.postponed, cycle],
+  }
+}
+
+/**
+ * Leave the deload being trained, at any point of it: the rest of this microcycle goes back
+ * to full load. Sessions already trained as a deload stay deloads in the log. It is not
+ * suggested again for the same microcycle (postponed); one already marked for the next
+ * microcycle is left alone — that is a separate decision, taken back with cancelDeload.
+ */
+export function exitDeload(S) {
+  const meso = mesoOf(S)
+  const { cycle } = cyclePosition(S)
+  return {
+    ...meso,
+    deloads: meso.deloads.filter(d => d !== cycle),
+    postponed: meso.postponed.includes(cycle) ? meso.postponed : [...meso.postponed, cycle],
+  }
+}
+
+/**
+ * The deload microcycle to announce, or null. A deload is announced once, the first time the
+ * app sees it running — whether it arrived on schedule or was forced half-way through.
+ */
+export function deloadNotice(S) {
+  const { cycle } = cyclePosition(S)
+  const meso = mesoOf(S)
+  return meso.deloads.includes(cycle) && !meso.notified.includes(cycle) ? cycle : null
+}
+
+/** Record that the running deload has been announced. */
+export function markDeloadNotified(S) {
+  const meso = mesoOf(S)
+  const { cycle } = cyclePosition(S)
+  return meso.notified.includes(cycle) ? meso : { ...meso, notified: [...meso.notified, cycle] }
+}
+
+/**
+ * Whether a logged (or running) session was a deload: one started with a deload cut. A routine
+ * merely kept out of progression is not shown as one — that switch says nothing about the load
+ * actually trained, and reading it as a deload painted full-load sessions as deloads.
+ */
+export const isDeloadWorkout = w => !!w && Number(w.deload) > 0
 
 /** Remember the cut the user actually chose, as the proposal for the next session. */
 export function setDeloadPct(S, pct) {

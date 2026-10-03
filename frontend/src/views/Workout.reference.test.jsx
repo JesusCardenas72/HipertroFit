@@ -27,8 +27,11 @@ const lastSession = {
   }],
 }
 
-function renderWorkout({ sets = 3, plan = null, workouts = [lastSession], rows = null } = {}) {
+function renderWorkout({ sets = 3, plan = null, workouts = [lastSession], rows = null, effort = 'none' } = {}) {
   const S = clone(DEF)
+  // These pin the list view: every set of the exercise down one card (the drum has its own tests).
+  S.setView = 'list'
+  S.effort = effort
   S.workouts = clone(workouts)
   S.active = {
     id: 'ref-test', d: '2026-08-11', start: Date.now(), routineId: null,
@@ -46,7 +49,9 @@ function renderWorkout({ sets = 3, plan = null, workouts = [lastSession], rows =
 }
 
 const prevLine = () => container.querySelector('.setprev')
-const applyChip = () => prevLine()?.querySelector('.chip.add')
+const applyChip = () => container.querySelector('.setsug .chip.add')
+// The reference prints one value per column, straight above the stepper it belongs to.
+const prevCols = () => [...prevLine().querySelectorAll('.pv')].map(n => n.textContent)
 const activeSets = () => useStore.getState().S.active.entries[0].sets
 const click = node => act(() => node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })))
 
@@ -64,9 +69,21 @@ afterEach(() => {
 })
 
 describe('per-set reference in the running workout', () => {
-  it('shows what the same set position did last session', () => {
+  it('shows what the same set position did last session, column by column', () => {
     renderWorkout()
-    expect(prevLine().textContent).toContain('60×10')
+    expect(prevCols()).toEqual(['60', '10'])
+    expect(prevLine().getAttribute('aria-label')).toContain('60×10')
+  })
+
+  it('sits above the row it refers to', () => {
+    renderWorkout()
+    const prev = prevLine()
+    expect(prev.nextElementSibling.classList.contains('setswipe')).toBe(true)
+  })
+
+  it('puts last time’s effort over the effort column when the profile logs it', () => {
+    renderWorkout({ effort: 'rir', workouts: [{ ...lastSession, entries: [{ ...lastSession.entries[0], sets: lastSession.entries[0].sets.map(x => ({ ...x, rir: 2 })) }] }] })
+    expect(prevCols()).toEqual(['60', '10', '2'])
   })
 
   it('offers the progression’s number as a chip, and writes it into the row when tapped', () => {
@@ -87,8 +104,10 @@ describe('per-set reference in the running workout', () => {
 
   it('says nothing to apply once the row already carries the target', () => {
     renderWorkout({ plan: { policy: 'linear', kind: 'hold', weight: 60, why: ['x'] } })
-    expect(prevLine().textContent).toContain('60×10')
-    expect(applyChip()).toBe(null)
+    expect(prevCols()).toEqual(['60', '10'])
+    // the first row matches 60×10; only the third (9 reps last time) differs
+    const firstRow = container.querySelector('.setsug')?.parentElement
+    expect(firstRow?.querySelector('[data-swipe-set="0"]')).toBeFalsy()
   })
 
   it('has no reference line for an exercise never trained before', () => {

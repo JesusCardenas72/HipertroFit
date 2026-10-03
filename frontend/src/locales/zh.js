@@ -736,4 +736,7 @@ export default {
   'Add as second workout': '添加为第二次训练',
   'Finish the current workout first.': '请先完成当前训练。',
   'Logging a past workout — no rest timers.': '正在补记过去的训练 — 没有休息计时器。',
+  'rep': '次',
+  'No overload': '无渐进超负荷',
+  'No overload — accumulated fatigue': '因累积疲劳不加负荷',
 }
