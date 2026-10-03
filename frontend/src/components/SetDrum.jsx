@@ -22,16 +22,22 @@ import Icon from './Icon.jsx'
  *
  * The component owns the gesture, the geometry and the rail; what a chamber looks like is the
  * caller's (renderHero / renderStrip), because only the workout knows how to edit a set.
+ *
+ * A sideways drag is not the drum's: it turns the deck of exercises around it. With onSwipe /
+ * onSwipeEnd the drag is handed over live, so the next exercise follows the thumb exactly as
+ * the next set does vertically; with only onNav the drum gives a little and pages on release.
  */
 
 const STRIP = 50      // a resting chamber's height, px
 const GAP = 10        // between chambers
 const PERSPECTIVE = 900 // px, the .drum-stage perspective in index.css
 const LETTERS = 'ABCDEFGH'
+const RAIL = 0.85     // the rail's height, as a share of the hero's
+const THUMB = 36      // the exercise thumbnail above the rail, px (the rail's width)
 
 export default function SetDrum({
   chambers, entries, members = 1, inert = false,
-  renderHead, renderHero, renderStrip, renderTools, onNav, onHeroRef, memberLabel,
+  renderHead, renderHero, renderStrip, renderThumb, onNav, onSwipe, onSwipeEnd, onHeroRef, memberLabel,
 }) {
   const count = chambers.length
   const home = drumHome(entries, chambers)
@@ -139,12 +145,15 @@ export default function SetDrum({
   const armed = drag?.axis === 'y' && drumArmed({ from: f, drag: drag.dy, pitch, count })
   const aim = drag?.axis === 'y' ? drumSettle({ from: f, drag: drag.dy, pitch, count }) : f
 
-  // The rail is exactly as tall as the hero, a window five pips tall: the set on screen in the
-  // middle, the two before it above and the two after below. The track of pips rolls behind it
-  // with the drum, so the live pip always sits level with the hero.
-  const slot = heroH / 5
+  // The rail is a little shorter than the hero, centred on it, a window five pips tall: the set
+  // on screen in the middle, the two before it above and the two after below. The track of pips
+  // rolls behind it with the drum, so the live pip always sits level with the hero. The room it
+  // leaves above holds the exercise's thumbnail.
+  const railH = heroH * RAIL
+  const railTop = mid - railH / 2
+  const slot = railH / 5
   const pipSize = Math.max(14, Math.min(28, slot - 8))
-  const track = heroH / 2 - pos * slot - pipSize / 2
+  const track = railH / 2 - pos * slot - pipSize / 2
 
   // The fuse: a thin curve from the rail's live pip into the hero, so the eye never loses
   // which dot is the set on screen. Its x is read from layout; its y follows from the window.
@@ -185,6 +194,7 @@ export default function SetDrum({
       // Grabbing the drum while it still rolls stops it where the finger takes over.
       if (g.axis === 'y') { stopGlide(); setGlide(null) }
     }
+    if (g.axis === 'x' && onSwipe) { onSwipe(dx, e); return }
     // Velocity from the last sample only: a flick is what the finger was doing as it left.
     const dt = e.timeStamp - g.lt
     if (dt > 0) { g.v = (e.clientY - g.ly) * g.scale / dt; g.ly = e.clientY; g.lt = e.timeStamp }
@@ -204,8 +214,9 @@ export default function SetDrum({
     setDrag(null)
     try { if (g.el?.hasPointerCapture?.(e.pointerId)) g.el.releasePointerCapture(e.pointerId) } catch { /* gone */ }
     if (g.axis === 'y' && !commit) run(pos, f)
-    if (!commit || !g.axis) return
     const dx = e.clientX - g.x, dy = (e.clientY - g.y) * g.scale
+    if (g.axis === 'x' && onSwipe) { onSwipeEnd?.(dx, e, commit); return }
+    if (!commit || !g.axis) return
     if (g.axis === 'y') {
       // A stale velocity (the finger paused before lifting) is no flick.
       const v = e.timeStamp - g.lt > 90 ? 0 : g.v
@@ -267,11 +278,13 @@ export default function SetDrum({
       })}
     </div>}
     <div className="drum-body" ref={bodyEl} style={{ height: stageH }}>
+      {renderThumb && fc && <div className="drum-thumb" key={fc.entry} aria-hidden="true"
+        style={{ top: railTop - THUMB - 6, width: THUMB, height: THUMB }}>{renderThumb(fc.entry)}</div>}
       <div className="drum-rail" ref={railEl} role="tablist" aria-label={t('Sets')} aria-orientation="vertical"
         onPointerDown={e => onDown(e, { onRail: true })} onPointerMove={onMove}
         onPointerUp={e => onUp(e, true)} onPointerCancel={e => onUp(e, false)}
         onClickCapture={e => { if (swallowClick.current) { swallowClick.current = false; e.preventDefault(); e.stopPropagation() } }}
-        style={{ height: heroH, marginTop: mid - heroH / 2, '--pip': pipSize + 'px', '--pip-gap': slot - pipSize + 'px' }}>
+        style={{ height: railH, marginTop: railTop, '--pip': pipSize + 'px', '--pip-gap': slot - pipSize + 'px' }}>
         <span className="drum-axis" aria-hidden="true" />
         <div className="drum-track" style={{ transform: `translateY(${track}px)` }}>
         {chambers.map((c, i) => {
@@ -296,7 +309,7 @@ export default function SetDrum({
         onWheel={onWheel} onKeyDown={onKey}
         onClickCapture={e => { if (swallowClick.current) { swallowClick.current = false; e.preventDefault(); e.stopPropagation() } }}
         style={{ '--mid': mid + 'px', '--fade-a': above * 0.7 + 'px', '--fade-b': below * 0.7 + 'px',
-          ...(drag?.axis === 'x' ? { transform: `translateX(${Math.max(-60, Math.min(60, drag.dx * 0.3))}px)` } : {}) }}>
+          ...(drag?.axis === 'x' && !onSwipe ? { transform: `translateX(${Math.max(-60, Math.min(60, drag.dx * 0.3))}px)` } : {}) }}>
         {visible.map(i => {
           const c = chambers[i]
           const a = Math.abs(i - pos)
@@ -332,6 +345,5 @@ export default function SetDrum({
         })}
       </div>
     </div>
-    {renderTools && fc && <div className="drum-tools">{renderTools(fc.entry)}</div>}
   </div>
 }

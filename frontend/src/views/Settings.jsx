@@ -14,21 +14,26 @@ import { ConnectSheet } from './MobileOnboarding.jsx'
 import { loadStarterPlan, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
-import { restSound, progressSound, playProgressSound, customSoundProblem, MAX_SOUND_BYTES, MAX_SOUND_SECONDS } from '../lib/custom-sound.js'
+import { restSound, exerciseEndSound, progressSound, playProgressSound, customSoundProblem, MAX_SOUND_BYTES, MAX_SOUND_SECONDS } from '../lib/custom-sound.js'
 import { playClips, stopClips } from '../lib/sound.js'
 import { REST_EX_PRESETS, restExLabel, settingChoice } from '../lib/rest-between.js'
 import { DEFAULT_SECONDARY, normalizeSecondaryWeight } from '../lib/muscles.js'
 import { VOLUME_TARGET } from '../lib/volume.js'
 
-/* A stored sound — the rest-end bell or the "time to progress" celebration — or a file from this
-   device (lib/custom-sound.js). The file is checked before it is kept — a clip the browser cannot
-   decode, or one long enough to start ringing the moment a rest begins, is refused with a toast
-   rather than saved and silent. */
+/* A stored sound — the rest-end bell, the exercise-end bells or the "time to progress" celebration —
+   or a file from this device (lib/custom-sound.js). The file is checked before it is kept — a clip
+   the browser cannot decode, or one long enough to start ringing the moment a rest begins, is
+   refused with a toast rather than saved and silent. */
 const SOUND_SHEETS = {
   rest: {
     slot: restSound, title: 'Rest-end sound', defaultName: 'Boxing bell', restore: 'Use the default bell',
     restored: 'Default bell restored', note: 'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.',
     preview: () => playClips(true, restSound.clips())
+  },
+  exercise: {
+    slot: exerciseEndSound, title: 'Exercise-end sound', defaultName: 'Bells', restore: 'Use the default bells',
+    restored: 'Default bells restored', note: 'Stored on this device only. Up to {0} seconds — it plays after the last set of each exercise or superset, and when a workout is finished early. The rest between exercises starts with it.',
+    preview: () => playClips(true, exerciseEndSound.clips())
   },
   progress: {
     slot: progressSound, title: 'Progression sound', defaultName: 'Fanfare', restore: 'Use the default fanfare',
@@ -96,10 +101,12 @@ export default function Settings() {
   const wakeOK = wakeLockSupported()
   const [soundName, setSoundName] = useState(restSound.name())
   const [progressName, setProgressName] = useState(progressSound.name())
+  const [exEndName, setExEndName] = useState(exerciseEndSound.name())
   useEffect(() => {
     let live = true
     restSound.load().then(n => { if (live) setSoundName(n) })
     progressSound.load().then(n => { if (live) setProgressName(n) })
+    exerciseEndSound.load().then(n => { if (live) setExEndName(n) })
     return () => { live = false }
   }, [])
 
@@ -254,6 +261,8 @@ export default function Settings() {
       </Row>
       <Row icon="bell" iconTint="var(--purple)" title={t('Rest-end sound')} value={soundName || t('Boxing bell')} accessory="chevron"
         onClick={() => useUI.getState().openSheet(() => <SoundSheet kind="rest" onChanged={setSoundName} toast={toast} />)} />
+      <Row icon="bell" iconTint="var(--orange)" title={t('Exercise-end sound')} value={exEndName || t('Bells')} accessory="chevron"
+        onClick={() => useUI.getState().openSheet(() => <SoundSheet kind="exercise" onChanged={setExEndName} toast={toast} />)} />
       <Row icon="sparkles" iconTint="var(--green)" title={t('Progression sound')} value={progressName || t('Fanfare')} accessory="chevron"
         onClick={() => useUI.getState().openSheet(() => <SoundSheet kind="progress" onChanged={setProgressName} toast={toast} />)} />
       <Row icon="sun" iconTint="var(--yellow)" title={t('Flash screen when timer ends')}>

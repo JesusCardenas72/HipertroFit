@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dragOffsets, settlePlan, edgeOffset, EDGE_MAX } from './slide.js'
+import { dragOffsets, settlePlan, edgeOffset, EDGE_MAX, turnFace, turnStyle, turnVars, TURN_DEG, TURN_SHRINK } from './slide.js'
 
 const W = 400
 
@@ -68,5 +68,47 @@ describe('edgeOffset', () => {
   it('stops well short of uncovering the page, however hard it is pulled', () => {
     expect(edgeOffset(10000)).toBe(EDGE_MAX)
     expect(edgeOffset(-10000)).toBe(-EDGE_MAX)
+  })
+})
+
+describe('turnFace', () => {
+  it('is square on, full size and fully lit at the front', () => {
+    expect(turnFace(0, W)).toEqual({ x: 0, deg: 0, scale: 1, opacity: 1 })
+  })
+  it('turns round the side it travels to, a screen away by the full tilt', () => {
+    expect(turnFace(-W, W).deg).toBe(-TURN_DEG)
+    expect(turnFace(W, W).deg).toBe(TURN_DEG)
+    expect(turnFace(W, W).scale).toBeCloseTo(1 - TURN_SHRINK, 5)
+  })
+  // Linear in the distance, so the settle animation (which interpolates its two ends) draws the
+  // same faces the finger did — and the two screens of a drag are always mirror images.
+  it('grows as the other shrinks: halfway, both faces are the same', () => {
+    const leaving = turnFace(-W / 2, W), arriving = turnFace(W / 2, W)
+    expect(leaving.deg).toBe(-arriving.deg)
+    expect(leaving.scale).toBe(arriving.scale)
+    expect(leaving.opacity).toBe(arriving.opacity)
+    expect(turnFace(-W / 4, W).deg).toBeCloseTo(turnFace(-W / 2, W).deg / 2, 2)
+  })
+  it('keeps its shift exact, so the drag follows the finger one to one', () => {
+    expect(turnFace(-123, W).x).toBe(-123)
+  })
+})
+
+describe('turnStyle / turnVars', () => {
+  it('leaves a face at rest untouched', () => {
+    expect(turnStyle(0, W)).toBeUndefined()
+  })
+  it('draws a held face with its shift, tilt and size', () => {
+    const st = turnStyle(-W / 2, W)
+    expect(st.transform).toContain('translateX(-200px)')
+    expect(st.transform).toContain('rotateY(-' + TURN_DEG / 2 + 'deg)')
+    expect(st.opacity).toBeLessThan(1)
+  })
+  it('hands both ends of a settle to the keyframe', () => {
+    const v = turnVars(-120, -W, W)
+    expect(v['--slide-from']).toBe('-120px')
+    expect(v['--slide-to']).toBe(-W + 'px')
+    expect(v['--turn-to']).toBe(-TURN_DEG + 'deg')
+    expect(turnVars(W, 0, W)['--scale-to']).toBe(1)
   })
 })

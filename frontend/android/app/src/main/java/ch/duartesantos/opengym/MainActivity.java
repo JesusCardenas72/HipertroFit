@@ -36,7 +36,7 @@ public class MainActivity extends BridgeActivity {
         // Before super.onCreate: the bridge is built there and only sees plugins registered
         // by then. BackupFolder is the destination folder for "Auto-backup on changes".
         registerPlugin(BackupFolderPlugin.class);
-        // AudioFocus ducks other apps' audio (music, podcasts) while the rest-end alert plays
+        // AudioFocus pauses other apps' audio (music, podcasts) while the rest-end alert plays
         // and hands it back when the alert ends, so the music resumes on its own.
         registerPlugin(AudioFocusPlugin.class);
 

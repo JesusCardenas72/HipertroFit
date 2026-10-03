@@ -27,6 +27,8 @@ let container
 
 function renderWorkout(entries, cur = 0) {
   const S = clone(DEF)
+  // The list view keeps the dock on screen; the drum folds it under the title (see its own tests).
+  S.setView = 'list'
   S.active = {
     id: 'dock-test', d: '2026-08-11', start: Date.now(), routineId: null,
     name: 'Dock test', bw: null, cur, entries,

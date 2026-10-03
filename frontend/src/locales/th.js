@@ -752,4 +752,16 @@ export default {
   'rep': 'ครั้ง',
   'No overload': 'ไม่มีการเพิ่มโหลด',
   'No overload — accumulated fatigue': 'ไม่เพิ่มโหลดเพราะความล้าสะสม',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': 'แสดงรายละเอียดการฝึก',
+  'Hide workout details': 'ซ่อนรายละเอียดการฝึก',
+  'Set tools': 'เครื่องมือเซ็ต',
+  'Drop': 'ดรอป',
+  'Burst': 'เบิร์สต์',
+  'Warm up': 'วอร์มอัพ',
+  'One more': 'อีกเซ็ต',
+  'One more set': 'อีกหนึ่งเซ็ต',
+  'Add the set to this exercise only, or to every exercise in the superset?': 'เพิ่มเซ็ตให้ท่านี้เท่านั้น หรือให้ทุกท่าในซูเปอร์เซ็ต?',
+  'Only this exercise': 'เฉพาะท่านี้',
+  'Every exercise in the superset': 'ทุกท่าในซูเปอร์เซ็ต',
 }

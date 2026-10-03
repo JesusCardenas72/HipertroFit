@@ -6,8 +6,8 @@ import { beep, vibrate, playClips, stopClips, clipsDuration, setAudioFocusHooks 
 // rest are the same instant — so it begins its own length before the timer runs out.
 // (playClips takes a list because the alert used to be two separate files; a single-entry one
 // is the same call, and keeping the list means adding a second clip needs no new plumbing.)
-import { restAlertClips, loadCustomSound, progressSound } from '../lib/custom-sound.js'
-import { MOBILE, duckOtherAudio, releaseOtherAudio } from '../lib/mobile.js'
+import { restAlertClips, loadCustomSound, progressSound, exerciseEndSound } from '../lib/custom-sound.js'
+import { MOBILE, pauseOtherAudio, releaseOtherAudio } from '../lib/mobile.js'
 import { api } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
 import { useStore } from './useStore.js'
@@ -56,11 +56,36 @@ const maybeRestNotification = async () => {
 // Read the saved custom sound up front so the first rest already knows which clip to measure.
 loadCustomSound()
 progressSound.load()
-// Native Android: duck the user's music while the alert plays and give it back afterwards.
-if (MOBILE) setAudioFocusHooks({ acquire: duckOtherAudio, release: releaseOtherAudio })
+// Measuring it also decodes it, so the first exercise of a session does not wait on the network.
+exerciseEndSound.load().then(() => clipsDuration(exerciseEndSound.clips())).catch(() => {})
+// Native Android: pause the user's music while the alert plays and give it back afterwards.
+if (MOBILE) setAudioFocusHooks({ acquire: pauseOtherAudio, release: releaseOtherAudio })
+
+// Silence held on each side of the alert: the music is paused this long before the bell starts,
+// and handed back this long after it ends (see playClips' focusGap).
+export const REST_ALERT_FOCUS_GAP_MS = 1500
+
+/* The rest that is counting is written down beside the workout, so it outlives the page: a phone
+   reclaims a backgrounded PWA or WebView by reloading it, and the break you were in the middle
+   of has to still be there when you come back to the app. Only the finish line is kept — what
+   is left is worked out from it — and the workout it belongs to, so a rest never carries into
+   a different session. */
+const REST_KEY = 'gym_rest_v1'
+const saveRest = tm => {
+  try {
+    if (!tm) { localStorage.removeItem(REST_KEY); return }
+    const wid = useStore.getState().S.active?.id ?? null
+    localStorage.setItem(REST_KEY, JSON.stringify({ endsAt: tm.endsAt, total: tm.total, forIdx: tm.forIdx, kind: tm.kind, wid }))
+  } catch { /* private mode / storage full: the rest still runs, it just won't survive a reload */ }
+}
+const loadRest = () => {
+  try { return JSON.parse(localStorage.getItem(REST_KEY)) || null } catch { return null }
+}
 
 let toastTm = null
 let clipTm = null
+// The rest between exercises waiting for the exercise-end sound to start (see endExercise).
+let exEndPending = null
 let timerInt = null
 let timerTick = null
 let workInt = null
@@ -71,6 +96,9 @@ let workDone = null
    two clips run before the rest is up, so the bell's last moment and the end of the rest are
    the same instant. The clip lengths are measured at runtime, so replacing either file moves
    the start on its own.
+
+   The music is paused REST_ALERT_FOCUS_GAP_MS before the bell, so the sequence is started that
+   much earlier again — it is the bell, not the pause, that has to land on zero.
 
    Scheduled with its own timeout rather than off the once-a-second tick, because a tick can
    only place the start to the nearest second and the whole point here is that it lands. */
@@ -83,15 +111,17 @@ const scheduleRestAlert = endsAt => {
     // skipped, restarted or re-timed, and that newer rest owns the schedule now.
     const tm = useUI.getState().timer
     if (!tm || tm.endsAt !== endsAt) return
+    // Clips that would not load (total 0) have nothing to pause the music for.
+    const focusGap = total > 0 ? REST_ALERT_FOCUS_GAP_MS : 0
     const fire = () => {
       clipTm = null
       // The setting is read now, not when the rest started, so muting mid-rest is respected.
-      playClips(useStore.getState().S.sound, clips)
+      playClips(useStore.getState().S.sound, clips, { focusGap })
     }
     // A rest shorter than the alert — or one trimmed under it with "−" — starts it at once:
     // finishing late is the only option left, and silence would be the worse one. A total of
     // 0 (clips that would not load) lands here too and degrades to firing on zero.
-    const delay = endsAt - Date.now() - total * 1000
+    const delay = endsAt - Date.now() - total * 1000 - focusGap
     if (delay <= 0) fire()
     else clipTm = setTimeout(fire, delay)
   })
@@ -134,20 +164,62 @@ export const useUI = create((set, get) => ({
     toastTm = setTimeout(() => set({ toastMsg: '' }), 2200)
   },
 
-  startRest(sec, forIdx, kind = 'sets') {
+  /* The last set of an exercise — or the last round of a superset — is done: the exercise-end
+     sound plays with the same 1.5 s of silence around it as the rest alert (the music is paused
+     first, handed back after), and the rest between exercises (`sec`, when there is one) starts
+     counting the moment the sound itself starts, not when the set was ticked. Without sound, or
+     with a sound that will not play, the rest starts at once. `sec` null: no rest follows — the
+     last exercise of the session, or a session finished early. */
+  endExercise(sec = null, forIdx) {
+    get().stopRest()
+    const token = {}
+    exEndPending = token
+    const wid = useStore.getState().S.active?.id ?? null
+    playClips(useStore.getState().S.sound, exerciseEndSound.clips(), {
+      focusGap: REST_ALERT_FOCUS_GAP_MS,
+      onStart: () => {
+        // A newer rest, a skipped one or a session that ended during the leading gap owns it now.
+        if (exEndPending !== token) return
+        exEndPending = null
+        if (sec == null || (useStore.getState().S.active?.id ?? null) !== wid) return
+        get().startRest(sec, forIdx, 'exercise', { keepClips: true })
+      }
+    })
+  },
+
+  startRest(sec, forIdx, kind = 'sets', { keepClips = false } = {}) {
     get().stopRest()
     // The previous rest's alert may still be ringing — a new set has started, so cut it.
     // This is the only place that stops it: stopRest() runs immediately after the alert
-    // begins, so cancelling from there would silence it before it was heard.
-    stopClips()
+    // begins, so cancelling from there would silence it before it was heard. The rest that
+    // endExercise() starts is the exception: the sound playing then is its own.
+    if (!keepClips) stopClips()
     // Rest timer set to Off. Stopping and returning rather than starting a zero-length timer
     // keeps every caller honest: the four places that start a rest do not each need to know.
     if (!(sec > 0)) return
     const endsAt = Date.now() + sec * 1000
-    set({ timer: { left: sec, total: sec, endsAt, forIdx, kind } })
+    get().runRest({ left: sec, total: sec, endsAt, forIdx, kind })
     requestRestNotificationPermission()
     pushRestTimer(sec)
-    scheduleRestAlert(endsAt)
+  },
+  // Picks up a rest the page was reloaded in the middle of (see saveRest): same finish line,
+  // same alert, no second server push — the one scheduled when it started still stands. A rest
+  // that ran out while the app was away is simply over.
+  resumeRest() {
+    if (get().timer) return
+    const saved = loadRest()
+    if (!saved) return
+    const wid = useStore.getState().S.active?.id
+    const left = Math.round((saved.endsAt - Date.now()) / 1000)
+    if (!wid || saved.wid !== wid || !(left > 0)) { saveRest(null); return }
+    get().runRest({ left, total: Math.max(left, saved.total || left), endsAt: saved.endsAt, forIdx: saved.forIdx, kind: saved.kind || 'sets' })
+  },
+  runRest(tm) {
+    if (timerInt) clearInterval(timerInt)
+    if (timerTick) document.removeEventListener('visibilitychange', timerTick)
+    set({ timer: tm })
+    saveRest(tm)
+    scheduleRestAlert(tm.endsAt)
     timerTick = () => {
       const tm = get().timer
       if (!tm) return
@@ -172,6 +244,7 @@ export const useUI = create((set, get) => ({
     if (left <= 0) { get().stopRest(); return }
     const endsAt = tm.endsAt + sec * 1000
     set({ timer: { ...tm, left, total: tm.total + sec, endsAt } })
+    saveRest(get().timer)
     pushRestTimer(left)
     // The finish line moved, so the alert has to move with it. If it had already started, it
     // would now end well before the rest does — cut it and let the new schedule play it again.
@@ -184,16 +257,20 @@ export const useUI = create((set, get) => ({
     const tm = get().timer
     if (!tm || !(tm.forIdx >= at)) return
     set({ timer: { ...tm, forIdx: tm.forIdx + delta } })
+    saveRest(get().timer)
   },
   stopRest() {
     if (timerInt) clearInterval(timerInt); timerInt = null
     if (timerTick) document.removeEventListener('visibilitychange', timerTick); timerTick = null
     if (get().timer) cancelPushRestTimer()
+    // A rest still waiting on the exercise-end sound is dropped with it.
+    exEndPending = null
     // Drop a pending alert (a rest skipped before it began owes you no bell), but never stop
     // one already playing: this runs the moment the countdown hits zero, which is exactly when
     // the alert is finishing. Cutting it here would clip the last note off every rest.
     cancelRestAlert()
     set({ timer: null })
+    saveRest(null)
   },
 
   /* ---- work timer (issue #16) ----

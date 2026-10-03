@@ -47,7 +47,8 @@ export function vibrate(p) { try { navigator.vibrate && navigator.vibrate(p) } c
    context that has not been unlocked by a tap yet.
 
    Around the whole sequence the audio-focus hooks run (see setAudioFocusHooks): they ask the
-   OS to *duck* other audio for the length of the alert and hand it back the moment it ends.
+   OS to *pause* other audio for the length of the alert and hand it back once it ends, so the
+   music stops, the bell rings on its own and the music picks up again where it was.
 
    Both caches are per source and live for the session, which doubles as the preload: the second
    rest of a session starts its alert instantly instead of waiting on the network. */
@@ -152,9 +153,10 @@ export function forgetClip(src) {
 
 /* ---- audio focus ----
    `acquire` runs as an alert starts and `release` once it has finished or been cut off — the
-   native build points them at the AudioFocus plugin, which ducks other apps' audio and gives it
-   back. Browsers get the Audio Session API where they have it (Safari): 'transient' is the type
-   meant for a short sound over someone else's playback. Both are best-effort and never throw. */
+   native build points them at the AudioFocus plugin, which pauses other apps' audio and gives it
+   back. Browsers get the Audio Session API where they have it (Safari): 'transient-solo' is the
+   type for a short sound that silences someone else's playback while it lasts. Both are
+   best-effort and never throw. */
 let focusHooks = null
 let focusHeld = false
 
@@ -165,7 +167,7 @@ function focus(on) {
   focusHeld = on
   try {
     const session = typeof navigator !== 'undefined' ? navigator.audioSession : null
-    if (session) session.type = on ? 'transient' : 'auto'
+    if (session) session.type = on ? 'transient-solo' : 'auto'
   } catch (e) { /* */ }
   try {
     const fn = focusHooks && (on ? focusHooks.acquire : focusHooks.release)
@@ -179,6 +181,9 @@ export function stopClips() {
   const cur = playing
   playing = null
   if (!cur) return
+  clearTimeout(cur.gapTm)
+  // Cut off before the first clip: whatever was waiting on the sound starts now instead.
+  if (cur.begin) cur.begin()
   if (cur.node) { try { cur.node.onended = null; cur.node.stop() } catch (e) { /* */ } }
   if (cur.el) { try { cur.el.pause(); cur.el.currentTime = 0 } catch (e) { /* */ } }
   focus(false)
@@ -188,27 +193,50 @@ export function stopClips() {
  * Play `sources` in order, each starting when the previous one ends. `enabled` gates it the
  * same way it gates `beep`. Returns immediately — playback is asynchronous.
  *
+ * `focusGap` (ms) puts silence on both sides of the sequence while the focus is held: the other
+ * app's audio is paused that long before the first clip starts, and given back that long after
+ * the last one ends — so the bell never plays over the tail of a fading song, and the song does
+ * not jump back in on the bell's last note. A stopClips() during either gap ends it at once.
+ *
+ * `onStart` runs once, the moment the first clip starts — after the leading gap. Something that
+ * is timed from the sound (the rest between exercises) hangs off it. It also runs, at once, when
+ * the sequence never gets that far: sound off, nothing playable, or cut off during the leading
+ * gap — what is timed from the sound must not go missing because the sound did.
+ *
  * A clip the browser refuses to play (autoplay policy, decode failure, missing file) advances
  * to the next one rather than stranding the rest of the sequence in silence.
  */
-export function playClips(enabled, sources) {
+export function playClips(enabled, sources, { focusGap = 0, onStart = null } = {}) {
   stopClips()
-  if (!enabled) return
+  let started = false
+  const begin = () => {
+    if (started) return
+    started = true
+    if (onStart) { try { onStart() } catch (e) { /* */ } }
+  }
   const queue = (sources || []).filter(Boolean)
-  if (!queue.length) return
+  if (!enabled || !queue.length) { begin(); return }
   // Identity token: a sequence started later must be able to tell that this one is stale,
   // since an 'ended' handler can outlive the stopClips() that cancelled it.
-  const token = { el: null, node: null, src: null }
+  const token = { el: null, node: null, src: null, gapTm: null, begin }
   playing = token
   focus(true)
+  const done = () => {
+    if (playing !== token) return
+    playing = null
+    focus(false)
+  }
   const step = i => {
     if (playing !== token) return
     if (i >= queue.length) {
-      // Finished on its own: give the other app its audio back right away.
-      playing = null
-      focus(false)
+      // Finished on its own: give the other app its audio back after the gap. The token stays
+      // current until then, so a stopClips() in between still releases the focus right away.
+      token.el = null; token.node = null; token.src = null
+      if (focusGap > 0) token.gapTm = setTimeout(done, focusGap)
+      else done()
       return
     }
+    if (i === 0) begin()
     const src = queue[i]
     token.src = src
     const buf = bufferCache.get(src)
@@ -234,5 +262,6 @@ export function playClips(enabled, sources) {
       if (p && typeof p.catch === 'function') p.catch(() => { if (playing === token && token.el === el) step(i + 1) })
     } catch (e) { step(i + 1) }
   }
-  step(0)
+  if (focusGap > 0) token.gapTm = setTimeout(() => { token.gapTm = null; step(0) }, focusGap)
+  else step(0)
 }

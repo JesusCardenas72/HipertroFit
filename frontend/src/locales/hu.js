@@ -744,4 +744,16 @@ export default {
   'rep': 'ism.',
   'No overload': 'Nincs terhelésnövelés',
   'No overload — accumulated fatigue': 'Nincs terhelésnövelés – felgyűlt fáradtság',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': 'Edzés részleteinek megjelenítése',
+  'Hide workout details': 'Edzés részleteinek elrejtése',
+  'Set tools': 'Sorozateszközök',
+  'Drop': 'Dropszett',
+  'Burst': 'Burst',
+  'Warm up': 'Bemelegítés',
+  'One more': 'Még egy',
+  'One more set': 'Még egy sorozat',
+  'Add the set to this exercise only, or to every exercise in the superset?': 'Csak ehhez a gyakorlathoz adod a sorozatot, vagy a szuperszett minden gyakorlatához?',
+  'Only this exercise': 'Csak ez a gyakorlat',
+  'Every exercise in the superset': 'A szuperszett minden gyakorlata',
 }

@@ -60,6 +60,58 @@ export function settlePlan(prev, nextCurrent, tapDir, width) {
 }
 
 /**
+ * The workout's exercises turn rather than slide: each screen is a face of an upright cylinder,
+ * the horizontal twin of the set drum (lib/drum.js). The face in front is square on; as it
+ * travels sideways it turns round the curve, shrinks a little and catches less light, while the
+ * one arriving does the reverse — the same "one leaves as the other grows" the drum does between
+ * sets, laid on its side.
+ *
+ * Every quantity is linear in how far a face is from the front, so the CSS animation that
+ * settles the deck (`deck-turn` in index.css, which interpolates each function between its two
+ * ends) traces exactly the faces a finger would have drawn on the way.
+ */
+export const TURN_MS = 380            // mirrored by `--turn` in index.css
+export const TURN_DEG = 38            // tilt of a face a full screen away from the front
+export const TURN_SHRINK = 0.1        // and how much smaller it is drawn
+export const TURN_DIM = 0.35          // and how much light it has lost
+export const TURN_PERSPECTIVE = 1100  // px
+
+const round = (n, d = 3) => Math.round(n * 10 ** d) / 10 ** d
+
+/** The face drawn `offset` px from the front of a deck `width` px wide. */
+export function turnFace(offset, width) {
+  const f = width > 0 ? Math.max(-1.2, Math.min(1.2, offset / width)) : 0
+  return {
+    x: offset,
+    // Moving left the face turns round the cylinder's left side: its left edge recedes.
+    deg: round(f * TURN_DEG),
+    scale: round(1 - TURN_SHRINK * Math.abs(f)),
+    opacity: round(Math.max(0, 1 - TURN_DIM * Math.abs(f))),
+  }
+}
+
+/** The face as an inline style while a finger holds it, or undefined at rest. */
+export function turnStyle(offset, width) {
+  if (!offset) return undefined
+  const { x, deg, scale, opacity } = turnFace(offset, width)
+  return {
+    transform: `perspective(${TURN_PERSPECTIVE}px) translateX(${x}px) rotateY(${deg}deg) scale(${scale})`,
+    opacity,
+  }
+}
+
+/** Both ends of a settle as the custom properties `deck-turn` animates between. */
+export function turnVars(from, to, width) {
+  const a = turnFace(from, width), b = turnFace(to, width)
+  return {
+    '--slide-from': from + 'px', '--slide-to': to + 'px',
+    '--turn-from': a.deg + 'deg', '--turn-to': b.deg + 'deg',
+    '--scale-from': a.scale, '--scale-to': b.scale,
+    '--fade-from': a.opacity, '--fade-to': b.opacity,
+  }
+}
+
+/**
  * A drag with nowhere to go — the first screen swiped further back, the last one further on —
  * still has to answer the finger, or the gesture reads as broken. It follows at a fraction of
  * the distance and stops well short of uncovering the page, the way a list rubber-bands at its

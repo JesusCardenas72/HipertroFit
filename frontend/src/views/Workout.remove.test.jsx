@@ -116,14 +116,17 @@ describe('active-session exercise removal', () => {
     expect(active.entries[0].sets[0].sec).toBeUndefined()
   })
 
-  it('cancels a running rest countdown when the exercise it belongs to is removed', () => {
+  // The set behind the rest was still lifted, so removing its exercise does not take the
+  // recovery away — only the countdown's owner is forgotten.
+  it('keeps a running rest countdown when the exercise it belongs to is removed', () => {
     setActive([entry('1001'), entry('1002')], 0)
     useUI.getState().startRest(90, 0)
     expect(useUI.getState().timer).not.toBeNull()
 
     act(() => { removeActiveExercise(0) })
 
-    expect(useUI.getState().timer).toBeNull()
+    expect(useUI.getState().timer).not.toBeNull()
+    expect(useUI.getState().timer.forIdx).toBeUndefined()
     expect(useStore.getState().S.active.entries.map(e => e.id)).toEqual(['1002'])
   })
 
@@ -140,7 +143,7 @@ describe('active-session exercise removal', () => {
     expect(useStore.getState().S.active.entries.map(e => e.id)).toEqual(['1002'])
 
     act(() => { removeActiveExercise(0) })
-    expect(useUI.getState().timer).toBeNull()
+    expect(useUI.getState().timer).not.toBeNull()
   })
 
   it('leaves a rest countdown without a known owner running', () => {

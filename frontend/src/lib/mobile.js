@@ -204,7 +204,7 @@ export async function clearBackupFolder() {
   return { supported: !!p, folder: null }
 }
 
-// Audio focus around the rest-end alert (android/…/AudioFocusPlugin.java): duck whatever else is
+// Audio focus around the rest-end alert (android/…/AudioFocusPlugin.java): pause whatever else is
 // playing while the alert rings, then hand the focus back so that app resumes by itself.
 // Android only — iOS and the web build get navigator.audioSession from lib/sound.js instead.
 let focusOnce = null
@@ -219,9 +219,9 @@ function audioFocusPlugin() {
   return focusOnce
 }
 
-export async function duckOtherAudio() {
+export async function pauseOtherAudio() {
   const p = await audioFocusPlugin()
-  if (p) { try { await p.duck() } catch (e) { /* older APK without the plugin */ } }
+  if (p) { try { await p.pause() } catch (e) { /* older APK without the plugin */ } }
 }
 
 export async function releaseOtherAudio() {

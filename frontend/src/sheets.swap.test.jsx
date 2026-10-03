@@ -66,6 +66,18 @@ describe('active exercise swap sheet flow', () => {
   })
 })
 
+describe('active exercise swap keeps the rest', () => {
+  // Swapping the next machine because it is taken is something you do in the middle of a rest.
+  it('leaves a running rest counting when an exercise is swapped', () => {
+    useUI.getState().startRest(90, 0)
+    submitSwap(1, EXDB[2], { mode: 'reps', sets: 2, reps: 8, weight: 30 })
+    vi.advanceTimersByTime(10_000)
+    expect(useUI.getState().timer).not.toBeNull()
+    expect(useUI.getState().timer.left).toBe(80)
+    expect(useUI.getState().timer.forIdx).toBe(0)
+  })
+})
+
 describe('active exercise swap locale coverage', () => {
   const required = [
     'Swap exercise',

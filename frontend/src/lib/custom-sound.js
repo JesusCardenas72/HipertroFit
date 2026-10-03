@@ -1,5 +1,6 @@
-/* ---- the rest-end sound ----
-   The bundled boxing bell, or an audio file the user picked from their own device.
+/* ---- the rest-end and exercise-end sounds ----
+   A bundled clip (the boxing bell, the bells), or an audio file the user picked from their own
+   device.
 
    The picked file lives in IndexedDB on this device, not in S: S is localStorage-backed (a few
    MB for everything), exported as a JSON backup and PUT to the server on every change, and a
@@ -10,6 +11,7 @@
    Blobs in IndexedDB, and bytes round-trip everywhere. */
 import { clipsDuration, forgetClip, playClips, fanfare } from './sound.js'
 import defaultRestClip from '../assets/boxing-bell-single_CORTO.mp3'
+import defaultExerciseEndClip from '../assets/3a1-campanas.mp3'
 
 const DB_NAME = 'hipertrofit-media'
 const STORE = 'sounds'
@@ -116,6 +118,9 @@ function soundSlot(key, fallback) {
 
 /** The rest-end alert: the boxing bell or a file of the user's. */
 export const restSound = soundSlot(KEY, defaultRestClip)
+/** The end of an exercise (its last set, or a superset's last round) and of the session: bells or
+    a file of the user's. The rest between exercises starts counting as it starts. */
+export const exerciseEndSound = soundSlot('exercise-end', defaultExerciseEndClip)
 /** The "time to progress" celebration: a synthesised fanfare or a file of the user's. */
 export const progressSound = soundSlot('progress', null)
 

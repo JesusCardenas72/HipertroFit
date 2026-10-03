@@ -866,11 +866,14 @@ export function swapActiveWorkoutExercise(index) {
     if (!current) return
 
     const apply = options => {
-      // A timed callback closes over entry/set indexes. Invalidate it, and the current rest,
-      // before the selected occurrence can be replaced or a new entry shifts those indexes.
+      // A timed callback closes over entry/set indexes: invalidate it before the selected
+      // occurrence can be replaced or a new entry shifts those indexes. The rest keeps counting —
+      // swapping the next machine because it is taken is something you do *during* a rest — and
+      // only its owner index follows an inserted entry.
       ui().stopWork()
-      ui().stopRest()
-      update(state => { swapActiveExercise(state.active, index, replacement, options) }, true)
+      let result = null
+      update(state => { result = swapActiveExercise(state.active, index, replacement, options) }, true)
+      if (result?.inserted) ui().shiftRestOwner(result.index, 1)
     }
     const logged = (current.sets || []).some(set => set.done === true)
     if (!logged) { apply(); return }
@@ -2094,8 +2097,14 @@ export function finishWorkout() {
   if (!A) return
   const done = setsDoneActive(A)
   const total = A.entries.reduce((n, e) => n + e.sets.length, 0)
-  if (!done) { confirmSheet({ title: t('Nothing logged yet'), message: t('You haven’t checked off any sets. Finish the workout anyway?'), confirmText: t('Finish anyway'), onConfirm: doFinishWorkout }); return }
-  if (done < total) { confirmSheet({ title: t('Finish early?'), message: t(total - done === 1 ? '{0} set still unchecked. Finish the workout now?' : '{0} sets still unchecked. Finish the workout now?', total - done), confirmText: t('Finish workout'), onConfirm: doFinishWorkout }); return }
+  if (!done) { confirmSheet({ title: t('Nothing logged yet'), message: t('You haven’t checked off any sets. Finish the workout anyway?'), confirmText: t('Finish anyway'), onConfirm: forceFinishWorkout }); return }
+  if (done < total) { confirmSheet({ title: t('Finish early?'), message: t(total - done === 1 ? '{0} set still unchecked. Finish the workout now?' : '{0} sets still unchecked. Finish the workout now?', total - done), confirmText: t('Finish workout'), onConfirm: forceFinishWorkout }); return }
+  doFinishWorkout()
+}
+// Cutting a session short ends it the way its last set would have: with the exercise-end sound.
+// A session finished by its last set has rung it already, and a past one being logged never does.
+function forceFinishWorkout() {
+  if (S().active && !S().active.backfill) ui().endExercise(null)
   doFinishWorkout()
 }
 function doFinishWorkout() {

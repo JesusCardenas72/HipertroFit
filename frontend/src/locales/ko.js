@@ -739,4 +739,16 @@ export default {
   'rep': '회',
   'No overload': '과부하 없음',
   'No overload — accumulated fatigue': '누적 피로로 과부하 없음',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': '운동 세부 정보 보기',
+  'Hide workout details': '운동 세부 정보 숨기기',
+  'Set tools': '세트 도구',
+  'Drop': '드롭',
+  'Burst': '버스트',
+  'Warm up': '워밍업',
+  'One more': '한 세트 더',
+  'One more set': '한 세트 더',
+  'Add the set to this exercise only, or to every exercise in the superset?': '이 운동에만 세트를 추가할까요, 아니면 슈퍼세트의 모든 운동에 추가할까요?',
+  'Only this exercise': '이 운동만',
+  'Every exercise in the superset': '슈퍼세트의 모든 운동',
 }

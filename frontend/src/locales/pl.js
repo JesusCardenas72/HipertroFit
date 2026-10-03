@@ -739,4 +739,16 @@ export default {
   'rep': 'powt.',
   'No overload': 'Bez progresji',
   'No overload — accumulated fatigue': 'Bez progresji – nagromadzone zmęczenie',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': 'Pokaż szczegóły treningu',
+  'Hide workout details': 'Ukryj szczegóły treningu',
+  'Set tools': 'Narzędzia serii',
+  'Drop': 'Zniżka',
+  'Burst': 'Rest-pause',
+  'Warm up': 'Rozgrzewka',
+  'One more': 'Jeszcze jedna',
+  'One more set': 'Jeszcze jedna seria',
+  'Add the set to this exercise only, or to every exercise in the superset?': 'Dodać serię tylko do tego ćwiczenia czy do wszystkich ćwiczeń superserii?',
+  'Only this exercise': 'Tylko to ćwiczenie',
+  'Every exercise in the superset': 'Wszystkie ćwiczenia superserii',
 }

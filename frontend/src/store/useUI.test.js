@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // useUI pulls in api.js, which reads navigator.userAgent at module scope.
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { useUI } from './useUI.js'
+import { useUI, REST_ALERT_FOCUS_GAP_MS } from './useUI.js'
 import { useStore } from './useStore.js'
 import { beep, clipsDuration, playClips, stopClips } from '../lib/sound.js'
 
@@ -34,6 +34,58 @@ describe('rest timer set to Off', () => {
   })
 })
 
+// A phone reclaims a backgrounded PWA or WebView by reloading it. The rest you were in the
+// middle of has to come back with the page, still aimed at the same finish line.
+describe('a rest survives a reload', () => {
+  let originalS
+  const reload = () => { useUI.setState({ timer: null }) }   // the page's memory, gone; storage stays
+  beforeEach(() => {
+    vi.useFakeTimers()
+    localStorage.clear()
+    originalS = useStore.getState().S
+    useStore.setState({ S: { ...originalS, active: { id: 'w1', entries: [] } } })
+    useUI.getState().stopRest()
+  })
+  afterEach(() => { useUI.getState().stopRest(); useStore.setState({ S: originalS }); vi.useRealTimers() })
+
+  it('picks the countdown back up where it is now, not where it was', () => {
+    useUI.getState().startRest(90, 2, 'exercise')
+    vi.advanceTimersByTime(30_000)
+    reload()
+    useUI.getState().resumeRest()
+    expect(useUI.getState().timer).toMatchObject({ left: 60, total: 90, forIdx: 2, kind: 'exercise' })
+    vi.advanceTimersByTime(60_000)
+    expect(useUI.getState().timer).toBeNull()
+  })
+
+  it('keeps time added with +15s', () => {
+    useUI.getState().startRest(60)
+    useUI.getState().addRest(15)
+    reload()
+    useUI.getState().resumeRest()
+    expect(useUI.getState().timer.left).toBe(75)
+  })
+
+  it('does not bring back a rest that was skipped, ran out, or belongs to another workout', () => {
+    useUI.getState().startRest(60)
+    useUI.getState().stopRest()
+    useUI.getState().resumeRest()
+    expect(useUI.getState().timer).toBeNull()
+
+    useUI.getState().startRest(60)
+    reload()
+    vi.advanceTimersByTime(61_000)
+    useUI.getState().resumeRest()
+    expect(useUI.getState().timer).toBeNull()
+
+    useUI.getState().startRest(60)
+    reload()
+    useStore.setState({ S: { ...originalS, active: { id: 'w2', entries: [] } } })
+    useUI.getState().resumeRest()
+    expect(useUI.getState().timer).toBeNull()
+  })
+})
+
 // The alert has to LAND on zero, not start there: it is the end of the bell that marks the end
 // of the rest. That makes its start time a function of how long the clips run, which is the one
 // thing here that can be silently wrong — the sound still plays, just in the wrong place.
@@ -57,17 +109,22 @@ describe('rest alert lands on the end of the rest', () => {
     vi.useRealTimers()
   })
 
-  it('starts the clips exactly their own length before the rest ends', async () => {
+  // The music is paused GAP before the bell, so the sequence starts that much earlier again:
+  // the bell itself still ends on zero.
+  const GAP = REST_ALERT_FOCUS_GAP_MS
+
+  it('starts the clips their own length plus the pause gap before the rest ends', async () => {
     useUI.getState().startRest(90)
     await vi.advanceTimersByTimeAsync(0)          // let the duration lookup resolve
 
-    await vi.advanceTimersByTimeAsync((90 - CLIP_SECONDS) * 1000 - 1)
+    await vi.advanceTimersByTimeAsync((90 - CLIP_SECONDS) * 1000 - GAP - 1)
     expect(playClips).not.toHaveBeenCalled()
 
     await vi.advanceTimersByTimeAsync(1)
     expect(playClips).toHaveBeenCalledTimes(1)
     expect(playClips.mock.calls[0][0]).toBe(true)  // gated on the sound setting
     expect(playClips.mock.calls[0][1]).toHaveLength(1)
+    expect(playClips.mock.calls[0][2]).toEqual({ focusGap: 1500 })
   })
 
   it('does not start it again when the countdown reaches zero', async () => {
@@ -93,7 +150,7 @@ describe('rest alert lands on the end of the rest', () => {
     useUI.getState().startRest(90)
     await vi.advanceTimersByTimeAsync(0)
     useStore.setState({ S: { ...useStore.getState().S, sound: false } })
-    await vi.advanceTimersByTimeAsync((90 - CLIP_SECONDS) * 1000)
+    await vi.advanceTimersByTimeAsync((90 - CLIP_SECONDS) * 1000 - GAP)
     expect(playClips.mock.calls[0][0]).toBe(false)
   })
 
@@ -113,10 +170,89 @@ describe('rest alert lands on the end of the rest', () => {
 
     useUI.getState().addRest(30)                  // 60s left now
     await vi.advanceTimersByTimeAsync(0)
-    await vi.advanceTimersByTimeAsync((60 - CLIP_SECONDS) * 1000 - 1)
+    await vi.advanceTimersByTimeAsync((60 - CLIP_SECONDS) * 1000 - GAP - 1)
     expect(playClips).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)
     expect(playClips).toHaveBeenCalledTimes(1)
+  })
+})
+
+// The last set of an exercise rings the exercise-end sound with the same pause around it as the
+// rest alert, and the rest between exercises starts counting when the sound starts.
+describe('exercise-end sound', () => {
+  let originalS
+  // Stand-in for playClips: run onStart the way the real one does — after the gap, or at once.
+  const playLikeReal = (enabled, clips, { focusGap, onStart } = {}) => {
+    if (!enabled || !clips.length) onStart?.()
+    else setTimeout(() => onStart?.(), focusGap)
+  }
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.mocked(playClips).mockReset().mockImplementation(playLikeReal)
+    vi.mocked(stopClips).mockClear()
+    originalS = useStore.getState().S
+    useStore.setState({ S: { ...originalS, sound: true, active: { id: 'w1', entries: [] } } })
+    useUI.getState().stopRest()
+  })
+  afterEach(() => {
+    useUI.getState().stopRest()
+    useStore.setState({ S: originalS })
+    vi.mocked(playClips).mockReset()
+    vi.useRealTimers()
+  })
+
+  it('plays its clip with the 1.5 s pause on both sides', () => {
+    useUI.getState().endExercise(120, 3)
+    expect(playClips).toHaveBeenCalledTimes(1)
+    const [enabled, clips, opts] = playClips.mock.calls[0]
+    expect(enabled).toBe(true)
+    expect(clips).toHaveLength(1)
+    expect(opts.focusGap).toBe(REST_ALERT_FOCUS_GAP_MS)
+  })
+
+  it('starts the rest between exercises when the sound starts, not when the set was ticked', async () => {
+    useUI.getState().endExercise(120, 3)
+    expect(useUI.getState().timer).toBe(null)
+    await vi.advanceTimersByTimeAsync(REST_ALERT_FOCUS_GAP_MS)
+    expect(useUI.getState().timer).toMatchObject({ left: 120, total: 120, forIdx: 3, kind: 'exercise' })
+  })
+
+  it('does not cut its own sound when that rest starts', async () => {
+    useUI.getState().endExercise(120, 3)
+    vi.mocked(stopClips).mockClear()
+    await vi.advanceTimersByTimeAsync(REST_ALERT_FOCUS_GAP_MS)
+    expect(stopClips).not.toHaveBeenCalled()
+  })
+
+  it('with sound off the rest starts at once', () => {
+    useStore.setState({ S: { ...useStore.getState().S, sound: false } })
+    useUI.getState().endExercise(90, 1)
+    expect(useUI.getState().timer).toMatchObject({ total: 90, kind: 'exercise' })
+  })
+
+  it('rings with no rest after it for the last exercise or a session finished early', async () => {
+    useUI.getState().endExercise(null)
+    expect(playClips).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(useUI.getState().timer).toBe(null)
+  })
+
+  it('a rest skipped, replaced or a session ended during the pause owns the schedule', async () => {
+    useUI.getState().endExercise(120, 3)
+    useUI.getState().stopRest()
+    await vi.advanceTimersByTimeAsync(REST_ALERT_FOCUS_GAP_MS)
+    expect(useUI.getState().timer).toBe(null)
+
+    useUI.getState().endExercise(120, 3)
+    useUI.getState().startRest(60, 4, 'sets')
+    await vi.advanceTimersByTimeAsync(REST_ALERT_FOCUS_GAP_MS)
+    expect(useUI.getState().timer).toMatchObject({ total: 60, forIdx: 4, kind: 'sets' })
+    useUI.getState().stopRest()
+
+    useUI.getState().endExercise(120, 3)
+    useStore.setState({ S: { ...useStore.getState().S, active: null } })
+    await vi.advanceTimersByTimeAsync(REST_ALERT_FOCUS_GAP_MS)
+    expect(useUI.getState().timer).toBe(null)
   })
 })
 

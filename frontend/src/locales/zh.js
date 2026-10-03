@@ -739,4 +739,16 @@ export default {
   'rep': '次',
   'No overload': '无渐进超负荷',
   'No overload — accumulated fatigue': '因累积疲劳不加负荷',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': '显示训练详情',
+  'Hide workout details': '隐藏训练详情',
+  'Set tools': '组工具',
+  'Drop': '递减',
+  'Burst': '爆发',
+  'Warm up': '热身',
+  'One more': '再来一组',
+  'One more set': '再加一组',
+  'Add the set to this exercise only, or to every exercise in the superset?': '只给这个动作加一组，还是给超级组里的所有动作各加一组？',
+  'Only this exercise': '仅此动作',
+  'Every exercise in the superset': '超级组中的所有动作',
 }

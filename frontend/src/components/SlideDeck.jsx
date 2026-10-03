@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { SLIDE_MS, dragOffsets, settlePlan } from '../lib/slide.js'
+import { SLIDE_MS, TURN_MS, dragOffsets, settlePlan, turnStyle, turnVars } from '../lib/slide.js'
 
 /**
  * Two screens that slide past each other: the one arriving comes in from a border and pushes
@@ -17,6 +17,10 @@ import { SLIDE_MS, dragOffsets, settlePlan } from '../lib/slide.js'
  * The neighbour is rendered for real, not faked, which is what makes it a push instead of a
  * reveal; callers only hand one over once the drag has committed to the horizontal axis, so
  * the cost of mounting it is paid on genuine intent and at most once per gesture.
+ *
+ * With `turn` the screens are faces of an upright cylinder instead of flat sheets: each tilts,
+ * shrinks and dims as it leaves the front (turnFace in lib/slide.js), and the settle eases in
+ * with the small overshoot of the set drum clicking into place.
  */
 
 const viewportWidth = () => (typeof window === 'undefined' ? 0 : window.innerWidth || 0)
@@ -30,6 +34,7 @@ export default function SlideDeck({
   render,               // (id, isPeek) => JSX
   layerClass = '',
   freezeScroll = false, // hold the outgoing layer where it was scrolled to (see below)
+  turn = false,         // faces of a cylinder rather than flat sheets (see above)
   className = '',
 }) {
   const [anim, setAnim] = useState(null)   // [{ id, from, to }] while the deck settles
@@ -66,7 +71,7 @@ export default function SlideDeck({
         frozenTop.current = freezeScroll ? scrolled.current : 0
         setAnim(plan)
         clearTimeout(timer.current)
-        timer.current = setTimeout(() => setAnim(null), SLIDE_MS)
+        timer.current = setTimeout(() => setAnim(null), turn ? TURN_MS : SLIDE_MS)
         last.current = { current, peek: null, dir, offsets: Object.fromEntries(plan.map(l => [l.id, l.to])) }
         return
       }
@@ -75,14 +80,16 @@ export default function SlideDeck({
     last.current = { current, peek, dir, offsets: dragOffsets({ current, peek, dir, dx }, width) }
   })
 
-  const offsets = anim ? null : dragOffsets({ current, peek, dir, dx }, viewportWidth())
+  const width = viewportWidth()
+  const offsets = anim ? null : dragOffsets({ current, peek, dir, dx }, width)
   const layers = anim
-    ? anim.map(l => ({ id: l.id, style: { '--slide-from': l.from + 'px', '--slide-to': l.to + 'px' } }))
+    ? anim.map(l => ({ id: l.id, style: turn ? turnVars(l.from, l.to, width) : { '--slide-from': l.from + 'px', '--slide-to': l.to + 'px' } }))
     : (peek != null && peek !== current ? [current, peek] : [current])
-        .map(id => ({ id, style: offsets[id] ? { transform: 'translateX(' + offsets[id] + 'px)' } : undefined }))
+        .map(id => ({ id, style: turn ? turnStyle(offsets[id], width)
+          : offsets[id] ? { transform: 'translateX(' + offsets[id] + 'px)' } : undefined }))
 
   return (
-    <div className={'deck' + (className ? ' ' + className : '')} data-testid="slide-deck">
+    <div className={'deck' + (turn ? ' deck-turn' : '') + (className ? ' ' + className : '')} data-testid="slide-deck">
       {layers.map(l => {
         const over = l.id !== current
         return (

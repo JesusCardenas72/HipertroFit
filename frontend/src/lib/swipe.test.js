@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  swipeLock, rowOffset, rowArmed, navDirection,
-  SWIPE_LOCK_DISTANCE, SWIPE_MIN_DISTANCE, ROW_DELETE_DISTANCE, ROW_MAX_OFFSET
+  swipeLock, rowOffset, rowArmed, navDirection, navCommit,
+  SWIPE_LOCK_DISTANCE, SWIPE_FLICK, SWIPE_MIN_DISTANCE, ROW_DELETE_DISTANCE, ROW_MAX_OFFSET
 } from './swipe.js'
 
 describe('swipeLock', () => {
@@ -54,5 +54,28 @@ describe('navDirection', () => {
   it('ignores a drag too short or too diagonal to be meant', () => {
     expect(navDirection(SWIPE_MIN_DISTANCE - 1, 0)).toBe(0)
     expect(navDirection(60, 60)).toBe(0)
+  })
+})
+
+describe('navCommit', () => {
+  it('pages once the drag has gone far enough towards the neighbour', () => {
+    expect(navCommit({ dx: -SWIPE_MIN_DISTANCE, dir: 1 })).toBe(true)
+    expect(navCommit({ dx: SWIPE_MIN_DISTANCE, dir: -1 })).toBe(true)
+    expect(navCommit({ dx: -(SWIPE_MIN_DISTANCE - 1), dir: 1 })).toBe(false)
+  })
+  it('pages on a flick short of the distance, the way the set drum does', () => {
+    expect(navCommit({ dx: -20, v: -SWIPE_FLICK, dir: 1 })).toBe(true)
+    expect(navCommit({ dx: 20, v: SWIPE_FLICK, dir: -1 })).toBe(true)
+  })
+  it('ignores a flick that barely moved or went the other way from the drag', () => {
+    expect(navCommit({ dx: -(SWIPE_LOCK_DISTANCE - 1), v: -2, dir: 1 })).toBe(false)
+    expect(navCommit({ dx: 20, v: -2, dir: 1 })).toBe(false)
+  })
+  it('springs back when the finger flicks back, however far it had gone', () => {
+    expect(navCommit({ dx: -150, v: SWIPE_FLICK, dir: 1 })).toBe(false)
+  })
+  it('never pages a diagonal drag or one with nowhere to go', () => {
+    expect(navCommit({ dx: -60, dy: 80, dir: 1 })).toBe(false)
+    expect(navCommit({ dx: -200, dir: 0 })).toBe(false)
   })
 })

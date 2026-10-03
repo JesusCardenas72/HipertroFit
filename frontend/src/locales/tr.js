@@ -739,4 +739,16 @@ export default {
   'rep': 'tekrar',
   'No overload': 'Yüklenme yok',
   'No overload — accumulated fatigue': 'Yüklenme yok — birikmiş yorgunluk',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': 'Antrenman ayrıntılarını göster',
+  'Hide workout details': 'Antrenman ayrıntılarını gizle',
+  'Set tools': 'Set araçları',
+  'Drop': 'Düşüş',
+  'Burst': 'Patlama',
+  'Warm up': 'Isın',
+  'One more': 'Bir tane daha',
+  'One more set': 'Bir set daha',
+  'Add the set to this exercise only, or to every exercise in the superset?': 'Set yalnızca bu egzersize mi, yoksa süper setteki tüm egzersizlere mi eklensin?',
+  'Only this exercise': 'Yalnızca bu egzersiz',
+  'Every exercise in the superset': 'Süper setteki tüm egzersizler',
 }

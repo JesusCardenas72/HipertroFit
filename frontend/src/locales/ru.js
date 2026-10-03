@@ -739,4 +739,16 @@ export default {
   'rep': 'повт.',
   'No overload': 'Без прогрессии',
   'No overload — accumulated fatigue': 'Без прогрессии — накопленная усталость',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': 'Показать детали тренировки',
+  'Hide workout details': 'Скрыть детали тренировки',
+  'Set tools': 'Инструменты подхода',
+  'Drop': 'Дроп',
+  'Burst': 'Серия',
+  'Warm up': 'Разминка',
+  'One more': 'Ещё один',
+  'One more set': 'Ещё один подход',
+  'Add the set to this exercise only, or to every exercise in the superset?': 'Добавить подход только к этому упражнению или ко всем упражнениям суперсета?',
+  'Only this exercise': 'Только это упражнение',
+  'Every exercise in the superset': 'Все упражнения суперсета',
 }

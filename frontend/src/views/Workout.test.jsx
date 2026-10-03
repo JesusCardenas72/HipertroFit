@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => {
   state.openSheet = vi.fn((render, opts) => { state.sheet = { render, opts }; return { close: vi.fn() } })
   state.stopRest = vi.fn(() => { state.timer = null })
   state.stopWork = vi.fn(() => { state.work = null })
+  // As the real one does with sound off: the rest between exercises starts as the sound would.
+  state.endExercise = vi.fn((sec, idx) => { if (sec != null) state.startRest(sec, idx, 'exercise') })
   state.storeSnapshot = () => ({
     S: state.S,
     user: null,
@@ -38,6 +40,7 @@ const mocks = vi.hoisted(() => {
     timer: state.timer,
     work: state.work,
     startRest: state.startRest,
+    endExercise: state.endExercise,
     stopRest: state.stopRest,
     stopWork: state.stopWork,
     shiftRestOwner: vi.fn(),
@@ -231,8 +234,58 @@ describe('Workout set completion flow', () => {
     expect(mocks.startRest).not.toHaveBeenCalled()
   })
 
+  // The closing set of an exercise rings the exercise-end sound, and the rest between exercises
+  // comes with it; the session's last set rings it too, with no rest after.
+  it('rings the exercise-end sound on the closing set only, with the rest between exercises', async () => {
+    await mount([
+      exercise('current', [false, false], { asked: true }),
+      exercise('next', [false]),
+    ], 0, { restExSec: 180 })
+    await toggleSetOf(0, 0)
+    expect(mocks.endExercise).not.toHaveBeenCalled()
+    await rerender()
+    await toggleSetOf(0, 1)
+    expect(mocks.endExercise).toHaveBeenCalledOnce()
+    expect(mocks.endExercise).toHaveBeenCalledWith(180, 0)
+  })
+
+  it('rings it on the last set of the session too, with no rest after', async () => {
+    await mount([exercise('only', [true, false], { asked: true })])
+    await toggleSetOf(0, 1)
+    expect(mocks.endExercise).toHaveBeenCalledOnce()
+    expect(mocks.endExercise).toHaveBeenCalledWith(null, 0)
+    expect(mocks.startRest).not.toHaveBeenCalled()
+  })
+
+  it('rings it when the last round of a superset is done, not between rounds', async () => {
+    await mount([
+      exercise('a', [true, false], { asked: true, sg: 'g' }),
+      exercise('b', [true, false], { asked: true, sg: 'g' }),
+      exercise('next', [false]),
+    ])
+    await toggleSetOf(0, 1)
+    expect(mocks.endExercise).not.toHaveBeenCalled()
+    await rerender()
+    await toggleSetOf(1, 1)
+    expect(mocks.endExercise).toHaveBeenCalledOnce()
+    expect(mocks.endExercise).toHaveBeenCalledWith(90, 1)
+  })
+
+  it('a re-check of finished work does not ring it again', async () => {
+    await mount([
+      exercise('current', [true, true], { asked: true }),
+      exercise('next', [false]),
+    ])
+    await toggleSetOf(0, 1)
+    await rerender()
+    await toggleSetOf(0, 1)
+    expect(mocks.endExercise).not.toHaveBeenCalled()
+  })
+
+  // A warm-up is the next set, not the recovery: finishing an exercise owes its rest whatever
+  // the next one opens with. (Skipping it there lost the rest on most changes of exercise.)
   it.each(['warmup', 'warm-up', 'warm_up'])(
-    'does not start transition rest before an incomplete %s row in the next ordinary exercise',
+    'still starts the rest between exercises when the next one opens with a %s row',
     async phase => {
       await mount([
         exercise('current', [false], { asked: true }),
@@ -248,11 +301,11 @@ describe('Workout set completion flow', () => {
       await toggleSet(0)
 
       expect(mocks.S.active.cur).toBe(1)
-      expect(mocks.startRest).not.toHaveBeenCalled()
+      expect(mocks.startRest).toHaveBeenCalledWith(90, expect.any(Number), 'exercise')
     },
   )
 
-  it('does not start transition rest when a completed superset advances to an incomplete warm-up', async () => {
+  it('still starts the rest between exercises when a completed superset advances to a warm-up', async () => {
     await mount([
       exercise('superset-a', [true], { sg: 'group', asked: true }),
       exercise('superset-b', [false], { sg: 'group', asked: true }),
@@ -268,7 +321,7 @@ describe('Workout set completion flow', () => {
     await toggleSet(1)
 
     expect(mocks.S.active.cur).toBe(2)
-    expect(mocks.startRest).not.toHaveBeenCalled()
+    expect(mocks.startRest).toHaveBeenCalledWith(90, expect.any(Number), 'exercise')
   })
 
   it('keeps a superset on its warm-ups before handing over to the linked work sets', async () => {
@@ -298,7 +351,7 @@ describe('Workout set completion flow', () => {
     expect(mocks.S.active.cur).toBe(1)
   })
 
-  it('does not start transition rest before a warm-up while top-weight confirmation owns navigation', async () => {
+  it('still starts the rest before a warm-up while top-weight confirmation owns navigation', async () => {
     await mount([
       exercise('current-loaded', [false]),
       exercise('next', [false, false], {
@@ -314,10 +367,10 @@ describe('Workout set completion flow', () => {
 
     expect(mocks.topWeightSheet).toHaveBeenCalledWith(0)
     expect(mocks.S.active.cur).toBe(0)
-    expect(mocks.startRest).not.toHaveBeenCalled()
+    expect(mocks.startRest).toHaveBeenCalledWith(90, expect.any(Number), 'exercise')
   })
 
-  it('does not restart transition rest when re-checking a completed unit before an incomplete warm-up', async () => {
+  it('re-checking a completed unit before a warm-up still owes the rest it had not given', async () => {
     await mount([
       exercise('current', [true], { asked: true }),
       exercise('next', [false, false], {
@@ -334,7 +387,7 @@ describe('Workout set completion flow', () => {
     await toggleSet(0)
 
     expect(mocks.S.active.cur).toBe(0)
-    expect(mocks.startRest).not.toHaveBeenCalled()
+    expect(mocks.startRest).toHaveBeenCalledWith(90, expect.any(Number), 'exercise')
   })
 
   it('leaves a completed superset selected while its top-weight sheet owns the advance choice', async () => {
@@ -1003,6 +1056,9 @@ describe('active exercise swap control', () => {
   it('opens the swap flow for the selected duplicate occurrence', async () => {
     await mount([exercise('bench', [false]), exercise('bench', [false]), exercise('row', [false])], 1)
 
+    // The swap lives in the exercise's own header, behind its name.
+    const head = container.querySelector('.exhead-tg')
+    await act(async () => { head.dispatchEvent(new dom.Event('click', { bubbles: true })) })
     const swap = container.querySelector('button[aria-label="Swap exercise"]')
     expect(swap).toBeTruthy()
     await act(async () => { swap.dispatchEvent(new dom.Event('click', { bubbles: true })) })

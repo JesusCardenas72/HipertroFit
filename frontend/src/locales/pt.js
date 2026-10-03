@@ -739,4 +739,16 @@ export default {
   'rep': 'rep',
   'No overload': 'Sem sobrecarga',
   'No overload — accumulated fatigue': 'Sem sobrecarga por fadiga acumulada',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': 'Mostrar detalhes do treino',
+  'Hide workout details': 'Ocultar detalhes do treino',
+  'Set tools': 'Ferramentas da série',
+  'Drop': 'Queda',
+  'Burst': 'Rajada',
+  'Warm up': 'Aquecer',
+  'One more': 'Mais uma',
+  'One more set': 'Mais uma série',
+  'Add the set to this exercise only, or to every exercise in the superset?': 'Adicionar a série só a este exercício ou a todos os exercícios da supersérie?',
+  'Only this exercise': 'Só este exercício',
+  'Every exercise in the superset': 'Todos os exercícios da supersérie',
 }

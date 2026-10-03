@@ -13,16 +13,17 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * Lets the rest-end alert play over the user's music and hand it back afterwards.
+ * Pauses the user's music for the rest-end alert and hands it back afterwards.
  *
  * Left to itself, a sound played by the WebView can take full audio focus, and Spotify or a
  * podcast app treats that as "another app started playing" — it pauses and stays paused. This
- * asks for AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK instead, the focus type Android documents for
- * short notification-like sounds: the other app lowers its volume (or briefly pauses) while the
- * alert plays, and when release() abandons the focus it gets it back and carries on by itself.
+ * asks for AUDIOFOCUS_GAIN_TRANSIENT instead: the other app gets AUDIOFOCUS_LOSS_TRANSIENT and
+ * pauses, and when release() abandons the focus it gets AUDIOFOCUS_GAIN back and resumes by
+ * itself. (…_MAY_DUCK would only lower its volume; the bell is meant to be heard on its own.)
  *
- * lib/sound.js calls duck() as the alert starts and release() as its last clip ends or is cut
- * off; lib/mobile.js wires those calls up. No new dependency — AudioManager is framework API.
+ * lib/sound.js calls pause() 1.5 s before the alert starts and release() 1.5 s after its last
+ * clip ends, or at once if it is cut off; lib/mobile.js wires those calls up. No new
+ * dependency — AudioManager is framework API.
  */
 @CapacitorPlugin(name = "AudioFocus")
 public class AudioFocusPlugin extends Plugin {
@@ -38,7 +39,7 @@ public class AudioFocusPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void duck(PluginCall call) {
+    public void pause(PluginCall call) {
         AudioManager am = audio();
         JSObject r = new JSObject();
         if (am == null) {
@@ -49,7 +50,7 @@ public class AudioFocusPlugin extends Plugin {
         int result;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (request == null) {
-                request = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                request = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                         .setAudioAttributes(new AudioAttributes.Builder()
                                 .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
                                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -80,7 +81,7 @@ public class AudioFocusPlugin extends Plugin {
 
     @SuppressWarnings("deprecation")
     private int legacyRequest(AudioManager am) {
-        return am.requestAudioFocus(listener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK);
+        return am.requestAudioFocus(listener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
     }
 
     @SuppressWarnings("deprecation")

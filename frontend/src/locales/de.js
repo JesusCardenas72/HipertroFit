@@ -756,4 +756,16 @@ export default {
   'rep': 'Wdh.',
   'No overload': 'Keine Steigerung',
   'No overload — accumulated fatigue': 'Keine Steigerung – angesammelte Ermüdung',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': 'Trainingsdetails anzeigen',
+  'Hide workout details': 'Trainingsdetails ausblenden',
+  'Set tools': 'Satz-Werkzeuge',
+  'Drop': 'Dropsatz',
+  'Burst': 'Burst',
+  'Warm up': 'Aufwärmen',
+  'One more': 'Noch einer',
+  'One more set': 'Noch ein Satz',
+  'Add the set to this exercise only, or to every exercise in the superset?': 'Den Satz nur zu dieser Übung hinzufügen oder zu allen Übungen des Supersatzes?',
+  'Only this exercise': 'Nur diese Übung',
+  'Every exercise in the superset': 'Alle Übungen des Supersatzes',
 }

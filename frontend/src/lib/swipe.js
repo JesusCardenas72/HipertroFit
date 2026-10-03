@@ -55,3 +55,20 @@ export function navDirection(dx, dy = 0) {
   if (Math.abs(dx) < SWIPE_MIN_DISTANCE || Math.abs(dx) < Math.abs(dy) * SWIPE_AXIS_RATIO) return 0
   return dx < 0 ? 1 : -1
 }
+
+/** A quick flick pages even short of SWIPE_MIN_DISTANCE, as the set drum does (px/ms). */
+export const SWIPE_FLICK = 0.5
+
+/**
+ * Whether letting go of a navigation drag towards `dir` (+1 next, -1 previous) pages there.
+ * `v` is the finger's horizontal speed as it left, in px/ms (0 when it had stopped). Far enough
+ * pages, unless the finger was flicking back the other way; short of it, a flick the right way
+ * still pages — the drag only has to have gone the right way at all.
+ */
+export function navCommit({ dx, dy = 0, v = 0, dir }) {
+  if (!dir) return false
+  const flick = Math.abs(v) >= SWIPE_FLICK ? (v < 0 ? 1 : -1) : 0
+  if (flick === -dir) return false
+  if (navDirection(dx, dy) === dir) return true
+  return flick === dir && Math.sign(-dx) === dir && Math.abs(dx) >= SWIPE_LOCK_DISTANCE
+}

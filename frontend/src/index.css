@@ -60,7 +60,7 @@
 
   /* motion */
   --ease:cubic-bezier(.32,.72,0,1);
-  --fast:140ms; --med:220ms; --slide:280ms;
+  --fast:140ms; --med:220ms; --slide:280ms; --turn:380ms;
 
   /* On iOS these come straight from the notch/home-indicator. On Android the WebView only
      ever reports a display cutout here — never the status bar, never the navigation bar —
@@ -200,6 +200,18 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
 /* `both` holds the end state until the layer is dropped, so the outgoing screen stays
    off-screen for the frames between the animation ending and React unmounting it. */
 .deck-sliding{animation:deck-slide var(--slide) var(--ease) both}
+/* The workout's exercises turn instead (turnFace in lib/slide.js): faces of an upright cylinder
+   that tilt, shrink and dim as they leave the front. Every end is a custom property, so this one
+   keyframe settles a drag let go anywhere, on the set drum's own curve: a small overshoot, the
+   face clicking into place. perspective() lives in the transform, not on .deck, so the deck never
+   becomes the containing block of anything fixed inside a screen. */
+@keyframes deck-turn{
+  from{transform:perspective(1100px) translateX(var(--slide-from,0px)) rotateY(var(--turn-from,0deg)) scale(var(--scale-from,1));opacity:var(--fade-from,1)}
+  to{transform:perspective(1100px) translateX(var(--slide-to,0px)) rotateY(var(--turn-to,0deg)) scale(var(--scale-to,1));opacity:var(--fade-to,1)}
+}
+.deck-turn .deck-layer{backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-origin:50% 40vh}
+/* exactly SetDrum's settle, 1 + 2(k−1)³ + (k−1)², written as a Bézier */
+.deck-turn .deck-sliding{animation:deck-turn var(--turn) cubic-bezier(.333,1.333,.667,1) both}
 /* With animations off (the reduced-motion rule below turns them all off) the outgoing layer
    would otherwise sit on top of the new screen until the timer drops it. */
 @media (prefers-reduced-motion: reduce){.deck-over{display:none}}
@@ -720,6 +732,7 @@ h4.sec{
 }
 .giftoggle.inline:active{transform:scale(.94)}
 .giftoggle.inline .icn{font-size:13px}
+.giftoggle.inline.plain{background:var(--surface-2);color:var(--label-2)}
 /* the position line above the card stays a single row on a phone: the chips keep their
    size and only the "Between exercises" label gives way, truncating with an ellipsis */
 .wpos{flex-wrap:nowrap;min-width:0}
@@ -1294,6 +1307,16 @@ h4.sec{
    than the same block does when it is just the top of a page. */
 .wtop .hdr{margin-bottom:10px}
 .wtop .wprog{margin-bottom:10px}
+/* the drum folds the header to its title bar; the title is the toggle for the rest */
+.wtop.slim .hdr{align-items:center;margin:2px 0 8px}
+.wtop.slim .wprog{margin-bottom:8px}
+.wtop-tg{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;padding:0;
+  background:none;border:0;color:inherit;text-align:center;cursor:pointer}
+.wtop-name{display:flex;align-items:center;gap:5px;max-width:100%;font-weight:600}
+.wtop-name span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wtop-name .icn{flex:none;font-size:.8em;color:var(--label-2)}
+.wtop-tg .sub{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wtop.slim .wtop-tg .sub{font-size:13px;margin-top:2px}
 /* A superset nests a card inside the page's own gutter, so its inset is paid twice. On a
    narrow phone that left the weight and reps steppers too tight to show a three-digit
    number — reported as "the reps textbox becomes too small when superset on mobile". The
@@ -1451,6 +1474,17 @@ h4.sec{
 .exhead-tg{flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:0;text-align:left;
   font-weight:600;letter-spacing:-.02em;text-transform:capitalize;line-height:1.2;color:inherit;background:none;border:0;cursor:pointer}
 .exhead-chev{flex:none;font-size:.8em;color:var(--label-2)}
+.exhead-drum{gap:10px}
+/* in the drum the animation waits behind a thumbnail beside the name; tap it for the full one */
+.exthumb{position:relative;flex:none;width:44px;height:44px;padding:0;border-radius:11px;overflow:hidden;background:#fff;
+  box-shadow:inset 0 0 0 var(--hair) var(--sep);transition:box-shadow var(--fast)}
+.exthumb .thumb{display:block;width:100%;height:100%;border-radius:0;pointer-events:none}
+.exthumb .icn{position:absolute;right:2px;bottom:2px;width:16px;height:16px;padding:3px;border-radius:50%;
+  background:rgba(0,0,0,.55);color:#fff}
+.exthumb.on{box-shadow:0 0 0 2px var(--acc)}
+/* a note folded to its first line in the drum; tapping it opens the header to read it whole */
+.exnote.fold{display:block;width:100%;text-align:left;padding:7px 12px;font-size:13px;margin-bottom:6px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .dpask svg{flex:none}
 .dpask span{flex:1}
 
@@ -1527,6 +1561,10 @@ h4.sec{
   background:linear-gradient(90deg,var(--surface-2),var(--surface) 46%,var(--surface-2));
   box-shadow:inset 0 0 0 var(--hair) var(--sep),inset 0 14px 16px -12px rgba(0,0,0,.55),inset 0 -14px 16px -12px rgba(0,0,0,.55);
 }
+/* the exercise on screen, as a thumbnail in a rounded box just above the rail */
+.drum-thumb{position:absolute;left:0;border-radius:10px;overflow:hidden;background:#fff;pointer-events:none;
+  box-shadow:0 0 0 var(--hair) var(--sep);animation:drumFade var(--med) var(--ease)}
+.drum-thumb .thumb{display:block;width:100%;height:100%;border-radius:0}
 .drum-axis{position:absolute;top:14px;bottom:14px;left:50%;width:1px;background:var(--sep);transform:translateX(-50%)}
 .drum-track{
   position:absolute;top:0;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:var(--pip-gap);
@@ -1631,7 +1669,6 @@ h4.sec{
   text-transform:uppercase;color:var(--hc)}
 .dh-kind small{font-size:13px;font-weight:500;color:var(--label-3);letter-spacing:.02em}
 .dh-ex{flex:1;min-width:0;font-size:13px;color:var(--label-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:capitalize}
-.dh-del{margin-left:auto;color:var(--label-3);background:transparent}
 .dh-let{width:24px;height:24px;border-radius:7px;flex:none;display:grid;place-items:center;font-size:13px;font-weight:700;
   background:color-mix(in srgb,var(--mc) 22%,transparent);color:var(--mc)}
 .dh-let.sm{width:20px;height:20px;border-radius:6px;font-size:11px}
@@ -1641,20 +1678,21 @@ h4.sec{
 .dh-tag{display:inline-flex;align-items:center;gap:4px;min-width:84px;font-size:11px;font-weight:600;letter-spacing:.08em;
   text-transform:uppercase;color:var(--label-3)}
 .dh-line.prev b{color:var(--label-2)}
-.dh-line.goal .dh-tag{color:var(--hc)}
-.dh-line.goal b{color:var(--label);font-weight:700;font-size:15px}
 .dh-delta{padding:1px 7px;border-radius:999px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;
   color:var(--acc);background:color-mix(in srgb,var(--acc) 16%,transparent)}
 .dh-delta.none{color:var(--yellow);background:color-mix(in srgb,var(--yellow) 16%,transparent)}
 .dh-apply{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:4px 11px;font-size:12px;font-weight:600;color:var(--acc)}
 .dh-apply svg{width:12px;height:12px}
 .dh-cols{display:flex;gap:10px;margin-top:10px}
-.dh-col{flex:1;min-width:0;display:flex;flex-direction:column;border-radius:17px;overflow:hidden;
+.dh-col{flex:1;min-width:0;display:flex;flex-direction:column;border-radius:17px;overflow:hidden;container-type:inline-size;
   background:color-mix(in srgb,var(--surface-2) 88%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep)}
 .dh-col.eff{flex:.78}
 .dh-l{padding:9px 4px 0;font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--label-3);
   text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dh-b{height:42px;display:grid;place-items:center;color:var(--label-2);font-size:19px;--icon-stroke:2.2;
+/* The hero grows with the screen it has: the steppers get taller (easier to hit mid-set) and the
+   numbers as large as the column allows for how many characters they have (--chars, set by
+   DrumHero) — "10" can fill it, "102.5" has to fit in it. */
+.dh-b{height:clamp(42px,6.6vh,60px);display:grid;place-items:center;color:var(--label-2);font-size:clamp(19px,2.7vh,24px);--icon-stroke:2.2;
   transition:background var(--fast),color var(--fast)}
 .dh-b:active{background:var(--surface-3);color:var(--hc)}
 .dh-v{display:flex}
@@ -1665,14 +1703,46 @@ h4.sec{
 }
 .dh.n1 .dh-v .num{font-size:62px;min-height:68px}
 .dh.n3 .dh-v .num{font-size:34px;min-height:48px}
+@supports (width:1cqi){
+  .dh-v .num{min-height:clamp(56px,9.6vh,92px);
+    font-size:clamp(30px,min(9vh,calc(100cqi / (var(--chars,3) * .47 + .15))),84px)}
+  .dh.n1 .dh-v .num{min-height:clamp(68px,13vh,120px);
+    font-size:clamp(40px,min(12vh,calc(100cqi / (var(--chars,3) * .47 + .15))),110px)}
+  .dh.n3 .dh-v .num{min-height:clamp(48px,7.4vh,70px);
+    font-size:clamp(26px,min(6.5vh,calc(100cqi / (var(--chars,3) * .47 + .15))),60px)}
+}
 .dh-v .num:focus{color:var(--hc)}
 .dh.done .dh-v .num{color:var(--label-2)}
-.dh-int{margin-top:6px}
+.dh-int{margin-top:8px;display:flex;flex-direction:column;gap:2px}
 .dh-int .subrow{padding-left:0}
-.dh-int .setextra{margin-top:4px}
-.dh-act{display:flex;gap:10px;margin-top:12px}
+/* a tool bar: one capsule of equal slots, icon over a short label — the set's (.dh-bar, inside
+   the drum's hero) and the session's running order (.wtools, at the foot of the workout) */
+.dh-bar,.wtools{display:flex;align-items:stretch;margin-top:10px;border-radius:14px;overflow:hidden;
+  background:color-mix(in srgb,var(--surface-2) 70%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep)}
+.dh-tool,.wtool{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  padding:8px 2px 7px;color:var(--label-2);font-size:10.5px;font-weight:600;letter-spacing:.01em;
+  transition:background var(--fast),color var(--fast)}
+.dh-tool + .dh-tool,.wtool + .wtool{box-shadow:inset var(--hair) 0 0 var(--sep)}
+.dh-tool .icn,.wtool .icn{font-size:17px;color:var(--hc,var(--acc));--icon-stroke:2.2}
+.dh-tool span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh-tool:active:not(:disabled),.wtool:active:not(:disabled){background:var(--surface-3);color:var(--label)}
+.dh-tool:disabled,.wtool:disabled{opacity:.32}
+.dh-tool.del .icn,.wtool.del .icn{color:var(--red)}
+/* the session's bar has the page's width but longer labels ("Remove exercise"): two lines, not cut */
+.wtools{border-radius:var(--r);margin-top:10px}
+.wtool{padding:10px 4px 9px;font-size:11.5px;justify-content:flex-start}
+.wtool .icn{font-size:19px}
+.wtool span{max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere}
+.wfoot{margin-top:12px}
+/* previous / next side by side, the two halves of one control */
+.wnav{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wnav .btn{min-width:0}
+.wnav .btn:disabled{opacity:.35}
+/* the intensifiers act on this set, the rest on the list: a wider seam between the two groups */
+.dh-bar-sep{flex:none;width:3px;background:var(--sep)}
+.dh-act{display:flex;gap:10px;margin-top:10px}
 .dh-go{
-  flex:1;height:56px;border-radius:17px;display:flex;align-items:center;justify-content:center;gap:10px;
+  flex:1;height:clamp(56px,7.4vh,68px);border-radius:17px;display:flex;align-items:center;justify-content:center;gap:10px;
   font-size:16px;font-weight:600;letter-spacing:-.01em;background:var(--hc);color:var(--on-acc);
   box-shadow:0 12px 26px -14px var(--hc);transition:transform var(--fast),background var(--med),color var(--med);
 }
@@ -1681,12 +1751,10 @@ h4.sec{
   background:rgba(0,0,0,.18);--icon-stroke:2.8}
 .dh-go.on{background:var(--surface-2);color:var(--label-2);box-shadow:none;font-weight:500;font-size:14px}
 .dh-go.on .dh-go-ic{background:var(--acc);color:var(--on-acc)}
-.dh-play{width:56px;height:56px;flex:none;border-radius:17px;display:grid;place-items:center;font-size:21px;
+.dh-play{width:clamp(56px,7.4vh,68px);height:clamp(56px,7.4vh,68px);flex:none;border-radius:17px;display:grid;place-items:center;font-size:21px;
   background:var(--surface-2);color:var(--hc)}
 .dh-play:disabled{opacity:.4}
 
-
-.drum-tools{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px}
 .ss-card.drum-ss .drum-head .exmedia.compact img{height:110px}
 .deload-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
 .deload-actions .deload-link{margin-top:0}

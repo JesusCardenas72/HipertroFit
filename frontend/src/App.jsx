@@ -70,6 +70,9 @@ function Shell() {
     return () => mql.removeEventListener('change', onChange)
   }, [S.theme, S.accent])
   useEffect(() => { setLang(S.lang || 'en') }, [S.lang])
+  // A reload in the middle of a rest (the phone reclaiming the app in the background) picks the
+  // countdown back up once the workout it belongs to is loaded — see resumeRest in useUI.
+  useEffect(() => { if (S.active?.id) useUI.getState().resumeRest() }, [S.active?.id])
   // Naming preferences are plain state, so unlike the language they need no pack load — but they
   // change what every screen calls an exercise, so they go through the same notify/useLang path.
   useEffect(() => { setExerciseNameOptions(S.exNameStyle, S.exNames) }, [S.exNameStyle, S.exNames])

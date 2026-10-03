@@ -242,6 +242,89 @@ describe('audio focus around the alert', () => {
     expect(hooks.acquire).not.toHaveBeenCalled()
   })
 
+  // "Pause the music, wait 1.5 s, ring, wait 1.5 s, give the music back."
+  describe('with a focus gap', () => {
+    beforeEach(() => { vi.useFakeTimers() })
+    afterEach(() => { vi.useRealTimers() })
+
+    test('pauses first and only starts the clip once the gap has passed', async () => {
+      const [a] = srcs('a')
+      playClips(true, [a], { focusGap: 1500 })
+      expect(hooks.acquire).toHaveBeenCalledTimes(1)
+      expect(madeFor(a).some(el => el.playCalls > 0)).toBe(false)
+      await vi.advanceTimersByTimeAsync(1499)
+      expect(madeFor(a).some(el => el.playCalls > 0)).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(madeFor(a)[0].paused).toBe(false)
+    })
+
+    test('hands the focus back only once the gap after the last clip has passed', async () => {
+      const [a] = srcs('a')
+      playClips(true, [a], { focusGap: 1500 })
+      await vi.advanceTimersByTimeAsync(1500)
+      madeFor(a)[0].end()
+      await vi.advanceTimersByTimeAsync(1499)
+      expect(hooks.release).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
+
+    test('cut off during the leading gap: releases at once and never plays', async () => {
+      const [a] = srcs('a')
+      playClips(true, [a], { focusGap: 1500 })
+      stopClips()
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(madeFor(a).some(el => el.playCalls > 0)).toBe(false)
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
+
+    test('cut off during the trailing gap: releases at once, and only once', async () => {
+      const [a] = srcs('a')
+      playClips(true, [a], { focusGap: 1500 })
+      await vi.advanceTimersByTimeAsync(1500)
+      madeFor(a)[0].end()
+      stopClips()
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
+ 
+    // The rest between exercises is timed from the exercise-end sound: it starts when the
+    // sound does, after the pause — and never goes missing because the sound did.
+    test('onStart runs as the first clip starts, after the gap, and only once', async () => {
+      const [a, b] = srcs('a', 'b')
+      const onStart = vi.fn()
+      playClips(true, [a, b], { focusGap: 1500, onStart })
+      await vi.advanceTimersByTimeAsync(1499)
+      expect(onStart).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(onStart).toHaveBeenCalledTimes(1)
+      madeFor(a)[0].end()
+      madeFor(b)[0].end()
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(onStart).toHaveBeenCalledTimes(1)
+    })
+
+    test('onStart runs at once when the sound is off or there is nothing to play', () => {
+      const off = vi.fn(), empty = vi.fn()
+      playClips(false, srcs('a'), { focusGap: 1500, onStart: off })
+      playClips(true, [], { focusGap: 1500, onStart: empty })
+      expect(off).toHaveBeenCalledTimes(1)
+      expect(empty).toHaveBeenCalledTimes(1)
+      expect(hooks.acquire).not.toHaveBeenCalled()
+    })
+
+    test('onStart still runs when the sequence is cut off during the leading gap', async () => {
+      const onStart = vi.fn()
+      playClips(true, srcs('a'), { focusGap: 1500, onStart })
+      stopClips()
+      expect(onStart).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(onStart).toHaveBeenCalledTimes(1)
+    })
+  })
+
   test('a hook that throws or rejects never breaks playback', async () => {
     setAudioFocusHooks({ acquire: () => { throw new Error('no plugin') }, release: () => Promise.reject(new Error('x')) })
     const [a] = srcs('a')

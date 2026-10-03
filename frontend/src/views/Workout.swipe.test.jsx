@@ -194,13 +194,20 @@ describe('swipe between exercises', () => {
 
 describe('the exercises while a finger is down', () => {
   const layers = () => [...container.querySelectorAll('.deck-layer')]
+  // The exercises turn like faces of a cylinder (lib/slide.js), so the shift is one function of
+  // a longer transform.
+  const shift = el => Number(el.style.transform.match(/translateX\((-?[\d.]+)px\)/)?.[1])
 
   it('draws the next exercise alongside, both following the finger', () => {
     renderWorkout([entry('1001', 3), entry('1002', 2)])
     drag(surface(), -120, 0, { release: false })
     expect(layers()).toHaveLength(2)
-    expect(layers()[0].style.transform).toBe('translateX(-120px)')
-    expect(layers()[1].style.transform).toBe('translateX(' + (window.innerWidth - 120) + 'px)')
+    expect(shift(layers()[0])).toBe(-120)
+    expect(shift(layers()[1])).toBe(window.innerWidth - 120)
+    // Each turns round the curve the way it is travelling, and the one further out more so.
+    const tilt = el => Number(el.style.transform.match(/rotateY\((-?[\d.]+)deg\)/)[1])
+    expect(tilt(layers()[0])).toBeLessThan(0)
+    expect(tilt(layers()[1])).toBeGreaterThan(Math.abs(tilt(layers()[0])))
     // The exercise being worked is the only one that answers to a tap; the one sliding past
     // is scenery — and it arrives with all of its own sets already drawn.
     expect(layers()[1].className).toContain('deck-over')
@@ -232,7 +239,7 @@ describe('the exercises while a finger is down', () => {
     renderWorkout([entry('1001', 1), entry('1002', 1)], 1)
     drag(surface(), -200, 0, { release: false })
     expect(layers()).toHaveLength(1)
-    const offset = Number(layers()[0].style.transform.match(/-?[\d.]+/)[0])
+    const offset = shift(layers()[0])
     expect(offset).toBeLessThan(0)
     expect(offset).toBeGreaterThan(-200)
   })

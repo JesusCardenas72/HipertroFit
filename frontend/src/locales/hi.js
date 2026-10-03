@@ -739,4 +739,16 @@ export default {
   'rep': 'रेप',
   'No overload': 'कोई ओवरलोड नहीं',
   'No overload — accumulated fatigue': 'जमा थकान के कारण कोई ओवरलोड नहीं',
+  // --- set drum: details toggle, set tools, one more set ---
+  'Show workout details': 'वर्कआउट का विवरण दिखाएँ',
+  'Hide workout details': 'वर्कआउट का विवरण छिपाएँ',
+  'Set tools': 'सेट टूल',
+  'Drop': 'ड्रॉप',
+  'Burst': 'बर्स्ट',
+  'Warm up': 'वार्म-अप',
+  'One more': 'एक और',
+  'One more set': 'एक और सेट',
+  'Add the set to this exercise only, or to every exercise in the superset?': 'सेट सिर्फ़ इसी व्यायाम में जोड़ें या सुपरसेट के सभी व्यायामों में?',
+  'Only this exercise': 'सिर्फ़ यह व्यायाम',
+  'Every exercise in the superset': 'सुपरसेट के सभी व्यायाम',
 }
