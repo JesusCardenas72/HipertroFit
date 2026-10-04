@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dragOffsets, settlePlan, edgeOffset, EDGE_MAX, turnFace, turnStyle, turnVars, TURN_DEG, TURN_SHRINK } from './slide.js'
+import { dragOffsets, settlePlan, edgeOffset, EDGE_MAX, turnFace, turnStyle, turnVars, turnBend, turnBands, TURN_BANDS, TURN_BEND, TURN_RADIUS, TURN_DEG, TURN_SHRINK } from './slide.js'
 
 const W = 400
 
@@ -112,3 +112,81 @@ describe('turnStyle / turnVars', () => {
     expect(turnVars(W, 0, W)['--scale-to']).toBe(1)
   })
 })
+
+describe('turnBands', () => {
+  const R = TURN_RADIUS * W
+  // A band's two edges on the plane of the cylinder, as (x, z) from its axis: x across, z towards you.
+  const edges = (b, share) => {
+    const half = share * b.scale / 2, a = b.deg * Math.PI / 180
+    // the band's own middle is where `x` and `z` put it, from the cylinder's front
+    return [-half, half].map(u => [b.x0 + u * Math.cos(a), b.z - u * Math.sin(a) + R])
+  }
+  const placed = (offset, layerWidth = W) => turnBands({ offset, width: W, layerWidth, overlap: 0 }).map((b, j) => ({
+    ...b, x0: b.x + (j + 0.5) * (layerWidth / TURN_BANDS) - layerWidth / 2,
+  }))
+
+  it('leaves a screen at rest flat and a screen well off the front fully wrapped', () => {
+    expect(turnBend(0, W)).toBe(0)
+    expect(turnBend(W * TURN_BEND, W)).toBe(1)
+    expect(turnBend(-W, W)).toBe(1)
+    for (const b of turnBands({ offset: 0, width: W })) {
+      expect(b.deg).toBe(0)
+      expect(b.z).toBe(0)
+      expect(b.scale).toBe(1)
+      expect(b.shade).toBe(0)
+    }
+  })
+
+  it('moves an unwrapped screen as one flat sheet', () => {
+    const l = turnBands({ offset: -30, width: W, bend: 0 })
+    expect(l).toHaveLength(TURN_BANDS)
+    l.forEach(b => expect(b.x).toBe(-30))
+  })
+
+  it('tiles a wrapped screen end to end, every edge on the circle', () => {
+    const l = placed(-170)
+    const share = W / TURN_BANDS
+    l.forEach((b, j) => {
+      for (const [x, z] of edges(b, share)) expect(Math.hypot(x, z)).toBeCloseTo(R, 4)
+      if (j) {
+        const [px, pz] = edges(l[j - 1], share)[1], [x, z] = edges(b, share)[0]
+        expect(x).toBeCloseTo(px, 4)
+        expect(z).toBeCloseTo(pz, 4)
+      }
+    })
+  })
+
+  it('turns the bands further away from the front the further they are from it', () => {
+    const degs = turnBands({ offset: 0, width: W, bend: 1 }).map(b => b.deg)
+    expect(degs).toEqual([...degs].sort((p, q) => p - q))
+    expect(degs[0]).toBeLessThan(0)
+    expect(Math.abs(degs[0] + degs[degs.length - 1])).toBeLessThan(1e-9)
+    // and the ones that are further are drawn smaller (further back) and darker
+    const l = turnBands({ offset: 0, width: W, bend: 1 })
+    expect(l[0].z).toBeLessThan(l[TURN_BANDS / 2].z)
+    expect(l[0].shade).toBeGreaterThan(l[TURN_BANDS / 2].shade)
+  })
+
+  it('wraps in step with the drag: a small move bends a little, never a jump', () => {
+    let prev = turnBands({ offset: 0, width: W })
+    for (let o = 1; o <= W; o++) {
+      const l = turnBands({ offset: o, width: W })
+      l.forEach((b, j) => {
+        expect(Math.abs(b.x - prev[j].x)).toBeLessThan(6)
+        expect(Math.abs(b.deg - prev[j].deg)).toBeLessThan(2)
+      })
+      prev = l
+    }
+  })
+
+  it('hides the bands that have turned past the side of the cylinder', () => {
+    const l = turnBands({ offset: 2 * R, width: W, bend: 1 })
+    expect(l.every(b => b.back)).toBe(true)
+    expect(turnBands({ offset: 0, width: W, bend: 1 }).some(b => b.back)).toBe(false)
+  })
+
+  it('gives nothing to draw without a width', () => {
+    expect(turnBands({ offset: 10, width: 0 })).toEqual([])
+  })
+})
+

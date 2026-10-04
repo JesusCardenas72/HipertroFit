@@ -1,9 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { drumHome, drumSettle, drumArmed, drumRubber, drumSteps, drumCylinder, drumReach, clampChamber, DRUM_LOCK } from '../lib/drum.js'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { drumHome, drumSettle, drumArmed, drumRubber, drumSteps, drumCylinder, drumReach, drumFace, drumBend, drumShade, clampChamber, DRUM_LOCK } from '../lib/drum.js'
 import { SWIPE_MIN_DISTANCE } from '../lib/swipe.js'
 import { vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
+import { copyFace, followFace } from './faceCopy.js'
 
 /**
  * The sets of one workout screen as the chambers of a revolver drum.
@@ -32,8 +34,48 @@ const STRIP = 50      // a resting chamber's height, px
 const GAP = 10        // between chambers
 const PERSPECTIVE = 900 // px, the .drum-stage perspective in index.css
 const LETTERS = 'ABCDEFGH'
-const RAIL = 0.85     // the rail's height, as a share of the hero's
-const THUMB = 36      // the exercise thumbnail above the rail, px (the rail's width)
+const RAIL = 0.8      // the rail's height, as a share of the hero's
+const RAIL_W = 36     // the rail's width, px
+const THUMB = 36      // the exercise thumbnail's smallest side, px (the rail's width)
+const THUMB_MAX = 140 // ... and its largest: the hero gives up the difference in width
+const THUMB_SHARE = 0.27 // the most of the drum's width the thumbnail's column may take
+const HERO_MIN = 240  // the narrowest the hero may get, px: its tool bar still fits its labels
+const RAIL_SLOT = 24 // the least a pip's slot may shrink to, px: the rail never gets cramped
+const THUMB_GAP = 8   // between the thumbnail and the rail below it
+const PAD = 8         // air round the hero inside the stage: the mask clips whatever pokes out of it
+const BANDS = 9       // a bent face is cut into this many bands, each laid on the cylinder on its own
+
+const WATCH = ['class', 'value', 'aria-checked', 'aria-label', 'disabled']
+
+/* The bands of a bent chamber (see faceCopy.js). The chamber is a sticker laid on the drum, not a
+   window onto it: all of its content is laid on the face, so a hero that is leaving is squeezed
+   round the curve whole — never cropped — and the capsule arriving in its place is stretched out,
+   as the face between them grows and shrinks. Band j carries its own slice of each (`--ef` / `--ec`
+   say which, `--sf` / `--sc` how much to squeeze it). The copy follows the real chamber, but not
+   its style, which fades with every frame of the turn (that is the band's --full / --cap). */
+function BentFace({ chamber, bands, className, onClick, full: fallback }) {
+  const hosts = useRef([])
+  const [hc, setHc] = useState(fallback)
+  useLayoutEffect(() => {
+    // Found from the picture's own place: a child's effect runs before its parent's ref is set.
+    const src = hosts.current[0]?.closest('.drum-stage')?.querySelector(`[data-ch="${chamber}"]`)
+    if (!src) return
+    return followFace(src, () => {
+      hosts.current.forEach(h => { if (h) copyFace(h, src) })
+      const m = src.querySelector('.drum-full')?.offsetHeight
+      if (m) setHc(h => (Math.abs(h - m) > 0.5 ? m : h))
+    }, WATCH)
+  }, [])
+  const n = bands.length
+  return bands.map((b, j) => <div key={j} className={className} onClick={onClick} aria-hidden="true"
+    style={{
+      ...b.style,
+      '--sf': b.unit * n / hc, '--ef': (-hc / 2 + (j + 0.5) * hc / n) + 'px',
+      '--sc': b.unit * n / STRIP, '--ec': (-STRIP / 2 + (j + 0.5) * STRIP / n) + 'px',
+    }}>
+    <div className="bent-in" ref={el => { hosts.current[j] = el }} inert />
+  </div>)
+}
 
 export default function SetDrum({
   chambers, entries, members = 1, inert = false,
@@ -50,6 +92,7 @@ export default function SetDrum({
   const swallowClick = useRef(false)
   const lastSteps = useRef(0)
   const [heroH, setHeroH] = useState(280)
+  const [bodyW, setBodyW] = useState(0)
   const heroEl = useRef(null)
   const bodyEl = useRef(null)
   const stageEl = useRef(null)
@@ -120,11 +163,27 @@ export default function SetDrum({
     if (!el) return
     const measure = () => setHeroH(h => (Math.abs(h - el.offsetHeight) > 1 ? el.offsetHeight : h))
     measure()
+    // The workout screen shrinks the hero to fit and has to know at once how tall the drum came out
+    // (see 'drum:measure' in views/Workout.jsx): it asks, and the drum answers before it returns.
+    const now = () => flushSync(measure)
+    window.addEventListener('drum:measure', now)
+    if (typeof ResizeObserver === 'undefined') return () => window.removeEventListener('drum:measure', now)
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => { ro.disconnect(); window.removeEventListener('drum:measure', now) }
+  }, [f, count])
+
+  // The drum's width sets how big the exercise's thumbnail may be (see thumbSize).
+  useLayoutEffect(() => {
+    const el = bodyEl.current
+    if (!el) return
+    const measure = () => setBodyW(w => (Math.abs(w - el.offsetWidth) > 1 ? el.offsetWidth : w))
+    measure()
     if (typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [f, count])
+  }, [count])
 
   // A finger's worth of travel per chamber: the hero follows the finger exactly one to one
   // until the neighbour has taken its place.
@@ -139,21 +198,35 @@ export default function SetDrum({
   const reach = drumReach({ pos, count, hero: heroH, strip: STRIP, gap: GAP, radius, perspective: PERSPECTIVE })
   const above = Math.ceil(reach.above)
   const below = Math.ceil(reach.below)
-  const stageH = count > 1 ? heroH + above + below : heroH + 8
-  // The hero's centre line within the stage: where the chambers, the rail and the fuse meet.
-  const mid = count > 1 ? above + heroH / 2 : stageH / 2
+  const stageH = (count > 1 ? heroH + above + below : heroH) + 2 * PAD
+  // The hero's centre line within the stage: where the chambers meet.
+  const mid = count > 1 ? PAD + above + heroH / 2 : stageH / 2
   const armed = drag?.axis === 'y' && drumArmed({ from: f, drag: drag.dy, pitch, count })
   const aim = drag?.axis === 'y' ? drumSettle({ from: f, drag: drag.dy, pitch, count }) : f
 
-  // The rail is a little shorter than the hero, centred on it, a window five pips tall: the set
-  // on screen in the middle, the two before it above and the two after below. The track of pips
-  // rolls behind it with the drum, so the live pip always sits level with the hero. The room it
-  // leaves above holds the exercise's thumbnail.
-  const railH = heroH * RAIL
-  const railTop = mid - railH / 2
+  // The rail is a little shorter than the hero and sits on its bottom edge, a window five pips
+  // tall: the set on screen in the middle, the two before it above and the two after below. The
+  // track of pips rolls behind it with the drum, so the live pip never moves. Everything the
+  // rail leaves free above it, up to THUMB_MAX, goes to the exercise's thumbnail, which sits
+  // level with the hero's top; the column is as wide as the thumbnail, the hero takes the rest.
+  // The hero's face sits a little behind the front of the cylinder, so on screen the box is
+  // smaller than its layout height: the rail goes by the box as drawn.
+  const faceH = heroH * PERSPECTIVE / (PERSPECTIVE - drumCylinder({ pos: f, count, hero: heroH, strip: STRIP, gap: GAP, radius })[f].z)
+  // The thumbnail is as large as the room allows, on both axes: no wider than its share of the
+  // drum (the hero keeps the rest) and no taller than what the face leaves above a rail that
+  // still has its five readable pips. It follows the drum's measured width and the hero's
+  // height, so a phone, a tablet and a rotated screen each get the biggest picture that fits.
+  const thumbSize = renderThumb
+    ? Math.max(THUMB, Math.min(THUMB_MAX,
+      bodyW ? 2 * Math.floor(Math.min(bodyW * THUMB_SHARE, bodyW - HERO_MIN - 10) / 2) : THUMB_MAX,
+      2 * Math.floor((faceH - 5 * RAIL_SLOT - THUMB_GAP) / 2)))
+    : RAIL_W
+  const railH = renderThumb ? Math.max(5 * RAIL_SLOT, faceH - thumbSize - THUMB_GAP) : faceH * RAIL
+  const railTop = mid + faceH / 2 - railH
   const slot = railH / 5
   const pipSize = Math.max(14, Math.min(28, slot - 8))
   const track = railH / 2 - pos * slot - pipSize / 2
+  const railMid = railTop + railH / 2
 
   // The fuse: a thin curve from the rail's live pip into the hero, so the eye never loses
   // which dot is the set on screen. Its x is read from layout; its y follows from the window.
@@ -163,16 +236,20 @@ export default function SetDrum({
     if (!rail) return
     const x1 = rail.offsetLeft + rail.offsetWidth - 4
     setFuse(was => (was?.x1 === x1 ? was : { x1 }))
-  }, [count, heroH])
-  const fuseY1 = mid + (aim - pos) * slot
+  }, [count, heroH, thumbSize, bodyW])
+  const fuseY1 = railMid + (aim - pos) * slot
 
   /* ---------- the gesture ---------- */
   const IGNORE = 'input,textarea,select,[contenteditable="true"]'
+  // A drag may start on a number field — the hero is mostly steppers, and a drag that cannot
+  // begin on them leaves dead patches in the middle of the box. A tap still focuses the field:
+  // the gesture only takes over once the finger has travelled DRUM_LOCK.
+  const IGNORE_DOWN = 'textarea,select,[contenteditable="true"]'
   // The same gesture drives the drum from the stage and from the rail. On the rail a pip's slot
   // is a whole chamber, so the finger's travel is scaled up: the pips stay under the finger
   // while the chambers roll beside them, and it springs, clicks and settles just the same.
   const onDown = (e, { onRail = false } = {}) => {
-    if (inert || (e.button ?? 0) !== 0 || e.target.closest?.(IGNORE)) return
+    if (inert || (e.button ?? 0) !== 0 || e.target.closest?.(IGNORE_DOWN)) return
     gesture.current = {
       id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, t: e.timeStamp, ly: e.clientY, lt: e.timeStamp, v: 0,
       onRail, scale: onRail ? pitch / slot : 1, el: onRail ? railEl.current : stageEl.current,
@@ -186,8 +263,9 @@ export default function SetDrum({
     const dx = e.clientX - g.x, dy = (e.clientY - g.y) * g.scale
     if (!g.axis) {
       if (Math.max(Math.abs(dx), Math.abs(e.clientY - g.y)) < DRUM_LOCK) return
-      // The rail only ever rolls the drum; swiping sideways on it is not a change of exercise.
-      g.axis = g.onRail || Math.abs(dy) >= Math.abs(dx) ? 'y' : 'x'
+      // Sideways is the exercise deck's anywhere on the box, the rail included. The rail's own
+      // travel is scaled, so which axis wins is judged on the finger's raw movement.
+      g.axis = Math.abs(e.clientY - g.y) >= Math.abs(dx) ? 'y' : 'x'
       swallowClick.current = true
       try { g.el?.setPointerCapture?.(e.pointerId) } catch { /* moves still arrive while over it */ }
       if (e.pointerType === 'mouse') window.getSelection?.()?.removeAllRanges()
@@ -264,7 +342,11 @@ export default function SetDrum({
   // Member tabs: in a superset, one tap jumps to that exercise's next set still to do.
   const memberIdx = [...new Set(chambers.map(c => c.entry))]
 
-  return <div className={'drum' + (inert ? ' inert' : '')} data-swipe-ignore>
+  /* No data-swipe-ignore on the root: the whole box answers to the workout's swipe surface, so a
+     sideways drag on the header, the tabs or the gaps pages between exercises. Only the stage
+     and the rail take their own pointer (they roll the drum, and hand sideways drags over
+     through onSwipe), so only they keep the attribute. */
+  return <div className={'drum' + (inert ? ' inert' : '')}>
     {renderHead && fc && <div className="drum-head" key={fc.entry}>{renderHead(fc.entry)}</div>}
     {members > 1 && <div className="drum-tabs" role="tablist">
       {memberIdx.map((entry, m) => {
@@ -279,12 +361,12 @@ export default function SetDrum({
     </div>}
     <div className="drum-body" ref={bodyEl} style={{ height: stageH }}>
       {renderThumb && fc && <div className="drum-thumb" key={fc.entry} aria-hidden="true"
-        style={{ top: railTop - THUMB - 6, width: THUMB, height: THUMB }}>{renderThumb(fc.entry)}</div>}
-      <div className="drum-rail" ref={railEl} role="tablist" aria-label={t('Sets')} aria-orientation="vertical"
+        style={{ top: mid - faceH / 2, width: thumbSize, height: thumbSize }}>{renderThumb(fc.entry)}</div>}
+      <div className="drum-rail" data-swipe-ignore ref={railEl} role="tablist" aria-label={t('Sets')} aria-orientation="vertical"
         onPointerDown={e => onDown(e, { onRail: true })} onPointerMove={onMove}
         onPointerUp={e => onUp(e, true)} onPointerCancel={e => onUp(e, false)}
         onClickCapture={e => { if (swallowClick.current) { swallowClick.current = false; e.preventDefault(); e.stopPropagation() } }}
-        style={{ height: railH, marginTop: railTop, '--pip': pipSize + 'px', '--pip-gap': slot - pipSize + 'px' }}>
+        style={{ height: railH, marginTop: railTop, marginInline: (thumbSize - RAIL_W) / 2,'--pip': pipSize + 'px', '--pip-gap': slot - pipSize + 'px' }}>
         <span className="drum-axis" aria-hidden="true" />
         <div className="drum-track" style={{ transform: `translateY(${track}px)` }}>
         {chambers.map((c, i) => {
@@ -299,16 +381,17 @@ export default function SetDrum({
         </div>
       </div>
       {fuse && <svg className={'drum-fuse' + (armed ? ' armed' : '')} aria-hidden="true">
-        <path d={`M${fuse.x1},${fuseY1} C${fuse.x1 + 14},${fuseY1} ${fuse.x1 + 10},${mid} ${fuse.x1 + 24},${mid}`} />
-        <circle cx={fuse.x1 + 24} cy={mid} r="3" />
+        <path d={`M${fuse.x1},${fuseY1} C${fuse.x1 + 14},${fuseY1} ${fuse.x1 + 10},${railMid} ${fuse.x1 + 24},${railMid}`} />
+        <circle cx={fuse.x1 + 24} cy={railMid} r="3" />
       </svg>}
-      <div className={'drum-stage' + (drag ? ' grabbing' : '') + (count > 1 ? '' : ' solo')} ref={stageEl} tabIndex={inert ? -1 : 0}
+      <div className={'drum-stage' + (drag ? ' grabbing' : '') + (count > 1 ? '' : ' solo')} data-swipe-ignore ref={stageEl} tabIndex={inert ? -1 : 0}
         aria-roledescription={t('Drum')} aria-label={t('Set {0} of {1}', f + 1, count)}
         onPointerDown={onDown} onPointerMove={onMove}
         onPointerUp={e => onUp(e, true)} onPointerCancel={e => onUp(e, false)}
         onWheel={onWheel} onKeyDown={onKey}
         onClickCapture={e => { if (swallowClick.current) { swallowClick.current = false; e.preventDefault(); e.stopPropagation() } }}
-        style={{ '--mid': mid + 'px', '--fade-a': above * 0.7 + 'px', '--fade-b': below * 0.7 + 'px',
+        style={{ '--mid': mid + 'px', '--pad': PAD + 'px',
+          '--fade-a': above * 0.7 + PAD * Math.min(1, above / PAD) + 'px', '--fade-b': below * 0.7 + PAD * Math.min(1, below / PAD) + 'px',
           ...(drag?.axis === 'x' && !onSwipe ? { transform: `translateX(${Math.max(-60, Math.min(60, drag.dx * 0.3))}px)` } : {}) }}>
         {visible.map(i => {
           const c = chambers[i]
@@ -324,24 +407,49 @@ export default function SetDrum({
           const capsule = Math.max(0, 1 - grow / 0.12)
           // Room for the hero's shadow, given only near full size so two chambers never touch.
           const slack = 2 + 46 * Math.max(0, grow - 0.8) / 0.2
+          // A chamber on its way in or out is not a flat card leaning over: its surface wraps the
+          // cylinder (drumFace), so it is drawn as bands, each placed round the curve, and the real
+          // chamber hides behind them. Resting in front it is not bent, and not drawn this way.
+          const bands = morph && drumBend(grow) > 0 ? drumFace({ pos, index: i, count, hero: heroH, strip: STRIP, gap: GAP, radius, slices: BANDS }) : null
           const style = {
             transform: `translate3d(0, calc(-50% + ${y}px), ${z}px) rotateX(${-tilt}rad)`,
             // Faces turned away from you catch less light, as round a real cylinder.
             opacity: back ? 0 : Math.max(0, Math.cos(tilt)) ** 0.7,
             zIndex: 20 - Math.round(a * 4),
             clipPath: morph ? `inset(calc(50% - ${h / 2 + slack}px) ${-slack / 3}px round ${15 + 7 * grow}px)` : undefined,
+            ...(bands ? { opacity: 0, pointerEvents: 'none' } : {}),
           }
-          return <div key={c.entry + ':' + c.set} style={style}
-            className={'drum-ch' + (hero ? ' hero' : ' strip') + (i === aim && armed ? ' armed' : '') + (isDone(c) ? ' done' : '')}
-            ref={hero ? el => { heroEl.current = el; onHeroRef?.(c, el) } : undefined}
-            onClick={hero ? undefined : () => go(i)}
-            {...(inert ? { inert: true } : {})}>
-            {morph ? <>
-              <div className="drum-full" key={'h' + i} style={{ opacity: full }}
-                {...(hero ? {} : { inert: true, 'aria-hidden': true })}>{renderHero(c, i)}</div>
-              {capsule > 0 && <div className="drum-capsule" aria-hidden="true" style={{ opacity: capsule }}>{renderStrip(c, i)}</div>}
-            </> : renderStrip(c, i)}
-          </div>
+          const flags = (hero ? ' hero' : ' strip') + (i === aim && armed ? ' armed' : '') + (isDone(c) ? ' done' : '')
+          const edge = 15 + 7 * grow
+          const bandStyle = bands?.map((b, j) => ({
+            unit: b.unit,
+            style: {
+              height: b.len,
+              transform: `translate3d(0, calc(-50% + ${b.y}px), ${b.z}px) rotateX(${-b.rot}rad)`,
+              visibility: b.back ? 'hidden' : undefined,
+              zIndex: 20 - Math.round(a * 4),
+              '--sa': drumShade(b.rot - b.step / 2) * 100 + '%', '--sb': drumShade(b.rot + b.step / 2) * 100 + '%', '--full': full, '--cap': capsule,
+              // Only the ends of the face are rounded, and the hero's shadow only has room past them.
+              clipPath: j === 0 ? `inset(${-slack}px ${-slack / 3}px 0 round ${edge}px ${edge}px 0 0)`
+                : j === bands.length - 1 ? `inset(0 ${-slack / 3}px ${-slack}px round 0 0 ${edge}px ${edge}px)`
+                  : `inset(0 ${-slack / 3}px)`,
+            },
+          }))
+          return <Fragment key={c.entry + ':' + c.set}>
+            <div style={style} data-ch={c.entry + ':' + c.set}
+              className={'drum-ch' + flags}
+              ref={hero ? el => { heroEl.current = el; onHeroRef?.(c, el) } : undefined}
+              onClick={hero ? undefined : () => go(i)}
+              {...(inert ? { inert: true } : {})}>
+              {morph ? <>
+                <div className="drum-full" key={'h' + i} style={{ opacity: full }}
+                  {...(hero ? {} : { inert: true, 'aria-hidden': true })}>{renderHero(c, i)}</div>
+                {(capsule > 0 || bands) && <div className="drum-capsule" aria-hidden="true" style={{ opacity: capsule }}>{renderStrip(c, i)}</div>}
+              </> : renderStrip(c, i)}
+            </div>
+            {bands && <BentFace chamber={c.entry + ':' + c.set} bands={bandStyle} full={heroH}
+              className={'drum-ch bent' + flags} onClick={hero ? undefined : () => go(i)} />}
+          </Fragment>
         })}
       </div>
     </div>

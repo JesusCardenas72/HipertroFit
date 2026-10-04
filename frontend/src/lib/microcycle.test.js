@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   STRATEGIES, DEFAULT_MICROCYCLE, strategyOf, microcycleLen, cycleStartOf, sessionsSince,
   cyclePosition, trainingSteps, nextStepOf, cycleWorkouts, cycleStrip,
+  nextCycleStart, closeMicrocycle,
 } from './microcycle.js'
 import { REST } from './program.js'
 
@@ -150,5 +151,68 @@ describe('the block as trained', () => {
     // A done slot reports what was actually trained, not what the sequence planned.
     expect(strip[1].routineId).toBe('freestyle')
     expect(strip[2].routineId).toBe('legs')
+  })
+})
+
+describe('closing a microcycle by hand', () => {
+  // Three of six sessions done: block 0, step 3.
+  const half = () => state({ workouts: ['2026-01-02', '2026-01-03', '2026-01-05'].map(d => w(d)) })
+
+  it('restarts the count: the new block is #1, nothing logged in it', () => {
+    const S = half()
+    const next = { ...S, program: closeMicrocycle(S, 'full-body', '2026-01-10') }
+    expect(cyclePosition(S)).toMatchObject({ cycle: 0, step: 3 })
+    expect(cyclePosition(next)).toMatchObject({ cycle: 0, step: 0, sessions: 0 })
+    expect(cycleWorkouts(next)).toEqual([])
+  })
+
+  it('sizes the new block from the chosen strategy', () => {
+    const S = half()
+    expect(microcycleLen({ ...S, program: closeMicrocycle(S, 'full-body', '2026-01-10') })).toBe(3)
+    expect(microcycleLen({ ...S, program: closeMicrocycle(S, 'upper-lower', '2026-01-10') })).toBe(4)
+    expect(microcycleLen({ ...S, program: closeMicrocycle(S, 'ppl', '2026-01-10') })).toBe(6)
+  })
+
+  it('keeps the calendar layout: sequence, anchor and switch', () => {
+    const S = half()
+    const p = closeMicrocycle(S, 'ppl', '2026-01-10')
+    expect(p).toMatchObject({ on: true, seq: PPL_SEQ, anchor: '2026-01-01', strategy: 'ppl' })
+  })
+
+  it('starts today when nothing is logged today, so the next session counts', () => {
+    const S = half()
+    expect(nextCycleStart(S, '2026-01-10')).toBe('2026-01-10')
+    const next = { ...S, program: closeMicrocycle(S, 'ppl', '2026-01-10') }
+    next.workouts = [...next.workouts, w('2026-01-10', 'legs')]
+    expect(cyclePosition(next)).toMatchObject({ cycle: 0, step: 1 })
+  })
+
+  it('starts the day after a session already logged today, so it stays in the closed block', () => {
+    const S = state({ workouts: ['2026-01-02', '2026-01-10'].map(d => w(d)) })
+    expect(nextCycleStart(S, '2026-01-10')).toBe('2026-01-11')
+    const next = { ...S, program: closeMicrocycle(S, 'ppl', '2026-01-10') }
+    expect(cyclePosition(next).sessions).toBe(0)
+  })
+
+  it('rolls the day over month and year ends', () => {
+    expect(nextCycleStart({ workouts: [w('2026-12-31')] }, '2026-12-31')).toBe('2027-01-01')
+  })
+
+  it('works on a profile with no program at all', () => {
+    const S = { workouts: [w('2026-01-02')], program: null, microcycleSessions: 6 }
+    const p = closeMicrocycle(S, 'full-body', '2026-01-10')
+    expect(p).toMatchObject({ on: false, seq: [], strategy: 'full-body', cycleStart: '2026-01-10' })
+    expect(microcycleLen({ ...S, program: p })).toBe(3)
+  })
+
+  it('falls back to custom for a strategy it does not know', () => {
+    expect(closeMicrocycle(half(), 'bro-split', '2026-01-10').strategy).toBe('custom')
+  })
+
+  it('does not touch the state it was given', () => {
+    const S = half()
+    const before = JSON.stringify(S)
+    closeMicrocycle(S, 'ppl', '2026-01-10')
+    expect(JSON.stringify(S)).toBe(before)
   })
 })

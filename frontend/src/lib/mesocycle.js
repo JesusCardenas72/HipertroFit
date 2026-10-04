@@ -71,6 +71,16 @@ export function mesoState(S) {
   }
 }
 
+/**
+ * The mesocycle after the block count restarts (closeMicrocycle). Deloads, postponements and
+ * announcements are all microcycle *indices* from the block start, so once the count goes
+ * back to #1 the old ones would land on unrelated microcycles; they are dropped. The cut the
+ * user last chose is a preference, not an index, and stays.
+ */
+export function restartMeso(S) {
+  return { ...mesoOf(S), deloads: [], postponed: [], notified: [] }
+}
+
 /** Take the suggestion: mark the next microcycle to start as the deload. */
 export function acceptDeload(S) {
   const meso = mesoOf(S)

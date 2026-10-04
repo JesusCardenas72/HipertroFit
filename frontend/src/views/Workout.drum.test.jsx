@@ -113,6 +113,60 @@ describe('the set drum', () => {
     expect(isWarmupRow(sets()[0])).toBe(true)
   })
 
+  describe('paging between exercises', () => {
+    const two = () => [
+      { id: 'a', target: { sets: 3, reps: 10 }, sets: rows(3) },
+      { id: 'b', target: { sets: 3, reps: 10 }, sets: rows(3) },
+    ]
+    let pid = 0
+    const pointer = (type, target, x, y) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y })
+      if (type === 'pointerdown') pid++
+      event.pointerId = pid
+      event.pointerType = 'touch'
+      target.dispatchEvent(event)
+    }
+    // Press on `from`, move and lift. Moves and the lift go to `to` (the surface that holds the
+    // capture), the way the browser delivers them once a gesture has captured the pointer.
+    const swipe = (from, dx, dy = 0, to = from) => {
+      act(() => pointer('pointerdown', from, 200, 300))
+      act(() => pointer('pointermove', to, 200 + dx, 300 + dy))
+      act(() => pointer('pointerup', to, 200 + dx, 300 + dy))
+    }
+    const cur = () => useStore.getState().S.active.cur
+
+    it('pages from the exercise header, outside the stage', () => {
+      renderWorkout(two())
+      swipe(container.querySelector('.drum-head'), -120, 0, container.querySelector('[data-testid="workout-swipe-surface"]'))
+      expect(cur()).toBe(1)
+    })
+
+    it('pages from the rail, and from a number field in the hero', () => {
+      renderWorkout(two())
+      swipe(container.querySelector('.drum-rail'), -120)
+      expect(cur()).toBe(1)
+      act(() => root.unmount()); container.remove()
+      renderWorkout(two())
+      swipe(container.querySelector('.drum-ch.hero .dh-v input'), -120)
+      expect(cur()).toBe(1)
+    })
+
+    it('never deletes a set by dragging: only the Remove button does', () => {
+      renderWorkout(two())
+      const surface = container.querySelector('[data-testid="workout-swipe-surface"]')
+      expect(container.querySelector('[data-swipe-removable]')).toBeNull()
+      swipe(container.querySelector('.drum-head'), 160, 0, surface)
+      swipe(container.querySelector('.drum-ch.hero .dh-kind'), 160)
+      expect(sets()).toHaveLength(3)
+      // A real drag is followed by a click the drum swallows; none is dispatched here, so start
+      // from a fresh screen to press the button.
+      act(() => root.unmount()); container.remove()
+      renderWorkout(two())
+      click(tool('Remove'))
+      expect(sets()).toHaveLength(2)
+    })
+  })
+
   it('offers One more only on the exercise’s last set', () => {
     renderWorkout([{ id: 'a', target: { sets: 3, reps: 10 }, sets: rows(3) }])
     expect(heroKind()).toContain('Set 1')
@@ -215,14 +269,14 @@ describe('the set drum', () => {
     expect(container.querySelector('.exnote').textContent).toBe('Slow on the way down')
   })
 
-  it('keeps the foot to paging and the running order, with the session note up top', () => {
+  it('keeps the foot to paging and adding / removing, with the session note up top', () => {
     renderWorkout([
       { id: 'a', target: { sets: 2, reps: 10 }, sets: rows(2) },
       { id: 'b', target: { sets: 2, reps: 10 }, sets: rows(2) },
     ])
     const foot = container.querySelector('.wfoot')
     expect([...foot.querySelectorAll('.wtool')].map(b => b.textContent))
-      .toEqual(['Add exercise', 'Move up', 'Move down', 'Remove exercise'])
+      .toEqual(['Add exercise', 'Remove exercise'])
     // Finishing is the header's ✓, swapping is the exercise header's, the note is the header's.
     expect(foot.textContent).not.toMatch(/Finish|Swap|session note/)
     expect(container.querySelector('[data-testid="session-note"]')).toBeNull()

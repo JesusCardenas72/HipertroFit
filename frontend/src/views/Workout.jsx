@@ -21,7 +21,7 @@ import { DoubleProgressMeter, progressionSheet } from '../components/DoubleProgr
 import { playProgressSound } from '../lib/custom-sound.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { isWarmupRow, isDropSet, isRestPauseSet, dropsOf, clustersOf, addDrop, addCluster, removeDropAt, removeClusterAt, setDropAt, setClusterAt, nextDropWeight, nextBurstReps } from '../lib/workout-model.js'
-import { canMoveActiveWorkoutUnit, moveActiveWorkoutUnit, moveActiveWorkoutUnitTo } from '../lib/active-workout-order.js'
+import { moveActiveWorkoutUnitTo } from '../lib/active-workout-order.js'
 import WorkoutDock from '../components/WorkoutDock.jsx'
 import { DeloadStatus, DeloadSessionBand } from '../components/Deload.jsx'
 import { isDeloadWorkout } from '../lib/mesocycle.js'
@@ -403,6 +403,7 @@ function ExerciseBlock({ entryIdx, compact, drum, nextSet = -1, onToggle, onFiel
 
 /* ---------- the drum's front chamber: one set, drawn as large as the screen allows ---------- */
 const DRUM_LETTERS = 'ABCDEFGH'
+const FIT_STEPS = 5    // how many sizes the drum screen comes in (.narrow[data-fit] in index.css)
 // "+2,5 kg", "+1 rep", "−1 RIR" — one lever of overloadOf, signed the way it reads on the bar.
 function deltaLabel({ f, d }) {
   const n = (d > 0 ? '+' : '−') + fmtNum(Math.abs(d))
@@ -747,8 +748,8 @@ function ActiveWorkout() {
   const unpairAt = idx => update(s => {
     s.active.entries = unpairSuperset(s.active.entries, idx)
   })
-  // Every reorder — the Move up/down buttons and a thumbnail dragged along the dock — lands
-  // here, because the bookkeeping that follows a move is the same either way: the per-exercise
+  // Every reorder — a thumbnail dragged along the dock — lands here, because the bookkeeping that
+  // follows a move is the same whichever way it comes: the per-exercise
   // progress marks and the rest timer's owner are both stored by index, and `moved.indices`
   // says where every index went.
   const applyReorder = move => {
@@ -767,11 +768,6 @@ function ActiveWorkout() {
         if (forIdx >= 0) useUI.setState({ timer: { ...rest, forIdx } })
       }
     }, true)
-  }
-  const moveCurrentUnit = direction => {
-    const active = useStore.getState().S.active
-    if (!canMoveActiveWorkoutUnit(active, active?.cur, direction)) return
-    applyReorder(a => moveActiveWorkoutUnit(a, a?.cur, direction))
   }
   // A dropped thumbnail can land anywhere in the session, not just one place over — and it
   // carries its whole superset with it, so an order that splits a pair is not expressible.
@@ -1278,7 +1274,54 @@ function ActiveWorkout() {
     })
   }
 
-  return <div className="narrow">
+
+  /* With the header folded away and the exercise's own details closed, the drum and the foot under
+     it are the whole screen, and they are made to fit it with nothing to scroll to: each step
+     (data-fit on the page, see .narrow[data-fit] in index.css) gives up a little more room — the
+     foot's two rows of buttons, then one row of icons, then the same row tighter, then the set in
+     front tighter, then tighter still. The largest step that fits is taken: every step is tried
+     and measured in one go, the drum re-measuring itself in between ('drum:measure'), and it is
+     redone whenever the page changes height (a set that grows a drop, a rotated phone), always from
+     the roomiest, so it grows back as room returns. Anything else — the list of sets, an open
+     header — is meant to scroll, and keeps the roomiest size. */
+  const pageEl = useRef(null)
+  const footEl = useRef(null)
+  useEffect(() => {
+    const page = pageEl.current, foot = footEl.current
+    if (!page || !foot) return
+    let raf = 0
+    const set = step => {
+      page.dataset.fit = step
+      window.dispatchEvent(new Event('drum:measure'))
+    }
+    const fit = () => {
+      if (!window.innerHeight || !foot.getBoundingClientRect().height) return
+      const folded = page.querySelector('.wtop.slim') && !page.querySelector('.drum-head .exmedia, .drum-head .exhead-tg[aria-expanded="true"]')
+      // Down to the tab bar — or to the top of its start button, which stands out above it.
+      const tabs = document.getElementById('tabbar')
+      const tops = tabs ? [tabs, ...tabs.children].map(el => el.getBoundingClientRect().top) : [window.innerHeight]
+      const room = Math.min(...tops) - 8
+      let step = 0
+      if (folded) {
+        for (; step < FIT_STEPS - 1; step++) {
+          set(step)
+          if (foot.getBoundingClientRect().bottom + (window.scrollY || 0) <= room) break
+        }
+      }
+      set(step)
+    }
+    const later = () => {
+      if (typeof requestAnimationFrame === 'undefined') { fit(); return }
+      cancelAnimationFrame(raf); raf = requestAnimationFrame(fit)
+    }
+    later()
+    window.addEventListener('resize', later)
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(later)
+    ro?.observe(page)
+    return () => { window.removeEventListener('resize', later); ro?.disconnect(); if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(raf) }
+  }, [])
+
+  return <div className="narrow" ref={pageEl} data-fit="0">
     {/* Pinned for the whole session. Mid-workout you are scrolled deep into a list of sets,
         and the session name, its progress, the running order and where you are in it are
         exactly the things that have to stay on screen while you scroll. */}
@@ -1361,27 +1404,20 @@ function ActiveWorkout() {
     {/* The foot of the session: paging between exercises, then one bar for the running order.
         Finishing (✓), swapping an exercise (its header) and the session note (the header's
         details) are all up top, so none of them is repeated down here. */}
-    <div className="wfoot">
+    <div className="wfoot" ref={footEl}>
       <div className="wnav">
         <Button variant="tinted" icon="chevronLeft" disabled={unitIdx <= 0} onClick={() => navigateUnit(-1)}>{t('Prev')}</Button>
         <Button variant="tinted" trailingIcon="chevronRight" disabled={unitIdx < 0 || unitIdx >= units.length - 1} onClick={() => navigateUnit(1)}>{t('Next')}</Button>
       </div>
       {A.entries.length
         ? <div className="wtools" role="toolbar" aria-label={t('Exercises')}>
-          <button type="button" className="wtool" onClick={addExercise}>
+          <button type="button" className="wtool" aria-label={t('Add exercise')} onClick={addExercise}>
             <Icon name="plus" /><span>{t('Add exercise')}</span></button>
-          <button type="button" className="wtool" aria-label={t('Move up')}
-            disabled={!!work || !canMoveActiveWorkoutUnit(A, cur, -1)} onClick={() => moveCurrentUnit(-1)}>
-            <Icon name="chevronUp" /><span>{t('Move up')}</span></button>
-          <button type="button" className="wtool" aria-label={t('Move down')}
-            disabled={!!work || !canMoveActiveWorkoutUnit(A, cur, 1)} onClick={() => moveCurrentUnit(1)}>
-            <Icon name="chevronDown" /><span>{t('Move down')}</span></button>
-          <button type="button" className="wtool del" disabled={!!work} onClick={removeExerciseSheet}>
+          <button type="button" className="wtool del" aria-label={t('Remove exercise')} disabled={!!work} onClick={removeExerciseSheet}>
             <Icon name="trash" /><span>{t('Remove exercise')}</span></button>
         </div>
         : <Button onClick={addExercise} icon="plus">{t('Add exercise')}</Button>}
     </div>
-    <div style={{ height: 40 }} />
   </div>
 }
 

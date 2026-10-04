@@ -112,6 +112,55 @@ export function turnVars(from, to, width) {
 }
 
 /**
+ * While the deck turns, a screen is not a flat sheet that leans: it is wrapped round the cylinder,
+ * like the set drum's chambers (drumFace in lib/drum.js) on their side. The screen is cut into
+ * `TURN_BANDS` upright bands and each is placed on the circle on its own, so the middle of it faces
+ * you and the sides fall away and shrink — the curve of the drum, not a card tipped on its edge.
+ * A screen at rest is the flat page you read and press, so the wrap only builds as it moves off
+ * the front (`TURN_BEND` of a screen's width), and is flat again, seamlessly, when it lands.
+ */
+export const TURN_BANDS = 12
+export const TURN_RADIUS = 1.15   // of the cylinder, in screen widths
+export const TURN_BEND = 0.15     // of a screen's width, to wrap fully
+
+/** How wrapped a screen `offset` px from the front is, 0..1. */
+export function turnBend(offset, width) {
+  return width > 0 ? Math.max(0, Math.min(1, Math.abs(offset) / (width * TURN_BEND))) : 0
+}
+
+/**
+ * The bands of a screen `layerWidth` px wide whose middle is `offset` px from the front of a deck
+ * `width` px wide. Per band: where it sits in its layer (`left`, `width`, a little over its share
+ * so none shows a seam) and how it is moved from there — `x`, `z` px, `deg`, `scale` (across) —
+ * plus `shade`, how far it has fallen into the page's colour, and `back` when it has turned past
+ * the side of the cylinder. Wrapped, the bands' edges sit on the circle and tile it end to end;
+ * unwrapped they are the flat screen, `x` being the offset itself.
+ */
+export function turnBands({ offset, width, layerWidth = width, bands = TURN_BANDS, overlap = 1, bend }) {
+  if (!(width > 0) || !(layerWidth > 0)) return []
+  const R = TURN_RADIUS * width
+  const k = bend ?? turnBend(offset, width)
+  const share = layerWidth / bands
+  const step = share / R
+  const chord = 2 * R * Math.sin(step / 2)
+  const dist = R * Math.cos(step / 2)
+  const mix = (flat, bent) => flat + (bent - flat) * k
+  return Array.from({ length: bands }, (_, j) => {
+    const u = (j + 0.5) * share - layerWidth / 2       // the band's middle, from its layer's
+    const at = (offset + u) / R
+    return {
+      left: j * share - overlap, width: share + 2 * overlap,
+      x: mix(offset, dist * Math.sin(at) - u),
+      z: mix(0, dist * Math.cos(at) - R),
+      deg: mix(0, at * 180 / Math.PI),
+      scale: mix(1, chord / share),
+      shade: k * (1 - Math.max(0, Math.cos(at)) ** 0.7),
+      back: Math.abs(at) + step / 2 > Math.PI / 2 - 0.02,
+    }
+  })
+}
+
+/**
  * A drag with nowhere to go — the first screen swiped further back, the last one further on —
  * still has to answer the finger, or the gesture reads as broken. It follows at a fraction of
  * the distance and stops well short of uncovering the page, the way a list rubber-bands at its

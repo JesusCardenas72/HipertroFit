@@ -11,6 +11,7 @@ import { useWakeLock } from './lib/wakelock.js'
 import { startFlow } from './sheets.jsx'
 import Icon from './components/Icon.jsx'
 import TabBar from './components/TabBar.jsx'
+import VersionBadge from './components/VersionBadge.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import ScreenSlider from './components/ScreenSlider.jsx'
 import Modals from './components/Modals.jsx'
@@ -138,6 +139,7 @@ function Shell() {
           <ErrorBoundary>{!authed ? <Login /> : <MobileOnboarding />}</ErrorBoundary>
         </div>
       ) : <ScreenSlider render={screen} />}
+      <VersionBadge />
       <TabBar onStart={startFlow} />
       <RestTimer />
       <Modals />

@@ -182,6 +182,16 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
 @keyframes viewfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .app.vfade{animation:viewfade var(--med) var(--ease)}
 
+/* Version, top-right. It lives in the strip .app leaves between the status bar and the first
+   row (8px of padding + the header's 8px margin), so at 9px it sits above the titles and their
+   buttons instead of over them. Above the pinned workout header (20), below the tab bar (50),
+   the timer (60) and the sheets (100); never takes a tap. */
+.ver-badge{
+  position:fixed;top:calc(var(--sat) + 1px);right:calc(8px + var(--sar));z-index:30;
+  font-size:9px;line-height:10px;font-weight:500;letter-spacing:.02em;
+  color:var(--label-3);opacity:.7;pointer-events:none;user-select:none;-webkit-user-select:none;
+}
+
 /* --- sliding screens (components/SlideDeck.jsx) ---
    Two layers travelling together: the one arriving comes in from a border and pushes the one
    being left out the other side. The layer that is *not* current is lifted out of the flow so
@@ -212,6 +222,23 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
 .deck-turn .deck-layer{backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-origin:50% 40vh}
 /* exactly SetDrum's settle, 1 + 2(k−1)³ + (k−1)², written as a Bézier */
 .deck-turn .deck-sliding{animation:deck-turn var(--turn) cubic-bezier(.333,1.333,.667,1) both}
+/* A screen away from the front is wrapped round the cylinder (turnBands in lib/slide.js): SlideDeck
+   draws it as upright bands in .deck-bands, one perspective for all of them, each a picture of the
+   screen showing its own part of it, and hides the real one (.deck-ghost) until it lands flat. Opaque
+   bands, overlapping a hair, so no seam shows; the page's colour falls over a band as it turns away. */
+.deck-ghost{opacity:0!important;pointer-events:none}
+.deck-bands{position:absolute;inset:0;perspective:1100px;perspective-origin:50% 40vh;pointer-events:none;z-index:3}
+.deck-band{position:absolute;top:0;bottom:0;clip-path:inset(-200vh 0);backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform}
+.deck-band::before{content:"";position:absolute;inset:0;background:var(--bg)}
+.deck-band::after{content:"";position:absolute;inset:0;background:var(--bg);opacity:var(--shade,0);pointer-events:none}
+.deck-band-in{position:absolute;top:0}
+@keyframes deck-band{
+  from{transform:translate3d(var(--fx,0px),0,var(--fz,0px)) rotateY(var(--fr,0deg)) scaleX(var(--fs,1))}
+  to{transform:translate3d(var(--tx,0px),0,var(--tz,0px)) rotateY(var(--tr,0deg)) scaleX(var(--ts,1))}
+}
+@keyframes deck-band-shade{from{opacity:var(--sf,0)}to{opacity:var(--st,0)}}
+.deck-band.anim{animation:deck-band var(--turn) cubic-bezier(.333,1.333,.667,1) both}
+.deck-band.anim::after{animation:deck-band-shade var(--turn) cubic-bezier(.333,1.333,.667,1) both}
 /* With animations off (the reduced-motion rule below turns them all off) the outgoing layer
    would otherwise sit on top of the new screen until the timer drops it. */
 @media (prefers-reduced-motion: reduce){.deck-over{display:none}}
@@ -1331,6 +1358,36 @@ h4.sec{
 .ss-ex{position:relative}
 .ss-amp{text-align:center;font-size:15px;font-weight:600;color:var(--acc);margin:14px 0 8px}
 
+/* --- microcycle actions (components/MicrocycleActions.jsx) ---
+   Deload · close · programming, three equal columns with the icon over the label so the
+   longest label ("Close microcycle", in other languages longer still) wraps to two lines
+   instead of squeezing its neighbours. Each action has a colour of its own (--c): the card
+   is a soft wash of it and the icon sits on a solid disc, so they read apart at a glance.
+   Deload keeps the app-wide --deload colour, the one every deload surface already uses. */
+.micro-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.micro-btn{
+  --c:var(--blue);
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;
+  min-height:76px;padding:10px 6px;border-radius:var(--r);
+  background:color-mix(in srgb,var(--c) 15%,var(--surface));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 28%,transparent);
+  color:var(--label);font-size:12px;font-weight:600;line-height:1.15;
+  letter-spacing:-.005em;text-align:center;
+  transition:background var(--fast),transform var(--fast);
+}
+.micro-btn.dl{--c:var(--deload)}
+.micro-btn.close{--c:var(--orange)}
+.micro-btn.prog{--c:var(--blue)}
+.micro-btn .disc{
+  width:30px;height:30px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--c);color:#fff;font-size:17px;
+}
+.micro-btn span.t{max-width:100%;overflow-wrap:anywhere}
+.micro-btn:active{background:color-mix(in srgb,var(--c) 26%,var(--surface));transform:scale(.97)}
+/* a deload running or booked: the card fills in, like the deload badges do */
+.micro-btn.dl.on{background:color-mix(in srgb,var(--c) 28%,var(--surface));box-shadow:inset 0 0 0 1.5px var(--deload-line)}
+
 /* --- home: today's session row --- */
 .today-row{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -1529,7 +1586,8 @@ h4.sec{
    as the screen allows, its neighbours tilted away above and below as on a cylinder, and the
    whole drum as a rail of pips down the left edge. Superset members keep one colour each —
    A takes the accent, B teal, C orange, D pink — on the rail, the tabs and the hero's letter. */
-.drum{--mc:var(--acc);margin-top:2px}
+.drum{--mc:var(--acc);--drum-bg:var(--bg);margin-top:2px}
+.ss-card .drum{--drum-bg:var(--surface)}
 .drum .m0,.ss-card .m0{--mc:var(--acc)}
 .drum .m1,.ss-card .m1{--mc:var(--teal)}
 .drum .m2,.ss-card .m2{--mc:var(--orange)}
@@ -1552,7 +1610,7 @@ h4.sec{
 .drum-tab.on{color:var(--label);background:color-mix(in srgb,var(--mc) 13%,var(--surface));
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--mc) 55%,transparent)}
 
-.drum-body{position:relative;display:flex;gap:14px;margin-top:6px}
+.drum-body{position:relative;display:flex;gap:10px;margin-top:6px}
 
 /* the rail: a brushed capsule with the drum's axis down its middle, as tall as the hero — a
    window onto five pips (two sets before, the live one, two after) that rolls with the drum */
@@ -1601,9 +1659,11 @@ h4.sec{
 .drum-fuse.armed path{stroke-dasharray:none;opacity:1;stroke-width:2}
 @keyframes fuseRun{to{stroke-dashoffset:-14}}
 
-/* the stage: perspective gives the tilt its depth, the mask shades the drum's curve away */
+/* the stage: perspective gives the tilt its depth, the mask shades the drum's curve away. The
+   mask also clips whatever pokes out of the stage, so the stage is --pad wider than the chambers
+   on each side (and taller, see SetDrum) and the hero's ring and glow stay whole */
 .drum-stage{
-  position:relative;flex:1;min-width:0;perspective:900px;perspective-origin:50% var(--mid,50%);touch-action:none;outline:none;user-select:none;-webkit-user-select:none;
+  position:relative;flex:1;min-width:0;margin:0 calc(-1 * var(--pad,0px));perspective:900px;perspective-origin:50% var(--mid,50%);touch-action:none;outline:none;user-select:none;-webkit-user-select:none;
   cursor:grab;transition:transform var(--med) var(--ease);
   -webkit-mask-image:linear-gradient(transparent,#000 var(--fade-a,13%),#000 calc(100% - var(--fade-b,13%)),transparent);
           mask-image:linear-gradient(transparent,#000 var(--fade-a,13%),#000 calc(100% - var(--fade-b,13%)),transparent);
@@ -1611,7 +1671,7 @@ h4.sec{
 .drum-stage.grabbing{cursor:grabbing;transition:none}
 .drum-stage.solo{-webkit-mask-image:none;mask-image:none}
 .drum-ch{
-  position:absolute;left:0;right:0;top:var(--mid,50%);transform-origin:50% 50%;will-change:transform,opacity;
+  position:absolute;left:var(--pad,0px);right:var(--pad,0px);top:var(--mid,50%);transform-origin:50% 50%;will-change:transform,opacity;
   backface-visibility:hidden;-webkit-backface-visibility:hidden;
   /* no transitions: the drum is placed frame by frame (SetDrum), place, tilt and size in step;
      the 900px perspective on .drum-stage is the one lib/drum.test.js checks for overlap */
@@ -1620,6 +1680,18 @@ h4.sec{
    opens from one to the other, and the two cross-fade as it goes */
 .drum-capsule{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);pointer-events:none}
 .drum-ch.strip{cursor:pointer}
+/* a chamber turning on the cylinder: SetDrum cuts its face into bands (lib/drum.js drumFace), each
+   a copy of the face laid on the curve on its own. The copy is only a picture — a sticker laid
+   on the whole face, each band carrying its own slice of it (--ef/--sf, see BentFace) — and the page's colour is laid over it as the
+   band turns away from you, so the edges of the face fall into shade like the side of a drum. A band
+   is opaque (::before): the bands overlap a hair so no seam shows, and a face that is still fading
+   in must not show the overlap twice */
+.drum-ch.bent::before{content:"";position:absolute;inset:0;background:var(--drum-bg,var(--bg))}
+.drum-ch.bent::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(color-mix(in srgb,var(--drum-bg,var(--bg)) var(--sa,0%),transparent),color-mix(in srgb,var(--drum-bg,var(--bg)) var(--sb,0%),transparent))}
+.bent-in{position:absolute;left:0;right:0;top:50%;height:0;pointer-events:none}
+.bent .drum-full,.bent .drum-capsule{position:absolute;left:0;right:0;top:0}
+.bent .drum-full{opacity:var(--full,1);transform:translateY(-50%) scaleY(var(--sf,1)) translateY(calc(-1 * var(--ef,0px)))}
+.bent .drum-capsule{opacity:var(--cap,0);transform:translateY(-50%) scaleY(var(--sc,1)) translateY(calc(-1 * var(--ec,0px)))}
 .drum.inert .drum-stage{cursor:default}
 
 .drum-strip{
@@ -1653,6 +1725,7 @@ h4.sec{
 .dh.warm{--hc:var(--orange)}
 .dh.done{--hc:var(--label-3)}
 .dh > *{position:relative}
+.dh{container-type:inline-size}
 .dh .dh-wm{
   position:absolute;right:-4px;top:-34px;font-size:178px;font-weight:800;line-height:1;letter-spacing:-.07em;
   color:transparent;-webkit-text-stroke:1.5px color-mix(in srgb,var(--hc) 24%,transparent);
@@ -1704,12 +1777,15 @@ h4.sec{
 .dh.n1 .dh-v .num{font-size:62px;min-height:68px}
 .dh.n3 .dh-v .num{font-size:34px;min-height:48px}
 @supports (width:1cqi){
-  .dh-v .num{min-height:clamp(56px,9.6vh,92px);
-    font-size:clamp(30px,min(9vh,calc(100cqi / (var(--chars,3) * .47 + .15))),84px)}
-  .dh.n1 .dh-v .num{min-height:clamp(68px,13vh,120px);
-    font-size:clamp(40px,min(12vh,calc(100cqi / (var(--chars,3) * .47 + .15))),110px)}
-  .dh.n3 .dh-v .num{min-height:clamp(48px,7.4vh,70px);
-    font-size:clamp(26px,min(6.5vh,calc(100cqi / (var(--chars,3) * .47 + .15))),60px)}
+  /* The number's box is --nh tall (it follows the screen's height) and as wide as its column
+     (a container, so cqi is the column's width). The figure is the largest that fits BOTH — as
+     tall as the box allows and as wide as the box allows for the characters it has — so it
+     always fills its box and never leaves it, whatever the device or the thumbnail beside. */
+  .dh{--nh:clamp(56px,9.6vh,92px)}
+  .dh.n1{--nh:clamp(68px,13vh,120px)}
+  .dh.n3{--nh:clamp(48px,7.4vh,70px)}
+  .dh-v .num{min-height:var(--nh);
+    font-size:clamp(14px,min(calc(var(--nh) * .86),calc(94cqi / (var(--chars,3) * .47 + .15))),120px)}
 }
 .dh-v .num:focus{color:var(--hc)}
 .dh.done .dh-v .num{color:var(--label-2)}
@@ -1728,16 +1804,59 @@ h4.sec{
 .dh-tool:active:not(:disabled),.wtool:active:not(:disabled){background:var(--surface-3);color:var(--label)}
 .dh-tool:disabled,.wtool:disabled{opacity:.32}
 .dh-tool.del .icn,.wtool.del .icn{color:var(--red)}
-/* the session's bar has the page's width but longer labels ("Remove exercise"): two lines, not cut */
+/* The foot of the workout: paging, then add / remove exercise (reordering is the dock's drag). It
+   comes in three sizes and Workout.jsx picks the largest that leaves nothing to scroll to
+   (data-fit on the page): 0 two rows, the tools with their labels; 1 one row, the tools as icons; 2 the
+   same, tighter; 3 and 4 keep that and shrink the set in front. */
 .wtools{border-radius:var(--r);margin-top:10px}
 .wtool{padding:10px 4px 9px;font-size:11.5px;justify-content:flex-start}
 .wtool .icn{font-size:19px}
 .wtool span{max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere}
 .wfoot{margin-top:12px}
+/* the workout ends with its foot: only the tab bar (and its start button, standing out above it) is
+   left under it, so a screen that fits has nothing to scroll to */
+.app:has(.wfoot){padding-bottom:calc(94px + var(--sab))}
 /* previous / next side by side, the two halves of one control */
 .wnav{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .wnav .btn{min-width:0}
 .wnav .btn:disabled{opacity:.35}
+.narrow:not([data-fit="0"]) .wfoot{display:flex;align-items:stretch;gap:8px;margin-top:8px}
+.narrow:not([data-fit="0"]) .wnav{flex:1;min-width:0;gap:8px}
+.narrow:not([data-fit="0"]) .wnav .btn{padding:11px 10px;font-size:16px}
+.narrow:not([data-fit="0"]) .wtools{flex:none;margin-top:0}
+.narrow:not([data-fit="0"]) .wtool{flex:none;flex-direction:row;justify-content:center;padding:0 15px}
+.narrow:not([data-fit="0"]) .wtool span{display:none}
+.narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wfoot{margin-top:6px}
+.narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wnav .btn{padding:7px 8px;font-size:15px;border-radius:12px}
+.narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wtool{padding:0 12px}
+.narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wtool .icn{font-size:17px}
+/* 3 and 4: the set in front gives up room too — the same set, every part a little smaller */
+.narrow:is([data-fit="3"],[data-fit="4"]) .drum-head .exhead-drum{margin-bottom:2px!important}
+.narrow:is([data-fit="3"],[data-fit="4"]) .exthumb{width:36px;height:36px}
+.narrow:is([data-fit="3"],[data-fit="4"]) .drum-body{margin-top:2px}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh{padding:10px 12px 9px;--nh:clamp(44px,7.2vh,72px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh.n1{--nh:clamp(54px,10vh,96px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh.n3{--nh:clamp(38px,5.6vh,56px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-top{min-height:24px}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-ref{margin:3px 0 0}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-cols,.narrow:is([data-fit="3"],[data-fit="4"]) .dh-bar,.narrow:is([data-fit="3"],[data-fit="4"]) .dh-act{margin-top:6px}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-l{padding-top:6px}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-b{height:clamp(30px,5vh,46px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-tool{padding:5px 2px 4px}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-go,.narrow:is([data-fit="3"],[data-fit="4"]) .dh-play{height:clamp(44px,6vh,54px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-play{width:clamp(44px,6vh,54px)}
+.narrow[data-fit="4"] .dh{padding:8px 10px 8px}
+.narrow[data-fit="4"] .dh-top{min-height:20px}
+.narrow[data-fit="4"] .dh-l{padding-top:4px;font-size:9.5px}
+.narrow[data-fit="4"] .dh-b{height:26px;font-size:17px}
+.narrow[data-fit="4"] .dh{--nh:44px}
+.narrow[data-fit="4"] .dh.n1{--nh:52px}
+.narrow[data-fit="4"] .dh.n3{--nh:38px}
+.narrow[data-fit="4"] .dh-cols,.narrow[data-fit="4"] .dh-bar,.narrow[data-fit="4"] .dh-act{margin-top:5px}
+.narrow[data-fit="4"] .dh-go,.narrow[data-fit="4"] .dh-play{height:40px}
+.narrow[data-fit="4"] .dh-play{width:40px}
+.narrow[data-fit="4"] .dh-tool{padding:4px 2px 3px}
+.narrow[data-fit="4"] .dh-tool .icn{font-size:15px}
 /* the intensifiers act on this set, the rest on the list: a wider seam between the two groups */
 .dh-bar-sep{flex:none;width:3px;background:var(--sep)}
 .dh-act{display:flex;gap:10px;margin-top:10px}
@@ -1754,6 +1873,25 @@ h4.sec{
 .dh-play{width:clamp(56px,7.4vh,68px);height:clamp(56px,7.4vh,68px);flex:none;border-radius:17px;display:grid;place-items:center;font-size:21px;
   background:var(--surface-2);color:var(--hc)}
 .dh-play:disabled{opacity:.4}
+.dh-go{min-width:0}
+.dh-go > span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The hero is as wide as what the thumbnail column leaves it: when that is little, the furniture
+   round the numbers gives up a few pixels rather than cutting its labels. */
+@container (max-width:290px){
+  .dh-cols{gap:6px}
+  .dh-l{font-size:9.5px;letter-spacing:.04em;padding-top:7px}
+  .dh-tool{font-size:9.5px;letter-spacing:0}
+  .dh-tool .icn{font-size:15px}
+  .dh-go{gap:7px;font-size:14px}
+  .dh-go.on{font-size:13px}
+  .dh-go-ic{width:24px;height:24px;font-size:13px}
+  .dh-tag{min-width:0}
+}
+@container (min-width:420px){
+  .dh-tool{font-size:12px}
+  .dh-tool .icn{font-size:19px}
+  .dh-l{font-size:11.5px}
+}
 
 .ss-card.drum-ss .drum-head .exmedia.compact img{height:110px}
 .deload-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}

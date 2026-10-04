@@ -994,61 +994,50 @@ describe('superset actionable-set centring', () => {
   })
 })
 
-describe('active workout whole-unit move controls', () => {
+describe('active workout foot', () => {
   const action = label => container.querySelector(`button[aria-label="${label}"]`)
 
-  it('shows labelled controls and moves the selected standalone exercise one unit', async () => {
-    const selected = exercise('duplicate', [false], {
-      occurrenceId: 'duplicate#2',
-      target: { mode: 'reps', reps: 7, weight: 82.5, notes: 'Keep this target' },
-      sets: [{ w: 77.5, r: 6, done: true, rir: 2 }],
+  it('has no move up / down: the order is changed by dragging in the dock', async () => {
+    await mount([exercise('first', [false]), exercise('second', [false]), exercise('third', [false])], 1)
+
+    expect(action('Move up')).toBeNull()
+    expect(action('Move down')).toBeNull()
+    expect(action('Add exercise')).not.toBeNull()
+    expect(action('Remove exercise')).not.toBeNull()
+  })
+
+  // The page is drawn at the largest of its sizes that leaves nothing to scroll to; there is no
+  // layout here, so the foot's place is faked: `base` px at the roomiest size, less `per` for each step.
+  const fitTo = async (base, per, { drum = true, open = false } = {}) => {
+    await mount([exercise('first', [false]), exercise('second', [false])], 0, drum ? { setView: 'drum' } : {})
+    const page = container.querySelector('.narrow')
+    const foot = container.querySelector('.wfoot')
+    if (open) await act(async () => { container.querySelector('[data-testid="workout-top"]').dispatchEvent(new dom.Event('click', { bubbles: true })) })
+    window.innerHeight = 700
+    foot.getBoundingClientRect = () => ({ height: 50, bottom: base - per * Number(page.dataset.fit) })
+    await act(async () => {
+      window.dispatchEvent(new dom.Event('resize'))
+      await new Promise(r => setTimeout(r, 60))
     })
-    await mount([
-      exercise('duplicate', [false], { occurrenceId: 'duplicate#1' }),
-      exercise('middle', [false]),
-      selected,
-    ], 2)
+    return page.dataset.fit
+  }
 
-    expect(action('Move up')?.textContent.trim()).toBe('Move up')
-    expect(action('Move down')?.textContent.trim()).toBe('Move down')
-    await act(async () => { action('Move up').dispatchEvent(new dom.Event('click', { bubbles: true })) })
-
-    expect(mocks.S.active.entries.map(entry => entry.occurrenceId || entry.id)).toEqual(['duplicate#1', 'duplicate#2', 'middle'])
-    expect(mocks.S.active.entries[1]).toEqual(selected)
-    expect(mocks.S.active.entries[1].target).toEqual({ mode: 'reps', reps: 7, weight: 82.5, notes: 'Keep this target' })
-    expect(mocks.S.active.entries[1].sets).toEqual([{ w: 77.5, r: 6, done: true, rir: 2 }])
-    expect(mocks.S.active.cur).toBe(1)
-    expect(mocks.stopWork).toHaveBeenCalledOnce()
-    expect(mocks.stopRest).not.toHaveBeenCalled()
+  it('keeps the roomiest size when everything fits', async () => {
+    expect(await fitTo(600, 60)).toBe('0')
   })
 
-  it('moves the selected contiguous group as one unit without changing its metadata', async () => {
-    const first = exercise('group-a', [false], { sg: 'pair', occurrenceId: 'group-a#1' })
-    const selected = exercise('group-b', [true], { sg: 'pair', occurrenceId: 'group-b#1' })
-    const groupMeta = { pair: { kind: 'complex', label: 'Carry pair', cues: 'Stay braced.' } }
-    await mount([
-      exercise('before', [false]),
-      first,
-      selected,
-      exercise('after', [false]),
-    ], 2)
-    mocks.S.active.groupMeta = groupMeta
-
-    await act(async () => { action('Move up').dispatchEvent(new dom.Event('click', { bubbles: true })) })
-
-    expect(mocks.S.active.entries.map(entry => entry.id)).toEqual(['group-a', 'group-b', 'before', 'after'])
-    expect(mocks.S.active.entries.slice(0, 2)).toEqual([first, selected])
-    expect(mocks.S.active.entries.slice(0, 2).map(entry => entry.sg)).toEqual(['pair', 'pair'])
-    expect(mocks.S.active.groupMeta).toEqual(groupMeta)
-    expect(mocks.S.active.entries[mocks.S.active.cur]).toEqual(selected)
+  it('shrinks the page just enough for it to fit', async () => {
+    expect(await fitTo(730, 60)).toBe('1')
+    expect(await fitTo(850, 60)).toBe('3')
   })
 
-  it('disables both moves while a work timer can still write by index', async () => {
-    mocks.work = { left: 5, total: 5, endsAt: Date.now() + 5000 }
-    await mount([exercise('first', [false]), exercise('second', [false])], 1)
+  it('goes no smaller than its tightest size, however tall the page', async () => {
+    expect(await fitTo(2000, 60)).toBe('4')
+  })
 
-    expect(action('Move up')?.disabled).toBe(true)
-    expect(action('Move down')?.disabled).toBe(true)
+  it('only shrinks to fit with the header folded away: the list of sets and an open header scroll', async () => {
+    expect(await fitTo(2000, 60, { drum: false })).toBe('0')
+    expect(await fitTo(2000, 60, { open: true })).toBe('0')
   })
 })
 

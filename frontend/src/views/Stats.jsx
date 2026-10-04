@@ -7,6 +7,7 @@ import { fmtNum, fmtDate, fmtVol, todayISO } from '../lib/format.js'
 import { t, exerciseNameFor, getLang } from '../lib/i18n.js'
 import { bwSheet, goalSheet, calendarSheet, workoutDetailSheet, WorkoutRow, bwDeltaColor } from '../sheets.jsx'
 import { DeloadStatus, DeloadTitleTag } from '../components/Deload.jsx'
+import MicrocycleActions from '../components/MicrocycleActions.jsx'
 import LineChart from '../components/LineChart.jsx'
 import Heatmap from '../components/Heatmap.jsx'
 import Icon from '../components/Icon.jsx'
@@ -476,6 +477,7 @@ export default function Stats() {
         <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button>
       </div></div>
     <DeloadStatus />
+    <MicrocycleActions />
 
     <div className="tiles">
       <div className="tile"><div className="l"><Icon name="dumbbell" />{t('Workouts')}</div><div className="v">{workouts.length}</div></div>

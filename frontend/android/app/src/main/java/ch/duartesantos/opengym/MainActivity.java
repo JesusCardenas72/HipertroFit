@@ -1,5 +1,6 @@
 package ch.duartesantos.opengym;
 
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.webkit.WebView;
 import androidx.core.graphics.Insets;
@@ -39,6 +40,18 @@ public class MainActivity extends BridgeActivity {
         // AudioFocus pauses other apps' audio (music, podcasts) while the rest-end alert plays
         // and hands it back when the alert ends, so the music resumes on its own.
         registerPlugin(AudioFocusPlugin.class);
+
+        // Phone upright, tablet on its side. Decided here rather than with a static
+        // screenOrientation in the manifest, which can only name one value for every device.
+        // smallestScreenWidthDp is the short side of the screen, so it doesn't change when the
+        // device is rotated; 600 is Android's own sw600dp tablet line (lib/orientation-lock.js
+        // uses the same one for the installed web app).
+        boolean tablet = getResources().getConfiguration().smallestScreenWidthDp >= 600;
+        setRequestedOrientation(
+            tablet
+                ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        );
 
         super.onCreate(savedInstanceState);
 

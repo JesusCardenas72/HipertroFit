@@ -16,8 +16,8 @@
 // See lib/program.js for the calendar projection (which days you intend to train) and
 // lib/volume.js for what the block's volume adds up to.
 
-import { REST, sessionsPerRound } from './program.js'
-import { todayISO } from './format.js'
+import { REST, sessionsPerRound, emptyProgram } from './program.js'
+import { todayISO, isoOf } from './format.js'
 
 /** Sessions per microcycle by training strategy. `custom` counts the user's own sequence. */
 export const STRATEGIES = [
@@ -99,6 +99,36 @@ export function cyclePosition(S) {
     cycle: Math.floor(sessions / len),
     step: sessions % len,
     remaining: len - (sessions % len),
+  }
+}
+
+/**
+ * The day a block closed by hand today starts counting from.
+ *
+ * Today, unless a session is already logged for today (or later): sessions are counted from
+ * `cycleStart` inclusive, so starting the new block today would pull the session that just
+ * closed the old one into it. Then it starts the day after the last logged session.
+ */
+export function nextCycleStart(S, today = todayISO()) {
+  const last = sorted(S && S.workouts).at(-1)
+  if (!last || String(last.d) < today) return today
+  const d = new Date(String(last.d) + 'T12:00:00')
+  d.setDate(d.getDate() + 1)
+  return isoOf(d)
+}
+
+/**
+ * The program after closing the running microcycle by hand and opening a new one under
+ * `strategy`: the strategy is set and the count restarts, so the new block is #1 with its
+ * volume at zero. The sequence, anchor and on/off switch are left as they are — they are the
+ * calendar layout, not the block. An unknown strategy falls back to `custom`.
+ */
+export function closeMicrocycle(S, strategy, today = todayISO()) {
+  const prev = (S && S.program) || emptyProgram(today)
+  return {
+    ...prev,
+    strategy: BY_KEY[strategy] ? strategy : 'custom',
+    cycleStart: nextCycleStart(S, today),
   }
 }
 

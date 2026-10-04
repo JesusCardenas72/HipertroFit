@@ -3,6 +3,7 @@ import {
   DELOAD_AFTER, DELOAD_MAX, DELOAD_PCT, emptyMeso, mesoOf, isDeloadCycle,
   mesoState, acceptDeload, postponeDeload, setDeloadPct, applyDeload,
   forceDeloadNow, forceDeloadNext, cancelDeload, exitDeload, deloadNotice, markDeloadNotified, isDeloadWorkout,
+  restartMeso,
 } from './mesocycle.js'
 import { deloadActiveSession, undeloadActiveSession } from './session-start.js'
 
@@ -216,5 +217,21 @@ describe('leaving a deload at any time', () => {
     expect(sets).toHaveLength(3)
     expect(sets.slice(1).every(x => x.w >= 100 && !x.done)).toBe(true)
     expect(undeloadActiveSession(out, st)).toBe(out)
+  })
+})
+
+describe('restarting the block count', () => {
+  it('drops every microcycle index but keeps the chosen cut', () => {
+    const meso = { deloads: [2, 5], postponed: [1], notified: [2], pct: 0.3 }
+    expect(restartMeso({ meso })).toEqual({ deloads: [], postponed: [], notified: [], pct: 0.3 })
+  })
+
+  it('works on a profile that never had a mesocycle', () => {
+    expect(restartMeso({})).toEqual({ deloads: [], postponed: [], notified: [], pct: DELOAD_PCT.def })
+  })
+
+  it('leaves a fresh block with no streak and no suggestion', () => {
+    const st = mesoState({ ...state(0), meso: restartMeso({ meso: { deloads: [0], postponed: [], notified: [0] } }) })
+    expect(st).toMatchObject({ cycle: 0, deload: false, streak: 0, suggest: false })
   })
 })

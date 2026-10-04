@@ -152,6 +152,67 @@ export function drumCylinder({ pos, count, hero, strip, gap, radius }) {
 }
 
 /**
+ * How much a chamber is bent round the cylinder, 0..1, from how much of it is shown (`grow`, as
+ * drumCylinder gives it). The chamber resting in front is a flat card you can read and press, so it
+ * is not bent at all; the moment it starts to leave — or one starts to arrive — its surface wraps
+ * round the curve, fully so a fifth of the way through. Continuous at both ends, so neither the
+ * start nor the end of a turn has a visible switch.
+ */
+export const DRUM_BEND_RAMP = 0.18
+export function drumBend(grow) {
+  return Math.max(0, Math.min(1, (1 - grow) / DRUM_BEND_RAMP))
+}
+
+/**
+ * One chamber's face cut into `slices` bands, each placed on the cylinder on its own, so the
+ * surface curves instead of leaning as a single flat card. Band j shows the part of the face at
+ * `e` px from its middle and is placed by `y`, `z` and `rot` (radians, + faces downward) exactly
+ * as drumCylinder places a whole face. It covers `unit` px of the surface (its chord) and is drawn
+ * `len` tall, a little over that so neighbours overlap and no seam shows. What the face carries is
+ * never cropped to fit: the whole sticker is laid on the face, so the caller squeezes or stretches
+ * its content to `unit` per band — a sticker on a drum, not a window onto one. `step` is the angle
+ * the band covers, so its top edge faces `rot - step / 2` and its bottom edge `rot + step / 2`.
+ *
+ * With `bend` at 1 the content is wrapped on the cylinder: every band's edges sit on the circle,
+ * so the bands tile it end to end, the middle ones facing you, those above and below turned away
+ * and foreshortened — the look of a label round a drum. With `bend` at 0 the bands are slices of
+ * the flat face drumCylinder gives, lying in one plane. Anything between blends the two.
+ */
+export function drumFace({ pos, index, count, hero, strip, gap, radius, slices = 8, overlap = 0.75, bend }) {
+  const c = drumCylinder({ pos, count, hero, strip, gap, radius })[index]
+  if (!c || !(slices > 0)) return []
+  const R = Math.max(radius, hero / 2 + 1, strip)
+  const a = 2 * Math.asin(Math.min(1, c.h / (2 * R)))      // the face's angle
+  const d = R * Math.cos(a / 2)                              // axis to the flat face
+  const k = bend ?? drumBend(c.grow)
+  const share = c.h / slices
+  const step = a / slices                                    // one band's angle
+  const chord = 2 * R * Math.sin(step / 2)                   // ... its chord, as long as it is drawn
+  const dist = R * Math.cos(step / 2)                        // axis to a band's chord
+  const mix = (flat, bent) => flat + (bent - flat) * k
+  return Array.from({ length: slices }, (_, j) => {
+    const e = -c.h / 2 + (j + 0.5) * share
+    const at = c.tilt + (e / c.h) * a
+    const rot = mix(c.tilt, at)
+    const unit = mix(share, chord)
+    return {
+      e, unit, len: unit + 2 * overlap, rot, step,
+      y: mix(d * Math.sin(c.tilt) + e * Math.cos(c.tilt), dist * Math.sin(at)),
+      z: mix(d * Math.cos(c.tilt) - R - e * Math.sin(c.tilt), dist * Math.cos(at) - R),
+      back: Math.abs(rot) + step / 2 > Math.PI / 2 - 0.02,
+    }
+  })
+}
+
+/**
+ * How far a face turned `rot` radians away from you has faded into the page, 0..1: a face seen
+ * square on is as drawn, one edge-on is gone.
+ */
+export function drumShade(rot) {
+  return 1 - Math.max(0, Math.cos(rot)) ** 0.7
+}
+
+/**
  * How far the drum actually reaches above and below the hero's edges, in px on screen: the
  * chambers within `near` of `pos` (the ones SetDrum mounts), each face's two edges rotated by its
  * tilt and projected through a `perspective` centred on the hero. Neighbours round the curve are

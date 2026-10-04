@@ -6,6 +6,7 @@ import { dayAssignSheet, folderSheet, loadStarterPlan, planToolsSheet, programSh
 import { groupRoutines, toggleFolder } from '../lib/folders.js'
 import { programActive } from '../lib/program.js'
 import Icon from '../components/Icon.jsx'
+import MicrocycleActions from '../components/MicrocycleActions.jsx'
 import { Button } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
@@ -31,6 +32,7 @@ export default function Plan() {
       <div><h1>{t('Plan')}</h1><div className="sub">{t('Your weekly routine')}</div></div>
       <button className="iconbtn" onClick={planToolsSheet} aria-label={t('Share your plan')} title={t('Share your plan')}><Icon name="upload" /></button>
     </div>
+    <MicrocycleActions />
     <div className="cols"><div>
       <h4 className="sec">{t('Programming')}</h4>
       <div className="list" style={{ marginBottom: 6 }}>

@@ -4,7 +4,7 @@ import { todayISO } from '../lib/format.js'
 import { effectiveRoutine, nextSessionRoutine } from '../lib/history.js'
 import { cyclePosition, cycleStrip, strategyOf, STRATEGIES } from '../lib/microcycle.js'
 import { mesoState, acceptDeload, postponeDeload, isDeloadWorkout, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
-import { DeloadBadge, DeloadStatus, deloadControlSheet } from './Deload.jsx'
+import { DeloadBadge, DeloadStatus } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { dayOverrideSheet, startFlow, loadStarterPlan, programSheet } from '../sheets.jsx'
@@ -53,19 +53,12 @@ export default function MicrocycleCard() {
 
   return <div className={'card' + (meso.deload ? ' deload' : '')}>
     <DeloadStatus />
-    {/* One line, centred on its height: the title gives way (ellipsis) before the buttons wrap. */}
+    {/* The deload / close / programming buttons live in the row under this card (MicrocycleActions). */}
     <div className="row between" style={{ marginBottom: 8, flexWrap: 'nowrap', alignItems: 'center' }}>
       <div className="row" style={{ gap: 7, minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap' }}>
         <div className="small muted" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(meso.deload ? { color: 'var(--deload)' } : {}) }}>
           {t('Microcycle')} #{pos.cycle + 1} · {t(STRATEGY_NAME[strategyOf(S)] || 'Custom')}
         </div>
-      </div>
-      <div className="row" style={{ gap: 4, flex: 'none', flexWrap: 'nowrap', alignItems: 'center' }}>
-        {/* Always reachable: force a deload now or for the next microcycle, or take it back. */}
-        <button className="iconbtn" style={{ width: 'auto', height: 30, padding: '0 11px', borderRadius: 99, gap: 5, fontSize: 13, color: meso.deload || meso.next ? 'var(--deload)' : undefined }}
-          onClick={deloadControlSheet} title={t('Deload')}><Icon name="arrowDown" />{t('Deload')}</button>
-        <button className="iconbtn" style={{ width: 30, height: 30, fontSize: 15 }}
-          onClick={programSheet} aria-label={t('Programming')}><Icon name="calendar" /></button>
       </div>
     </div>
 

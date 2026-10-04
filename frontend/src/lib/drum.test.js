@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { drumChambers, drumHome, chamberOf, clampChamber, drumSteps, drumSettle, drumArmed, drumRubber, railIndexAt, drumCylinder, drumReach, DRUM_SNAP, DRUM_FLICK } from './drum.js'
+import { drumChambers, drumHome, chamberOf, clampChamber, drumSteps, drumSettle, drumArmed, drumRubber, railIndexAt, drumCylinder, drumReach, drumFace, drumBend, drumShade, DRUM_BEND_RAMP, DRUM_SNAP, DRUM_FLICK } from './drum.js'
 
 const work = (n, done = 0) => Array.from({ length: n }, (_, i) => ({ w: 50, r: 8, done: i < done }))
 const warm = n => Array.from({ length: n }, () => ({ w: 20, r: 10, phase: 'warmup', done: false }))
@@ -164,6 +164,89 @@ describe('drumCylinder', () => {
     const l = drumCylinder({ ...geo, pos: 0 })
     expect(l[0].back).toBe(false)
     expect(l[5].back).toBe(true)
+  })
+})
+
+describe('drumFace', () => {
+  const geo = { count: 6, hero: 300, strip: 50, gap: 10, radius: 240 }
+  // A band's two edges in space: (y, z) from the axis, z measured from the cylinder's front.
+  const edge = (b, len, sign) => {
+    const u = sign * len / 2
+    return [b.y + u * Math.cos(b.rot), b.z - u * Math.sin(b.rot)]
+  }
+
+  it('does not bend the chamber at rest, and bends it fully a little way into a turn', () => {
+    expect(drumBend(1)).toBe(0)
+    expect(drumBend(0)).toBe(1)
+    expect(drumBend(0.9)).toBeGreaterThan(0)
+    expect(drumBend(0.9)).toBeLessThan(1)
+    expect(drumBend(1 - DRUM_BEND_RAMP)).toBeCloseTo(1, 9)
+  })
+
+  it('lays the bands of an unbent face in the one plane drumCylinder gives', () => {
+    const c = drumCylinder({ ...geo, pos: 2.3 })[2]
+    for (const b of drumFace({ ...geo, pos: 2.3, index: 2, bend: 0 })) {
+      expect(b.rot).toBeCloseTo(c.tilt, 9)
+      expect(b.unit).toBeCloseTo(c.h / 8, 9)
+      // every band's middle lies on the face: its distance along it from the face's centre is `e`
+      const along = (b.y - c.y) * Math.cos(c.tilt) - (b.z - c.z) * Math.sin(c.tilt)
+      expect(along).toBeCloseTo(b.e, 6)
+    }
+  })
+
+  it('wraps a bent face on the cylinder: the bands tile it end to end, edges on the circle', () => {
+    const share = drumCylinder({ ...geo, pos: 2.3 })[2].h / 8
+    const bands = drumFace({ ...geo, pos: 2.3, index: 2, bend: 1 })
+    bands.forEach((b, j) => {
+      for (const s of [-1, 1]) {
+        const [y, z] = edge(b, b.unit, s)
+        expect(Math.hypot(y, z + 240)).toBeCloseTo(240, 4)
+      }
+      if (j) {
+        const [y0, z0] = edge(bands[j - 1], bands[j - 1].unit, 1)
+        const [y1, z1] = edge(b, b.unit, -1)
+        expect(y1).toBeCloseTo(y0, 4)
+        expect(z1).toBeCloseTo(z0, 4)
+      }
+    })
+  })
+
+  it('keeps the ends of the face where the flat face has them, bent or not', () => {
+    const share = drumCylinder({ ...geo, pos: 2.3 })[2].h / 8
+    const flat = drumFace({ ...geo, pos: 2.3, index: 2, bend: 0 })
+    const bent = drumFace({ ...geo, pos: 2.3, index: 2, bend: 1 })
+    const first = (bs, s) => edge(bs[0], bs[0].unit, -1)[s]
+    const last = (bs, s) => edge(bs[7], bs[7].unit, 1)[s]
+    for (const s of [0, 1]) {
+      expect(first(bent, s)).toBeCloseTo(first(flat, s), 4)
+      expect(last(bent, s)).toBeCloseTo(last(flat, s), 4)
+    }
+  })
+
+  it('turns the bands of a bent face away from the front towards the face\'s ends', () => {
+    const bands = drumFace({ ...geo, pos: 2, index: 2, bend: 1 })
+    const rots = bands.map(b => b.rot)
+    expect(rots).toEqual([...rots].sort((p, q) => p - q))
+    expect(Math.abs(rots[0] + rots[7])).toBeLessThan(1e-9)   // square on at rest: symmetric
+    expect(rots[7]).toBeGreaterThan(0.3)
+  })
+
+  it('goes from flat to bent without a jump', () => {
+    let prev = drumFace({ ...geo, pos: 2, index: 2 })
+    for (let pos = 2.005; pos <= 3; pos += 0.005) {
+      const l = drumFace({ ...geo, pos, index: 2 })
+      l.forEach((b, j) => {
+        expect(Math.abs(b.y - prev[j].y)).toBeLessThan(4)
+        expect(Math.abs(b.rot - prev[j].rot)).toBeLessThan(0.05)
+      })
+      prev = l
+    }
+  })
+
+  it('fades a face as it turns away', () => {
+    expect(drumShade(0)).toBe(0)
+    expect(drumShade(Math.PI / 2)).toBeCloseTo(1, 9)
+    expect(drumShade(0.9)).toBeGreaterThan(drumShade(0.4))
   })
 })
 
