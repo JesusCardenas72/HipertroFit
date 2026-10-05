@@ -179,7 +179,7 @@ const miniStepper = (value, step, dec, onChange) => (
 )
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, drum, nextSet = -1, onToggle, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onOpenProgression, onSwap, onRemove, swipeSet, swipeDx = 0, open = true, onToggleHead }) {
+function ExerciseBlock({ entryIdx, compact, drum, nameless, nextSet = -1, onToggle, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onOpenProgression, onSwap, onRemove, swipeSet, swipeDx = 0, open = true, onToggleHead }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -226,18 +226,20 @@ function ExerciseBlock({ entryIdx, compact, drum, nextSet = -1, onToggle, onFiel
   return <>
     {!drum && <Media ex={ex} key={entry.id} compact={compact} minimizable />}
     {/* The name is the toggle: collapsed, the screen is the name and the sets; tapping it opens
-        the exercise's tools, tags and last session. */}
-    <div className={'row between' + (drum ? ' exhead-drum' : '')} style={{ marginBottom: 6 }}>
+        the exercise's tools, tags and last session. In a superset's drum the name already sits in
+        the exercise's own box above the drum, and that box is the toggle (`nameless`), so this
+        row only appears once it is open, for the tools. */}
+    {(!nameless || open) && <div className={'row between' + (drum ? ' exhead-drum' : '')} style={{ marginBottom: 6 }}>
       {thumb && <button type="button" className={'exthumb' + (mediaOpen ? ' on' : '')} aria-expanded={mediaOpen}
         aria-label={mediaOpen ? t('Minimize') : t('Expand')} onClick={() => setMediaOpen(o => !o)}>
         <Thumb ex={ex} />{ex.gif && <Icon name={mediaOpen ? 'minimize' : 'play'} />}
       </button>}
-      <button type="button" className="exhead-tg" aria-expanded={open} onClick={onToggleHead}
+      {!nameless && <button type="button" className="exhead-tg" aria-expanded={open} onClick={onToggleHead}
         style={{ fontSize: compact || drum ? 17 : 20 }}>
         <span>{exerciseNameFor(ex)}</span>
         <Icon name={open ? 'chevronUp' : 'chevronDown'} className="exhead-chev" />
-      </button>
-      {open && <div className="row" style={{ gap: 2, flex: 'none' }}>
+      </button>}
+      {open && <div className="row" style={{ gap: 2, flex: 'none', marginLeft: nameless ? 'auto' : undefined }}>
         <button className="iconbtn" aria-label={t('Note')} title={t('Note')}
           style={entry.note ? { color: 'var(--acc)' } : undefined}
           onClick={() => exerciseNoteSheet(entryIdx)}><Icon name="pencil" /></button>
@@ -247,8 +249,8 @@ function ExerciseBlock({ entryIdx, compact, drum, nextSet = -1, onToggle, onFiel
         {onRemove && <button className="iconbtn danger" aria-label={t('Remove exercise')} title={t('Remove exercise')}
           disabled={!!working} onClick={onRemove}><Icon name="trash" /></button>}
       </div>}
-    </div>
-    {thumb && mediaOpen && <Media ex={ex} key={entry.id} compact={compact} />}
+    </div>}
+    {thumb && mediaOpen && (!nameless || open) && <Media ex={ex} key={entry.id} compact={compact} />}
     {open && !compact && (onPairPrev || onPairNext) && <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
       {onPairPrev && <Button size="xs" variant="tinted" icon="link" title={t('Make superset with previous')} onClick={onPairPrev}>{t('Make superset with previous')}</Button>}
       {onPairNext && <Button size="xs" variant="tinted" icon="link" title={t('Make superset with next')} onClick={onPairNext}>{t('Make superset with next')}</Button>}
@@ -404,6 +406,7 @@ function ExerciseBlock({ entryIdx, compact, drum, nextSet = -1, onToggle, onFiel
 /* ---------- the drum's front chamber: one set, drawn as large as the screen allows ---------- */
 const DRUM_LETTERS = 'ABCDEFGH'
 const FIT_STEPS = 5    // how many sizes the drum screen comes in (.narrow[data-fit] in index.css)
+const FOOT_STEPS = 3   // the first of them, which only shrink the foot (prev / next and its tools)
 // "+2,5 kg", "+1 rep", "−1 RIR" — one lever of overloadOf, signed the way it reads on the bar.
 function deltaLabel({ f, d }) {
   const n = (d > 0 ? '+' : '−') + fmtNum(Math.abs(d))
@@ -806,9 +809,6 @@ function ActiveWorkout() {
     swipeClick.current = false
     if (!row && event.target.closest?.(SWIPE_IGNORED_TARGETS)) return
     swipe.current = { id: event.pointerId, x: event.clientX, y: event.clientY, row, mode: null }
-    // Capture keeps the moves coming when the finger wanders off the card. It throws for a
-    // pointer the browser no longer holds, which must not leave a gesture half-started.
-    try { event.currentTarget.setPointerCapture?.(event.pointerId) } catch { /* the listener below still ends it */ }
   }
   const onSwipePointerMove = event => {
     const start = swipe.current
@@ -821,6 +821,12 @@ function ActiveWorkout() {
       start.mode = mode
       // The gesture has taken over: whatever button it started on must not also be clicked.
       if (mode !== 'none') swipeClick.current = true
+      // Capture keeps the moves coming when the finger wanders off the card. Only once the drag
+      // is the surface's, as the drum does: captured from the press, the browser hands the click
+      // of a plain tap to this surface instead of the button under the finger, and a tap on a
+      // superset's exercise box or an exercise's name did nothing. It throws for a pointer the
+      // browser no longer holds, which must not leave a gesture half-started.
+      if (mode !== 'none') try { event.currentTarget.setPointerCapture?.(event.pointerId) } catch { /* the listener below still ends it */ }
       // A mouse would otherwise paint a text selection across the screen as it drags. Cleared
       // on every move rather than once, so nothing is left highlighted behind the gesture.
       if (event.pointerType === 'mouse') window.getSelection?.()?.removeAllRanges()
@@ -1217,7 +1223,7 @@ function ActiveWorkout() {
     if (drumView) {
       const chambers = drumChambers(A.entries, members)
       const ss = members.length > 1
-      const head = idx => block(idx, ss ? { compact: true, drum: true } : {
+      const head = idx => block(idx, ss ? { compact: true, drum: true, nameless: true } : {
         drum: true,
         onPairPrev: idx > 0 ? () => pairAt(idx - 1, idx) : null,
         onPairNext: idx < A.entries.length - 1 ? () => pairAt(idx, idx + 1) : null,
@@ -1225,6 +1231,7 @@ function ActiveWorkout() {
       const drum = <SetDrum key={members.join(',')} chambers={chambers} entries={A.entries} members={members.length} inert={preview}
         memberLabel={idx => exerciseNameFor(exOr(A.entries[idx].id))}
         renderHead={head}
+        headOpen={idx => !!openHeads[idx]} onToggleHead={preview ? undefined : toggleHead}
         renderThumb={idx => <Thumb ex={exOr(A.entries[idx].id)} />}
         renderHero={ch => <DrumHero chamber={ch} members={members.length}
           onToggle={toggle} onField={setField} onStartTimed={startTimed} onRemoveSetAt={removeSetAt}
@@ -1282,8 +1289,10 @@ function ActiveWorkout() {
      front tighter, then tighter still. The largest step that fits is taken: every step is tried
      and measured in one go, the drum re-measuring itself in between ('drum:measure'), and it is
      redone whenever the page changes height (a set that grows a drop, a rotated phone), always from
-     the roomiest, so it grows back as room returns. Anything else — the list of sets, an open
-     header — is meant to scroll, and keeps the roomiest size. */
+     the roomiest, so it grows back as room returns. With the header or the exercise's details
+     open the screen is meant to scroll, but the foot still gives up its room (the first steps,
+     FOOT_STEPS) so paging stays on screen whenever that is enough; the set in front keeps its
+     size. The list of sets scrolls and keeps the roomiest size. */
   const pageEl = useRef(null)
   const footEl = useRef(null)
   useEffect(() => {
@@ -1296,14 +1305,16 @@ function ActiveWorkout() {
     }
     const fit = () => {
       if (!window.innerHeight || !foot.getBoundingClientRect().height) return
-      const folded = page.querySelector('.wtop.slim') && !page.querySelector('.drum-head .exmedia, .drum-head .exhead-tg[aria-expanded="true"]')
+      const drum = page.querySelector('[data-testid="workout-top"]')
+      const folded = page.querySelector('.wtop.slim') && !page.querySelector('.drum-head .exmedia, .drum-head .exhead-tg[aria-expanded="true"], .drum-tab[aria-expanded="true"]')
+      const last = !drum ? 0 : folded ? FIT_STEPS - 1 : FOOT_STEPS - 1
       // Down to the tab bar — or to the top of its start button, which stands out above it.
       const tabs = document.getElementById('tabbar')
       const tops = tabs ? [tabs, ...tabs.children].map(el => el.getBoundingClientRect().top) : [window.innerHeight]
       const room = Math.min(...tops) - 8
       let step = 0
-      if (folded) {
-        for (; step < FIT_STEPS - 1; step++) {
+      if (last) {
+        for (; step < last; step++) {
           set(step)
           if (foot.getBoundingClientRect().bottom + (window.scrollY || 0) <= room) break
         }
@@ -1330,7 +1341,12 @@ function ActiveWorkout() {
         the view toggle and the rest of it are one tap on the title away. */}
     <div className={'wtop' + (isDeloadWorkout(A) ? ' deload' : '') + (slimTop ? ' slim' : '')}>
       <div className="hdr">
+        {/* With no tab bar under a running session, this is the way out to the rest of the app;
+            the session keeps running and the tab bar's Resume brings you back to it. */}
+        <div className="row" style={{ gap: 2, flex: 'none' }}>
+        <button className="iconbtn" aria-label={t('Home')} title={t('Home')} onClick={() => nav('/home')}><Icon name="house" /></button>
         <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }); stopRest(); stopWork(); nav('/home') } })}><Icon name="xmark" /></button>
+        </div>
         {drumView
           ? <button type="button" className="wtop-tg" data-testid="workout-top" aria-expanded={!slimTop}
             aria-label={slimTop ? t('Show workout details') : t('Hide workout details')} onClick={() => setTopOpen(o => !o)}>
@@ -1341,13 +1357,14 @@ function ActiveWorkout() {
         <button className="iconbtn" style={{ color: 'var(--acc)' }} aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
       </div>
       <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
-      {!slimTop && <>
-      <DeloadSessionBand active={A} />
       {/* The running order at a glance: tap a thumbnail to jump, press and hold one to drag its
           exercise (or its whole superset capsule) somewhere else in the session. The buttons
-          below do the same two things without a pointer, so nothing here is the only way in. */}
+          below do the same two things without a pointer, so nothing here is the only way in.
+          It stays when the header folds: it is how you get around the session. */}
       <WorkoutDock entries={A.entries} cur={cur} disabled={!!work}
         onSelect={selectExercise} onReorder={reorderUnitTo} onAdd={addExercise} />
+      {!slimTop && <>
+      <DeloadSessionBand active={A} />
       {A.backfill && <div className="muted small" style={{ marginBottom: 8 }}>{t('Logging a past workout — no rest timers.')}</div>}
       {!!A.entries.length && <div className="row wpos" style={{ gap: 6, marginBottom: 6 }}>
         <span className="muted small" data-testid="workout-position">{position}</span>

@@ -80,6 +80,7 @@ function BentFace({ chamber, bands, className, onClick, full: fallback }) {
 export default function SetDrum({
   chambers, entries, members = 1, inert = false,
   renderHead, renderHero, renderStrip, renderThumb, onNav, onSwipe, onSwipeEnd, onHeroRef, memberLabel,
+  headOpen, onToggleHead,
 }) {
   const count = chambers.length
   const home = drumHome(entries, chambers)
@@ -92,6 +93,9 @@ export default function SetDrum({
   const swallowClick = useRef(false)
   const lastSteps = useRef(0)
   const [heroH, setHeroH] = useState(280)
+  // The tallest hero among the sets shown so far, the column's height (see colH below).
+  const [colH, setColH] = useState(0)
+  const heights = useRef(new Map())
   const [bodyW, setBodyW] = useState(0)
   const heroEl = useRef(null)
   const bodyEl = useRef(null)
@@ -157,11 +161,22 @@ export default function SetDrum({
     return () => clearTimeout(tm)
   }, [doneCount, count, home])
 
-  // The hero's height sets the drum's geometry; it changes with drops, notes and focus.
+  // The hero's height sets the drum's geometry; it changes with drops, notes and focus. Each set's
+  // last height is kept, per size the workout screen fits it to (data-fit), so the column beside
+  // the drum can take the tallest of them and keep one size from set to set, superset members
+  // included; a size step of its own, so a tighter screen does not inherit a roomier column.
+  const chamberKeys = chambers.map(c => c.entry + ':' + c.set).join(' ')
   useLayoutEffect(() => {
     const el = heroEl.current
     if (!el) return
-    const measure = () => setHeroH(h => (Math.abs(h - el.offsetHeight) > 1 ? el.offsetHeight : h))
+    const measure = () => {
+      const now = el.offsetHeight
+      setHeroH(h => (Math.abs(h - now) > 1 ? now : h))
+      const step = (el.closest('[data-fit]')?.dataset.fit ?? '') + '|'
+      heights.current.set(step + fc.entry + ':' + fc.set, now)
+      const tallest = Math.max(now, ...chamberKeys.split(' ').map(k => heights.current.get(step + k) || 0))
+      setColH(h => (Math.abs(h - tallest) > 1 ? tallest : h))
+    }
     measure()
     // The workout screen shrinks the hero to fit and has to know at once how tall the drum came out
     // (see 'drum:measure' in views/Workout.jsx): it asks, and the drum answers before it returns.
@@ -171,7 +186,7 @@ export default function SetDrum({
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => { ro.disconnect(); window.removeEventListener('drum:measure', now) }
-  }, [f, count])
+  }, [f, count, chamberKeys])
 
   // The drum's width sets how big the exercise's thumbnail may be (see thumbSize).
   useLayoutEffect(() => {
@@ -204,14 +219,19 @@ export default function SetDrum({
   const armed = drag?.axis === 'y' && drumArmed({ from: f, drag: drag.dy, pitch, count })
   const aim = drag?.axis === 'y' ? drumSettle({ from: f, drag: drag.dy, pitch, count }) : f
 
-  // The rail is a little shorter than the hero and sits on its bottom edge, a window five pips
-  // tall: the set on screen in the middle, the two before it above and the two after below. The
-  // track of pips rolls behind it with the drum, so the live pip never moves. Everything the
-  // rail leaves free above it, up to THUMB_MAX, goes to the exercise's thumbnail, which sits
-  // level with the hero's top; the column is as wide as the thumbnail, the hero takes the rest.
+  // The column beside the drum — the exercise's thumbnail over the rail — stays put at the top of
+  // the drum and keeps one size: as the drum rolls, the room for the neighbour above opens and the
+  // hero moves down, but the column does not follow it, and it is cut to the tallest hero shown so
+  // far (colH), so a shorter set, or a superset member's, does not shrink it. The rail is a window
+  // five pips tall: the set on screen in the middle, the two before it above and the two after
+  // below. The track of pips rolls behind it with the drum, so the live pip never moves. Everything
+  // the rail leaves free above it, up to THUMB_MAX, goes to the thumbnail, level with the first
+  // hero's top; the column is as wide as the thumbnail, the hero takes the rest.
   // The hero's face sits a little behind the front of the cylinder, so on screen the box is
-  // smaller than its layout height: the rail goes by the box as drawn.
+  // smaller than its layout height: the column goes by the box as drawn.
   const faceH = heroH * PERSPECTIVE / (PERSPECTIVE - drumCylinder({ pos: f, count, hero: heroH, strip: STRIP, gap: GAP, radius })[f].z)
+  const tallH = Math.max(heroH, colH)
+  const colFace = tallH * faceH / heroH
   // The thumbnail is as large as the room allows, on both axes: no wider than its share of the
   // drum (the hero keeps the rest) and no taller than what the face leaves above a rail that
   // still has its five readable pips. It follows the drum's measured width and the hero's
@@ -219,10 +239,14 @@ export default function SetDrum({
   const thumbSize = renderThumb
     ? Math.max(THUMB, Math.min(THUMB_MAX,
       bodyW ? 2 * Math.floor(Math.min(bodyW * THUMB_SHARE, bodyW - HERO_MIN - 10) / 2) : THUMB_MAX,
-      2 * Math.floor((faceH - 5 * RAIL_SLOT - THUMB_GAP) / 2)))
+      2 * Math.floor((colFace - 5 * RAIL_SLOT - THUMB_GAP) / 2)))
     : RAIL_W
-  const railH = renderThumb ? Math.max(5 * RAIL_SLOT, faceH - thumbSize - THUMB_GAP) : faceH * RAIL
-  const railTop = mid + faceH / 2 - railH
+  const railH = renderThumb ? Math.max(5 * RAIL_SLOT, colFace - thumbSize - THUMB_GAP) : colFace * RAIL
+  const colTop = Math.round(PAD + (tallH - colFace) / 2)
+  const railTop = colTop + colFace - railH
+  // A set shorter than the column, alone or last with nothing below it, still has the whole
+  // column beside it: the drum is never shorter than the column.
+  const bodyH = Math.max(stageH, railTop + railH + PAD)
   const slot = railH / 5
   const pipSize = Math.max(14, Math.min(28, slot - 8))
   const track = railH / 2 - pos * slot - pipSize / 2
@@ -347,21 +371,33 @@ export default function SetDrum({
      and the rail take their own pointer (they roll the drum, and hand sideways drags over
      through onSwipe), so only they keep the attribute. */
   return <div className={'drum' + (inert ? ' inert' : '')}>
-    {renderHead && fc && <div className="drum-head" key={fc.entry}>{renderHead(fc.entry)}</div>}
+    {members <= 1 && renderHead && fc && <div className="drum-head" key={fc.entry}>{renderHead(fc.entry)}</div>}
+    {/* In a superset the member's box is its name, so the head is not repeated above it: the box
+        on screen is the head's toggle, and what it unfolds hangs right under it. Tapping any other
+        box still jumps to that exercise's next set. */}
     {members > 1 && <div className="drum-tabs" role="tablist">
       {memberIdx.map((entry, m) => {
         const mine = chambers.map((c, i) => [c, i]).filter(([c]) => c.entry === entry)
         const left = mine.filter(([c]) => !isDone(c)).length
         const target = (mine.find(([c]) => !isDone(c)) || mine[mine.length - 1])?.[1]
-        return <button key={entry} role="tab" aria-selected={fc?.entry === entry}
-          className={'drum-tab m' + m + (fc?.entry === entry ? ' on' : '')} onClick={() => go(target)}>
-          <b>{LETTERS[m]}</b><span>{memberLabel?.(entry)}</span><i>{left ? left : <Icon name="check" />}</i>
-        </button>
+        const on = fc?.entry === entry
+        const fold = on && !!onToggleHead
+        const open = fold && !!headOpen?.(entry)
+        return <Fragment key={entry}>
+          <button role="tab" aria-selected={on} aria-expanded={fold ? open : undefined}
+            className={'drum-tab m' + m + (on ? ' on' : '')} onClick={() => (fold ? onToggleHead(entry) : go(target))}>
+            <b>{LETTERS[m]}</b><span>{memberLabel?.(entry)}</span><i>{left ? left : <Icon name="check" />}</i>
+            {/* every box keeps the chevron's room, so a name wraps the same on screen or not
+                and the drum below never jumps when the box on screen changes */}
+            {onToggleHead && <Icon name={open ? 'chevronUp' : 'chevronDown'} className={'drum-tab-chev' + (fold ? '' : ' off')} />}
+          </button>
+          {on && renderHead && <div className="drum-head" key={'h' + entry}>{renderHead(entry)}</div>}
+        </Fragment>
       })}
     </div>}
-    <div className="drum-body" ref={bodyEl} style={{ height: stageH }}>
+    <div className="drum-body" ref={bodyEl} style={{ height: bodyH }}>
       {renderThumb && fc && <div className="drum-thumb" key={fc.entry} aria-hidden="true"
-        style={{ top: mid - faceH / 2, width: thumbSize, height: thumbSize }}>{renderThumb(fc.entry)}</div>}
+        style={{ top: colTop, width: thumbSize, height: thumbSize }}>{renderThumb(fc.entry)}</div>}
       <div className="drum-rail" data-swipe-ignore ref={railEl} role="tablist" aria-label={t('Sets')} aria-orientation="vertical"
         onPointerDown={e => onDown(e, { onRail: true })} onPointerMove={onMove}
         onPointerUp={e => onUp(e, true)} onPointerCancel={e => onUp(e, false)}

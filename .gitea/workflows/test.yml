@@ -10,7 +10,7 @@ on:
       - 'mcp/**'
       - '.gitea/workflows/test.yml'
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'frontend/**'
       - 'mcp/**'

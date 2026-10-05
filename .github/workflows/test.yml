@@ -1,5 +1,5 @@
-# Runs on pull requests too — the other two workflows only fire on push to main, so
-# contributed changes used to reach main without anything ever having been run.
+# Runs on pull requests too — the other two workflows only fire on push to master, so
+# contributed changes used to reach master without anything ever having been run.
 name: Tests
 
 on:
@@ -9,7 +9,7 @@ on:
       - 'mcp/**'
       - '.github/workflows/test.yml'
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'frontend/**'
       - 'mcp/**'

@@ -232,6 +232,27 @@ describe('the set drum', () => {
     expect(container.querySelectorAll('.drum-tab')).toHaveLength(2)
   })
 
+  it('names a superset’s exercise only in its box, which unfolds its header under it', () => {
+    renderWorkout([
+      { id: 'a', sg: 's1', target: { sets: 2, reps: 10 }, sets: rows(2) },
+      { id: 'b', sg: 's1', target: { sets: 2, reps: 10 }, sets: rows(2) },
+    ])
+    const tabs = () => [...container.querySelectorAll('.drum-tab')]
+    // No name above the boxes repeating the one in them.
+    expect(container.querySelector('.exhead-tg')).toBeNull()
+    expect(tabs()[0].getAttribute('aria-expanded')).toBe('false')
+    expect(tabs()[1].hasAttribute('aria-expanded')).toBe(false)
+    expect(container.querySelector('.drum-head [aria-label="Details"]')).toBeNull()
+    click(tabs()[0])
+    expect(tabs()[0].getAttribute('aria-expanded')).toBe('true')
+    // The header hangs right under its own box, above the next member's.
+    const head = container.querySelector('.drum-tabs .drum-head')
+    expect(head.previousElementSibling).toBe(tabs()[0])
+    expect(head.querySelector('[aria-label="Details"]')).not.toBeNull()
+    click(tabs()[0])
+    expect(container.querySelector('.drum-head [aria-label="Details"]')).toBeNull()
+  })
+
   it('folds the header to its title bar, and the title unfolds the rest', () => {
     renderWorkout([
       { id: 'a', target: { sets: 2, reps: 10 }, sets: rows(2) },
@@ -241,7 +262,8 @@ describe('the set drum', () => {
     expect(top.getAttribute('aria-expanded')).toBe('false')
     // Where you are in the session stays in the title bar while the rest is folded away.
     expect(top.textContent).toContain('1 / 2')
-    expect(container.querySelector('[data-testid="workout-dock"]')).toBeNull()
+    // The running order stays too: it is how you get around the session.
+    expect(container.querySelector('[data-testid="workout-dock"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="set-view"]')).toBeNull()
     click(top)
     expect(top.getAttribute('aria-expanded')).toBe('true')

@@ -1035,9 +1035,14 @@ describe('active workout foot', () => {
     expect(await fitTo(2000, 60)).toBe('4')
   })
 
-  it('only shrinks to fit with the header folded away: the list of sets and an open header scroll', async () => {
+  it('never shrinks the list of sets: it scrolls', async () => {
     expect(await fitTo(2000, 60, { drum: false })).toBe('0')
-    expect(await fitTo(2000, 60, { open: true })).toBe('0')
+  })
+
+  it('with the header open, shrinks only the foot, and only as far as it takes', async () => {
+    expect(await fitTo(600, 60, { open: true })).toBe('0')
+    expect(await fitTo(730, 60, { open: true })).toBe('1')
+    expect(await fitTo(2000, 60, { open: true })).toBe('2')
   })
 })
 

@@ -6,7 +6,7 @@ name: Publish Docker images
 # bots read those as a newer version. See issue #87.
 on:
   push:
-    branches: [main]
+    branches: [master]
   release:
     types: [published]
   workflow_dispatch:
@@ -37,8 +37,8 @@ jobs:
       - name: Set version metadata
         id: version_meta
         run: |
-          # On a release the ref is refs/tags/vX.Y.Z; on a main push it is a branch ref,
-          # which would otherwise label the image "refs/heads/main".
+          # On a release the ref is refs/tags/vX.Y.Z; on a master push it is a branch ref,
+          # which would otherwise label the image "refs/heads/master".
           case "$GITHUB_REF" in
             refs/tags/*) VERSION="${GITHUB_REF#refs/tags/}" ;;
             *)           VERSION="main-${GITHUB_SHA::7}" ;;

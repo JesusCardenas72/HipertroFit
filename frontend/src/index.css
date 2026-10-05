@@ -1609,6 +1609,11 @@ h4.sec{
 .drum-tab i{font-style:normal;font-variant-numeric:tabular-nums;color:var(--label-3);font-size:12px;display:inline-flex}
 .drum-tab.on{color:var(--label);background:color-mix(in srgb,var(--mc) 13%,var(--surface));
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--mc) 55%,transparent)}
+/* the box on screen is its exercise's header toggle; what it unfolds hangs right under it */
+.drum-tab-chev{flex:none;font-size:14px;color:var(--label-2)}
+.drum-tab-chev.off{visibility:hidden}
+.drum-tabs .drum-head{margin:2px 0 4px}
+.drum-tabs .drum-head:empty{display:none}
 
 .drum-body{position:relative;display:flex;gap:10px;margin-top:6px}
 
@@ -1813,9 +1818,11 @@ h4.sec{
 .wtool .icn{font-size:19px}
 .wtool span{max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere}
 .wfoot{margin-top:12px}
-/* the workout ends with its foot: only the tab bar (and its start button, standing out above it) is
-   left under it, so a screen that fits has nothing to scroll to */
-.app:has(.wfoot){padding-bottom:calc(94px + var(--sab))}
+/* the workout ends with its foot, and a session in progress hides the tab bar (TabBar.jsx), so
+   nothing is left under it: a screen that fits has nothing to scroll to. The rest timer drops down
+   into the room the bar leaves. */
+.app:has(.wfoot){padding-bottom:calc(16px + var(--sab))}
+body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 /* previous / next side by side, the two halves of one control */
 .wnav{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .wnav .btn{min-width:0}

@@ -15,6 +15,9 @@ export default function TabBar({ onStart }) {
   const isGuest = useStore(s => s.isGuest())
   if (!user && !isGuest) return null
   const cur = loc.pathname.split('/')[1] || 'home'
+  // A session in progress takes the whole screen: the exercise gets the room the bar would take,
+  // and the session's own header carries the way back out (views/Workout.jsx).
+  if (cur === 'workout' && S.active) return null
   // During a deload microcycle Home and Stats carry a mark on their tab, so the deload is in
   // view from every screen, not only once you are on one of them.
   const deload = mesoState(S).deload
