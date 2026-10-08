@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { isoOf } from './format.js'
-import { backupFileName, buildReminderNotifications } from './mobile.js'
+import { registerPlugin } from '@capacitor/core'
+import { androidPluginBox, backupFileName, base64ToBytes, buildReminderNotifications, bytesToBase64 } from './mobile.js'
 
 const push = { id: 'push', name: 'Push' }
 const pull = { id: 'pull', name: 'Pull' }
@@ -79,5 +80,40 @@ describe('backupFileName', () => {
     expect(backupFileName('2026-09-10')).toBe('hipertrofit-backup-2026-09-10.json')
     expect(backupFileName('2026-09-10')).toBe(backupFileName('2026-09-10'))
     expect(backupFileName('2026-09-11')).not.toBe(backupFileName('2026-09-10'))
+  })
+})
+
+describe('androidPluginBox', () => {
+  const core = platform => ({ registerPlugin, Capacitor: { getPlatform: () => platform } })
+
+  it('a bare plugin proxy looks like a thenable — why it has to be boxed', () => {
+    // What broke the audio focus: the proxy answers `then` with a native-method stub, so a promise
+    // resolved with it calls that stub, which never settles — the plugin was never reached.
+    expect(typeof registerPlugin('ThenTrapBare').then).toBe('function')
+  })
+
+  it('boxes the plugin so it survives being resolved through a promise', async () => {
+    const box = await Promise.resolve().then(() => androidPluginBox(core('android'), 'ThenTrapBoxed'))
+    expect(typeof box.plugin.pause).toBe('function')
+    expect(box.plugin).toBe(registerPlugin('ThenTrapBoxed'))
+  })
+
+  it('is null off Android', () => {
+    expect(androidPluginBox(core('ios'), 'ThenTrapIos')).toBe(null)
+    expect(androidPluginBox(core('web'), 'ThenTrapWeb')).toBe(null)
+  })
+})
+
+// The custom-sound mirror stores the clip as base64; a byte lost on the way is a broken file.
+describe('bytesToBase64 / base64ToBytes', () => {
+  it('round-trips every byte value', () => {
+    const bytes = Uint8Array.from({ length: 256 }, (_, i) => i)
+    expect(new Uint8Array(base64ToBytes(bytesToBase64(bytes.buffer)))).toEqual(bytes)
+  })
+
+  // Larger than one 32 KB slice, so the slices have to join up exactly.
+  it('round-trips a clip larger than one slice', () => {
+    const bytes = Uint8Array.from({ length: 100_003 }, (_, i) => (i * 31) & 255)
+    expect(new Uint8Array(base64ToBytes(bytesToBase64(bytes.buffer)))).toEqual(bytes)
   })
 })

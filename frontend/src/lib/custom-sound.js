@@ -73,11 +73,29 @@ function withStore(mode, fn) {
   }))
 }
 
+/* A second copy of every picked sound, outside the WebView (the native build points it at files,
+   see nativeSounds in lib/mobile.js): IndexedDB can come back empty after an app update, as
+   localStorage can — the reason S has nativeSave. `{ read, has, write, remove }`, all keyed by
+   the slot key, none of them throwing. Read only when IndexedDB has nothing, and what it returns
+   is put back there. */
+let mirror = null
+export function setSoundMirror(m) { mirror = m || null }
+
 /* One stored sound per slot: `key` is its IndexedDB key, `fallback` the bundled clip it replaces
    (null when the default is synthesised instead, as the progression fanfare is). */
 function soundSlot(key, fallback) {
   let current = null   // { name, url } while a custom sound is in use
-  let loaded = null    // Promise of the first read from IndexedDB
+  let loaded = null    // Promise of the first read from IndexedDB (or the mirror)
+  const fromMirror = async () => {
+    const record = mirror ? await mirror.read(key) : null
+    if (!record || !record.data) return null
+    withStore('readwrite', st => st.put(record, key)).catch(() => {})
+    return record
+  }
+  // A sound saved before the mirror existed gets its copy on the first launch that has one.
+  const seedMirror = record => {
+    if (mirror) mirror.has(key).then(has => { if (!has) return mirror.write(key, record) }).catch(() => {})
+  }
   const adopt = record => {
     if (current) {
       forgetClip(current.url)
@@ -95,13 +113,25 @@ function soundSlot(key, fallback) {
     clips: () => (current ? [current.url] : fallback ? [fallback] : []),
     /** Read the saved choice once. Resolves to its name (null for the default); never rejects. */
     load() {
-      if (!loaded) loaded = withStore('readonly', st => st.get(key)).then(adopt, () => {}).then(name)
+      if (!loaded) {
+        loaded = withStore('readonly', st => st.get(key))
+          .catch(() => null)
+          .then(record => {
+            if (!record) return fromMirror()
+            seedMirror(record)
+            return record
+          })
+          .then(adopt)
+          .catch(() => {})
+          .then(name)
+      }
       return loaded
     },
     /** Save `file` in this slot. Run customSoundProblem first; this only stores it. */
     async save(file) {
       const record = { name: file.name || '', type: file.type || '', data: await file.arrayBuffer() }
       await withStore('readwrite', st => st.put(record, key))
+      if (mirror) await mirror.write(key, record).catch(() => {})
       adopt(record)
       loaded = Promise.resolve(name())
       return name()
@@ -109,6 +139,8 @@ function soundSlot(key, fallback) {
     /** Back to the default. */
     async clear() {
       await withStore('readwrite', st => st.delete(key))
+      // Or the next launch with an emptied IndexedDB would bring the old sound back.
+      if (mirror) await mirror.remove(key).catch(() => {})
       adopt(null)
       loaded = Promise.resolve(null)
       return null

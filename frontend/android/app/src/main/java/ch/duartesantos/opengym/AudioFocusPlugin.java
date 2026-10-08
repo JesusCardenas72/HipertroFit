@@ -21,9 +21,11 @@ import com.getcapacitor.annotation.CapacitorPlugin;
  * pauses, and when release() abandons the focus it gets AUDIOFOCUS_GAIN back and resumes by
  * itself. (…_MAY_DUCK would only lower its volume; the bell is meant to be heard on its own.)
  *
- * lib/sound.js calls pause() 1.5 s before the alert starts and release() 1.5 s after its last
- * clip ends, or at once if it is cut off; lib/mobile.js wires those calls up. No new
- * dependency — AudioManager is framework API.
+ * lib/sound.js calls pause() 1.5 s before any of the app's sounds starts and release() 1.5 s
+ * after the last one ends, or at once if it is cut off; lib/mobile.js wires those calls up.
+ * pause() also reports whether anything was playing at all ("active"): when nothing was, the
+ * sound has no music to wait for and starts at once. No new dependency — AudioManager is
+ * framework API.
  */
 @CapacitorPlugin(name = "AudioFocus")
 public class AudioFocusPlugin extends Plugin {
@@ -44,9 +46,13 @@ public class AudioFocusPlugin extends Plugin {
         JSObject r = new JSObject();
         if (am == null) {
             r.put("granted", false);
+            r.put("active", false);
             call.resolve(r);
             return;
         }
+        // Read before the request: once we hold the focus the music is on its way to a pause.
+        // Our own WebView's output counts too, which only ever errs towards waiting the gap.
+        r.put("active", am.isMusicActive());
         int result;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (request == null) {

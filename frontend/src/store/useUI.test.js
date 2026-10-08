@@ -3,10 +3,10 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { useUI, REST_ALERT_FOCUS_GAP_MS } from './useUI.js'
 import { useStore } from './useStore.js'
-import { beep, clipsDuration, playClips, stopClips } from '../lib/sound.js'
+import { beep, clipsDuration, holdFocus, playClips, stopClips } from '../lib/sound.js'
 
 vi.mock('../lib/sound.js', () => ({
-  beep: vi.fn(), vibrate: vi.fn(), playClips: vi.fn(), stopClips: vi.fn(),
+  beep: vi.fn(), vibrate: vi.fn(), playClips: vi.fn(), stopClips: vi.fn(), holdFocus: vi.fn(() => () => {}),
   clipsDuration: vi.fn(() => Promise.resolve(0)), setAudioFocusHooks: vi.fn(), forgetClip: vi.fn(),
 }))
 
@@ -291,5 +291,50 @@ describe('opt-in timer screen flash', () => {
     useUI.getState().startWork(1, 'Plank', vi.fn())
     vi.advanceTimersByTime(1000)
     expect(useUI.getState().timerFlashId).toBe(1)
+  })
+})
+
+// The work countdown's beeps are known in advance: the music is paused 1.5 s before the "3", so
+// the beeps land on time, and the hold goes as soon as the set is over — or abandoned.
+describe('work countdown audio focus', () => {
+  let off
+  beforeEach(() => {
+    vi.useFakeTimers()
+    off = vi.fn()
+    vi.mocked(holdFocus).mockReset().mockImplementation(() => off)
+    useStore.setState({ S: { ...useStore.getState().S, sound: true } })
+  })
+  afterEach(() => {
+    useUI.getState().stopWork()
+    vi.useRealTimers()
+  })
+
+  it('pauses the music 1.5 s before the countdown reaches 3, and lets go when the set ends', () => {
+    useUI.getState().startWork(30, 'Plank', vi.fn())
+    vi.advanceTimersByTime(30000 - 3500 - REST_ALERT_FOCUS_GAP_MS - 1)
+    expect(holdFocus).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(holdFocus).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(5000)
+    expect(off).toHaveBeenCalledTimes(1)
+  })
+
+  it('a set shorter than the lead pauses at once; abandoning it lets go', () => {
+    useUI.getState().startWork(3, 'Plank', vi.fn())
+    vi.advanceTimersByTime(0)
+    expect(holdFocus).toHaveBeenCalledTimes(1)
+    useUI.getState().stopWork()
+    expect(off).toHaveBeenCalledTimes(1)
+  })
+
+  it('takes nothing with sound off, and nothing after an early stop', () => {
+    useStore.setState({ S: { ...useStore.getState().S, sound: false } })
+    useUI.getState().startWork(3, 'Plank', vi.fn())
+    vi.advanceTimersByTime(0)
+    useStore.setState({ S: { ...useStore.getState().S, sound: true } })
+    useUI.getState().startWork(30, 'Plank', vi.fn())
+    useUI.getState().stopWork()
+    vi.advanceTimersByTime(60000)
+    expect(holdFocus).not.toHaveBeenCalled()
   })
 })

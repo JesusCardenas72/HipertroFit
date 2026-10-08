@@ -4,6 +4,7 @@ import { isCardio, isBodyweightEq } from './exercises.js'
 import { phaseForSet, modeForSet, modeForEntry, isWarmupRow, normalizeMode, extraVolumeOf, nextDropWeight, splitBurstReps } from './workout-model.js'
 import { programStep, REST } from './program.js'
 import { nextStepOf } from './microcycle.js'
+import { snapLoad } from './load-scale.js'
 const objectOf = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {}
 // Completed-state-independent work rows whose authoritative mode matches the requested mode.
 const workRowsForMode = (entry = {}, mode = 'reps') => {
@@ -551,9 +552,10 @@ export function cascadeWeight(rows, from, value, prev) {
  * Each added row halves what is left between the last warm-up and the first work set, so the
  * first one lands at half the working weight, a second at three quarters, and so on — and a
  * row you edited by hand is what the next one ramps from. `step` is the exercise's own loading
- * step (progression.js's defaultIncrement, passed in by the caller so this module keeps no
+ * step (progression.js's loadScaleFor, passed in by the caller so this module keeps no
  * dependency on progression — that one already imports from here): a warm-up you cannot
- * actually load onto the bar is noise.
+ * actually load onto the bar is noise. It may be a ladder (adjustable dumbbells, see
+ * lib/load-scale.js), in which case the ramp lands on its rungs.
  *
  * The reference is the first WORK row, never `rows[at - 1]` alone: for the first warm-up
  * `at` is 0, and reading `rows[-1]` used to fall through to the *last* row — the heaviest
@@ -581,7 +583,7 @@ export function rerampWarmups(rows, step = 2.5) {
   for (let i = 0; i < firstWork; i++) {
     if (out[i].done) { from = out[i].w || 0; continue }
     const w = target > from
-      ? Math.max(0, Math.min(target, Math.floor((from + (target - from) / 2) / step) * step))
+      ? Math.max(0, Math.min(target, snapLoad(from + (target - from) / 2, step, 'floor')))
       : target
     out[i] = { ...out[i], w }
     from = w
@@ -604,7 +606,7 @@ export function insertWarmupRow(rows, mode, target, step = 2.5) {
     if (to <= from) return to
     // Rounded DOWN to the step: a warm-up that lands a notch light costs nothing, one that
     // lands a notch heavy is a set you have to strip plates off before you can use it.
-    return Math.max(0, Math.min(to, Math.floor((from + (to - from) / 2) / step) * step))
+    return Math.max(0, Math.min(to, snapLoad(from + (to - from) / 2, step, 'floor')))
   }
   const warm = mode === 'cardio'
     ? {

@@ -12,7 +12,7 @@ vi.mock('../sheets.jsx', () => sheets)
 vi.mock('../components/Media.jsx', () => ({ Thumb: ({ ex }) => <span data-thumb={ex.id} /> }))
 vi.mock('../components/BodyMap.jsx', () => ({ default: () => null }))
 
-import RoutineEdit, { ROUTINE_DRAG_SLOP, ROUTINE_LONG_PRESS_MS, reorderRoutineUnit } from './RoutineEdit.jsx'
+import RoutineEdit, { ROUTINE_DRAG_SLOP, ROUTINE_LONG_PRESS_MS, ROUTINE_UNIT_PRESS_MS } from './RoutineEdit.jsx'
 import { DEF, useStore } from '../store/useStore.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -196,12 +196,16 @@ describe('routine long-press reorder', () => {
     expect(sheets.exConfigSheet).toHaveBeenCalledTimes(1)
   })
 
-  it('moves a whole grouped unit, never splits another group, and preserves every occurrence payload', () => {
+  it('held on longer, moves a whole grouped unit and preserves every occurrence payload; dropped inside another group it joins it', () => {
     const pairA = configured('dup', { sg: 'pair', weight: 11, note: 'first', future: { a: 1 } })
     const pairB = configured('dup', { sg: 'pair', weight: 22, note: 'second', future: { b: 2 } })
     const layout = mount([pairA, pairB, configured('c'), configured('d')])
     const row = rows()[1], item = row.querySelector('.item')
     lift(row, layout.centers[1])
+    // the first hold lifts only the one member…
+    expect(rows().map(node => node.classList.contains('is-dragging'))).toEqual([false, true, false, false])
+    // …held still a little longer, it takes its whole capsule
+    act(() => vi.advanceTimersByTime(ROUTINE_UNIT_PRESS_MS))
     expect(rows().slice(0, 2).every(node => node.classList.contains('is-dragging'))).toBe(true)
     pointer(item, 'pointermove', { y: layout.listRect.bottom - 1 })
     pointer(item, 'pointerup', { y: layout.listRect.bottom - 1 })
@@ -214,7 +218,8 @@ describe('routine long-press reorder', () => {
     const betweenMembers = (splitLayout.bottoms[1] + splitLayout.tops[2]) / 2
     pointer(tailItem, 'pointermove', { y: betweenMembers })
     pointer(tailItem, 'pointerup', { y: betweenMembers })
-    expect(exercises().map(e => e.id)).toEqual(['a', 'tail', 'b', 'c'])
+    expect(exercises().map(e => e.id)).toEqual(['a', 'b', 'tail', 'c'])
+    expect(exercises().map(e => e.sg ?? null)).toEqual([null, 'g', 'g', 'g'])
   })
 
   it('moves the selected duplicate occurrence rather than finding by catalogue id', () => {
@@ -440,11 +445,72 @@ describe('routine long-press reorder', () => {
   })
 })
 
-describe('reorderRoutineUnit', () => {
-  it('splices complete units at canonical slots and cleans true orphans', () => {
-    const items = [configured('a', { sg: 'pair' }), configured('b', { sg: 'pair' }), configured('c', { sg: 'orphan' }), configured('d')]
-    expect(reorderRoutineUnit(items, 3, 1)).toBe(true)
-    expect(items.map(e => e.id)).toEqual(['a', 'b', 'd', 'c'])
-    expect(items[0].sg).toBe('pair'); expect(items[1].sg).toBe('pair'); expect(items[3].sg).toBeUndefined()
+describe('routine rows as magnets', () => {
+  const sgs = () => exercises().map(e => e.sg ?? null)
+
+  it('rings the row the lifted one would pair with, and lets go of it when pulled clear', () => {
+    const layout = mount([configured('a'), configured('b'), configured('c')])
+    const item = rows()[0].querySelector('.item')
+    lift(rows()[0], layout.centers[0])
+    pointer(item, 'pointermove', { y: layout.centers[1] })
+    expect(rows()[1].classList.contains('magnet')).toBe(true)
+    expect(host.querySelector('[data-testid="routine-drop-indicator"]').classList.contains('join')).toBe(true)
+    pointer(item, 'pointermove', { y: layout.bottoms[2] + 5 })
+    expect(rows().some(row => row.classList.contains('magnet'))).toBe(false)
+    pointer(item, 'pointercancel', { y: layout.bottoms[2] + 5 })
+  })
+
+  it('dropped onto another exercise, the two become a superset and keep their settings', () => {
+    const layout = mount([configured('a', { reps: 8, weight: 40 }), configured('b'), configured('c')])
+    const item = rows()[0].querySelector('.item')
+    lift(rows()[0], layout.centers[0])
+    pointer(item, 'pointermove', { y: layout.centers[2] - 10 })
+    pointer(item, 'pointerup', { y: layout.centers[2] - 10 })
+    expect(exercises().map(e => e.id)).toEqual(['b', 'a', 'c'])
+    expect(sgs()[0]).toBe(null)
+    expect(sgs()[1]).toBeTruthy()
+    expect(sgs()[1]).toBe(sgs()[2])
+    expect(exercises()[1]).toMatchObject({ reps: 8, weight: 40, sets: 3 })
+    expect(sheets.exConfigSheet).not.toHaveBeenCalled()
+  })
+
+  it('moved inside its capsule, only the order changes', () => {
+    const layout = mount([configured('a', { sg: 'g' }), configured('b', { sg: 'g' }), configured('c')])
+    const item = rows()[0].querySelector('.item')
+    lift(rows()[0], layout.centers[0])
+    pointer(item, 'pointermove', { y: layout.centers[1] + 30 })
+    pointer(item, 'pointerup', { y: layout.centers[1] + 30 })
+    expect(exercises().map(e => e.id)).toEqual(['b', 'a', 'c'])
+    expect(sgs()).toEqual(['g', 'g', null])
+  })
+
+  it('pulled well clear of its capsule, a member leaves and the superset is gone', () => {
+    const layout = mount([configured('a', { sg: 'g' }), configured('b', { sg: 'g' }), configured('c'), configured('d')])
+    const item = rows()[0].querySelector('.item')
+    lift(rows()[0], layout.centers[0])
+    pointer(item, 'pointermove', { y: layout.centers[3] + 30 })
+    pointer(item, 'pointerup', { y: layout.centers[3] + 30 })
+    expect(exercises().map(e => e.id)).toEqual(['b', 'c', 'd', 'a'])
+    expect(sgs()).toEqual([null, null, null, null])
+  })
+
+  it('moving off before the longer hold settles it takes only the one exercise', () => {
+    const layout = mount([configured('a'), configured('b', { sg: 'g' }), configured('c', { sg: 'g' })])
+    const item = rows()[2].querySelector('.item')
+    lift(rows()[2], layout.centers[2])
+    pointer(item, 'pointermove', { y: layout.tops[0] + 1 })
+    act(() => vi.advanceTimersByTime(ROUTINE_UNIT_PRESS_MS))
+    expect(rows()[1].classList.contains('is-dragging')).toBe(false)
+    pointer(item, 'pointerup', { y: layout.tops[0] + 1 })
+    expect(exercises().map(e => e.id)).toEqual(['c', 'a', 'b'])
+    expect(sgs()).toEqual([null, null, null])
+  })
+
+  it('paints each superset as one capsule in its own colour', () => {
+    mount([configured('a', { sg: 'g' }), configured('b', { sg: 'g' }), configured('c', { sg: 'h' }), configured('d', { sg: 'h' })])
+    const fills = [...host.querySelectorAll('.routine-goo g[fill]')].map(g => g.getAttribute('fill'))
+    expect(fills).toHaveLength(2)
+    expect(fills[0]).not.toBe(fills[1])
+    expect(rows()[0].style.getPropertyValue('--ss')).toBe(fills[0])
   })
 })

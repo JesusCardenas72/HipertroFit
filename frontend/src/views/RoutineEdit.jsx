@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useStore } from '../store/useStore.js'
 import { exOr } from '../lib/exercises.js'
 import { activeProfile, exAvailable } from '../lib/equipment.js'
@@ -15,41 +15,44 @@ import { POLICIES_FOR, POLICY_NAME, POLICY_DESC } from '../lib/progression.js'
 import BodyMap from '../components/BodyMap.jsx'
 import { folderOf, moveRoutineToFolder } from '../lib/folders.js'
 import { loadOfRoutine, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
+import { dropActiveWorkoutEntry, moveActiveWorkoutUnitTo } from '../lib/active-workout-order.js'
+import WorkoutDock from '../components/WorkoutDock.jsx'
+import { dockIntent, dockItems, dockKeys, dropSlot, joinHue } from '../lib/workout-dock.js'
+import { createListEngine, listTargets, rowHsl, rowUnits } from '../components/routineMagnets.js'
+import { vibrate } from '../lib/sound.js'
 
 export const ROUTINE_LONG_PRESS_MS = 380
+// Held still this much longer, a superset member takes its whole capsule with it — the dock's
+// DOCK_UNIT_PRESS_MS, so the two places answer a hold the same way.
+export const ROUTINE_UNIT_PRESS_MS = 420
 export const ROUTINE_DRAG_SLOP = 8
 
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value))
 
-// Slots are defined after removing the source unit, so a grouped run can never be split.
-export function reorderRoutineUnit(exercises, sourceIndex, targetSlot) {
-  if (!Array.isArray(exercises) || !exercises.length) return false
-  const units = supersetUnits(exercises)
-  const sourcePosition = units.findIndex(unit => unit.includes(sourceIndex))
-  if (sourcePosition < 0) return false
-  const remaining = units.filter((_, position) => position !== sourcePosition)
-  const slot = clamp(Number.isFinite(targetSlot) ? Math.trunc(targetSlot) : sourcePosition, 0, remaining.length)
-  if (slot === sourcePosition) return false
-  const source = units[sourcePosition]
-  const moved = exercises.splice(source[0], source.length)
-  const insertAt = remaining.slice(0, slot).reduce((count, unit) => count + unit.length, 0)
-  exercises.splice(insertAt, 0, ...moved)
-  cleanupSg(exercises)
-  return true
+// A row let go in the list, or a thumbnail on the dock above it: the same drop a running
+// session makes (lib/active-workout-order.js), applied to the routine's exercises in place.
+// `intent.unit` is a whole superset moved by a longer hold; otherwise `{ slot, join }` also
+// decides its superset — onto another exercise it pairs with it, clear of its capsule it leaves.
+export function dropRoutineEntry(exercises, index, intent) {
+  if (!Array.isArray(exercises) || !intent) return false
+  const active = { entries: exercises, cur: 0 }
+  return !!(intent.unit != null
+    ? moveActiveWorkoutUnitTo(active, index, intent.unit)
+    : dropActiveWorkoutEntry(active, index, intent))
 }
 
-function unitGeometry(list, exercises) {
-  const rows = new Map([...list.querySelectorAll('[data-routine-row]')]
-    .map(row => [Number(row.dataset.exIndex), row]))
-  const units = supersetUnits(exercises)
-  const geometry = units.map((unit, position) => {
-    const rects = unit.map(index => rows.get(index)?.getBoundingClientRect()).filter(Boolean)
-    if (rects.length !== unit.length) return null
-    const top = Math.min(...rects.map(rect => rect.top))
-    const bottom = Math.max(...rects.map(rect => rect.bottom))
-    return { unit, position, top, bottom, center: top + (bottom - top) / 2 }
-  })
-  return geometry.every(Boolean) ? geometry : null
+// Put another exercise in the place of one occurrence, found by its dock key (id + which
+// occurrence) rather than its index, so a list that moved while the picker was open still swaps
+// the right row — and one that lost it swaps nothing. The new exercise brings its own config;
+// only the place and the superset it sits in are kept.
+export function replaceRoutineEntry(exercises, key, id, cfg) {
+  if (!Array.isArray(exercises) || !id) return false
+  const at = dockKeys(exercises).indexOf(key)
+  if (at < 0) return false
+  const { sg } = exercises[at]
+  const { id: _id, sg: _sg, ...rest } = cfg || {}
+  exercises[at] = { id, ...(sg ? { sg } : {}), ...rest }
+  return true
 }
 
 function scrollHostFor(node) {
@@ -80,8 +83,15 @@ function autoScrollStep(host, clientY) {
   return 0
 }
 
+/* Press and hold a row to lift that one exercise; hold on a little longer and a superset member
+   takes its whole capsule along. While it is lifted the rows behave like the dock's thumbnails
+   (components/routineMagnets.js): let go over another exercise and the two become a superset,
+   move it inside its capsule and only the order changes, pull it clear and it leaves. */
 function useRoutineReorder(routineIdentity, exercises, onDrop) {
   const listRef = useRef(null)
+  const svgRef = useRef(null)
+  const gooRef = useRef(null)
+  const engineRef = useRef(null)
   const gestureRef = useRef(null)
   const exercisesRef = useRef(exercises)
   const routineIdentityRef = useRef(routineIdentity)
@@ -99,6 +109,29 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
     window.clearTimeout(suppressTimerRef.current)
   }, [])
 
+  useLayoutEffect(() => {
+    const list = listRef.current
+    if (engineRef.current && engineRef.current.list !== list) { engineRef.current.destroy(); engineRef.current = null }
+    if (!list) return
+    if (!engineRef.current) {
+      engineRef.current = createListEngine({
+        list, svg: svgRef.current, goo: gooRef.current, getEntries: () => exercisesRef.current,
+      })
+      engineRef.current.list = list
+    }
+    engineRef.current.relayout()
+  }, [hasRows, exercises])
+
+  useEffect(() => {
+    const list = listRef.current
+    if (!list || typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(() => { if (!gestureRef.current?.active) engineRef.current?.relayout() })
+    ro.observe(list)
+    return () => ro.disconnect()
+  }, [hasRows])
+
+  useEffect(() => () => { engineRef.current?.destroy(); engineRef.current = null }, [])
+
   useEffect(() => {
     const list = listRef.current
     if (!list) return undefined
@@ -109,13 +142,19 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
       if (frame != null) window.cancelAnimationFrame(frame)
       frame = null
     }
-    const clearTimer = gesture => {
-      if (gesture?.timer != null) window.clearTimeout(gesture.timer)
-      if (gesture) gesture.timer = null
+    const clearTimers = gesture => {
+      if (!gesture) return
+      window.clearTimeout(gesture.timer); window.clearTimeout(gesture.unitTimer)
+      gesture.timer = null; gesture.unitTimer = null
     }
     const matchesSnapshot = gesture => routineIdentityRef.current === gesture.routineIdentity
       && exercisesRef.current === gesture.listIdentity
       && JSON.stringify(exercisesRef.current) === gesture.snapshot
+    // Every row still measurable: one vanishing mid-drag invalidates every position we compare.
+    const rowsMeasurable = () => {
+      const rows = list.querySelectorAll('[data-routine-row]')
+      return rows.length === exercisesRef.current.length && [...rows].every(row => !!row.getBoundingClientRect())
+    }
     const releaseCapture = gesture => {
       const target = gesture?.captureTarget
       if (!target?.releasePointerCapture) return
@@ -123,7 +162,7 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
     }
     const finish = (gesture, commit, x = gesture?.lastX, y = gesture?.lastY) => {
       if (!gesture || gestureRef.current !== gesture) return
-      clearTimer(gesture)
+      clearTimers(gesture)
       clearFrame()
       gestureRef.current = null
       if (!gesture.active) return
@@ -134,38 +173,61 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
       // later is a real tap, so the guard only needs to outlive that one event.
       suppressTimerRef.current = window.setTimeout(() => { suppressClickRef.current = false }, 150)
       setDrag(null)
+      // Everything springs home — or, once the list re-renders in its new order, to its new place.
+      engineRef.current?.release()
       const rect = list.getBoundingClientRect()
-      const inside = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
-      const geometry = unitGeometry(list, exercisesRef.current)
-      if (commit && inside && geometry && matchesSnapshot(gesture) && gesture.targetSlot !== gesture.sourcePosition) {
-        onDropRef.current(gesture.sourceIndex, gesture.targetSlot)
+      const inside = !!rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+      if (commit && inside && gesture.intent && rowsMeasurable() && matchesSnapshot(gesture)) {
+        onDropRef.current(gesture.index, gesture.intent)
       }
     }
-    const indicatorTop = (geometry, gesture, slot, listRect) => {
-      if (slot === gesture.sourcePosition) return clamp(gesture.sourceTop - listRect.top, 0, listRect.height)
-      const remaining = geometry.filter(unit => unit.position !== gesture.sourcePosition)
-      let top
-      if (slot <= 0) top = remaining[0]?.top ?? gesture.sourceTop
-      else if (slot >= remaining.length) top = remaining.at(-1)?.bottom ?? gesture.sourceBottom
-      else top = (remaining[slot - 1].bottom + remaining[slot].top) / 2
-      return clamp(top - listRect.top, 0, listRect.height)
-    }
     const updateDrag = (gesture, x, y, schedule = true) => {
-      if (gestureRef.current !== gesture || !gesture.active || !matchesSnapshot(gesture)) {
+      if (gestureRef.current !== gesture || !gesture.active || !matchesSnapshot(gesture) || !rowsMeasurable()) {
         if (gestureRef.current === gesture) finish(gesture, false)
         return
       }
-      const geometry = unitGeometry(list, exercisesRef.current)
-      if (!geometry) { finish(gesture, false); return }
+      const b = engineRef.current?.base
+      const src = b?.byIndex.get(gesture.index)
       const listRect = list.getBoundingClientRect()
-      const remaining = geometry.filter(unit => unit.position !== gesture.sourcePosition)
-      const probeY = clamp(y, listRect.top, listRect.bottom)
-      const moved = Math.hypot(x - gesture.startX, y - gesture.startY) > ROUTINE_DRAG_SLOP
-      const slot = moved ? remaining.reduce((count, unit) => count + (probeY > unit.center ? 1 : 0), 0) : gesture.sourcePosition
-      const rawDelta = y - gesture.grabOffset - gesture.sourceTop
-      const deltaY = clamp(rawDelta, listRect.top - gesture.sourceTop, listRect.bottom - gesture.sourceBottom)
-      gesture.lastX = x; gesture.lastY = y; gesture.targetSlot = slot
-      setDrag({ first: gesture.sourceUnit[0], last: gesture.sourceUnit.at(-1), deltaY, indicatorTop: indicatorTop(geometry, gesture, slot, listRect) })
+      if (!b?.valid || !src || !listRect) { finish(gesture, false); return }
+      gesture.lastX = x; gesture.lastY = y
+      // The rows keep the positions measured at lift, relative to the list: a scroll moves the
+      // list, not them, so only the finger has to be brought into the same frame.
+      const moving = gesture.mode === 'unit' ? b.rows.filter(row => row.unit === src.unit) : [src]
+      const top = Math.min(...moving.map(row => row.top))
+      const bottom = Math.max(...moving.map(row => row.bottom))
+      const raw = (y - listRect.top) - (gesture.grabY - gesture.grabListTop)
+      // It may hang half out of the list, or the first and last places could only ever be
+      // reached by landing on the exercise already there.
+      const overhang = src.h / 2
+      gesture.dy = clamp(raw, -top - overhang, Math.max(-top - overhang, b.height - bottom + overhang))
+      let indicator
+      let join = null
+      if (gesture.mode === 'unit') {
+        const units = rowUnits(b)
+        const own = units.find(u => u.unit === src.unit)
+        const others = units.filter(u => u !== own)
+        const slot = dropSlot(others.map(u => u.cy), own.cy + gesture.dy)
+        gesture.intent = { unit: slot }
+        indicator = slot <= 0 ? (others[0]?.top ?? own.top)
+          : slot >= others.length ? (others.at(-1)?.bottom ?? own.bottom)
+            : (others[slot - 1].bottom + others[slot].top) / 2
+      } else {
+        const others = b.rows.filter(row => row !== src)
+        const intent = dockIntent(others.map(row => ({ index: row.index, sg: row.sg, left: row.top, right: row.bottom })),
+          src.cy + gesture.dy, src.sg)
+        // The click under the thumb as the magnet takes hold, and again as it lets go.
+        if (gesture.intent && intent.join !== gesture.intent.join) vibrate(8)
+        if (intent.join != null && intent.join !== gesture.intent?.join) {
+          gesture.previewFill = rowHsl(joinHue(exercisesRef.current, gesture.index, intent))
+        }
+        gesture.intent = intent
+        join = intent.join
+        indicator = intent.slot <= 0 ? (others[0]?.top ?? src.top)
+          : intent.slot >= others.length ? (others.at(-1)?.bottom ?? src.bottom)
+            : (others[intent.slot - 1].bottom + others[intent.slot].top) / 2
+      }
+      setDrag({ first: moving[0].index, last: moving.at(-1).index, join, indicatorTop: clamp(indicator, 0, b.height) })
       if (schedule && frame == null) frame = window.requestAnimationFrame(runAutoScroll)
     }
     function runAutoScroll() {
@@ -181,19 +243,32 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
     }
     const lift = gesture => {
       if (gestureRef.current !== gesture) return
-      if (!matchesSnapshot(gesture)) { finish(gesture, false); return }
-      const geometry = unitGeometry(list, exercisesRef.current)
-      const source = geometry?.find(unit => unit.unit.includes(gesture.sourceIndex))
-      if (!source) { finish(gesture, false); return }
-      gesture.active = true; gesture.timer = null
-      gesture.sourcePosition = source.position; gesture.sourceUnit = source.unit
-      gesture.sourceTop = source.top; gesture.sourceBottom = source.bottom
-      gesture.grabOffset = gesture.lastY - source.top; gesture.targetSlot = source.position
+      gesture.timer = null
+      if (!matchesSnapshot(gesture) || !rowsMeasurable()) { finish(gesture, false); return }
+      const engine = engineRef.current
+      const b = engine?.remeasure()
+      const src = b?.valid ? b.byIndex.get(gesture.index) : null
+      const listRect = list.getBoundingClientRect()
+      if (!src || !listRect) { finish(gesture, false); return }
+      gesture.active = true
+      gesture.mode = 'entry'
+      gesture.grabY = gesture.lastY
+      gesture.grabListTop = listRect.top
       gesture.scrollHost = scrollHostFor(list)
       gesture.captureTarget = gesture.downTarget
       try { gesture.captureTarget.setPointerCapture?.(gesture.pointerId) } catch { /* unsupported */ }
       suppressClickRef.current = true
       window.clearTimeout(suppressTimerRef.current)
+      vibrate(8)
+      engine.drive((base, restOf) => listTargets(gesture, base, restOf))
+      if (src.size > 1) gesture.unitTimer = window.setTimeout(() => liftUnit(gesture), ROUTINE_UNIT_PRESS_MS)
+      updateDrag(gesture, gesture.lastX, gesture.lastY)
+    }
+    const liftUnit = gesture => {
+      if (gestureRef.current !== gesture || !gesture.active) return
+      gesture.unitTimer = null
+      gesture.mode = 'unit'
+      vibrate(15)
       updateDrag(gesture, gesture.lastX, gesture.lastY)
     }
     const onPointerDown = event => {
@@ -210,14 +285,14 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
       if (!target?.closest || target.closest('button,a,input,textarea,select,[data-nodrag]')) return
       const row = target.closest('[data-routine-row]')
       if (!row || !list.contains(row)) return
-      const sourceIndex = Number(row.dataset.exIndex)
-      if (!Number.isInteger(sourceIndex)) return
+      const index = Number(row.dataset.exIndex)
+      if (!Number.isInteger(index)) return
       const gesture = {
-        pointerId: event.pointerId, sourceIndex, downTarget: target,
+        pointerId: event.pointerId, index, downTarget: target, intent: null, mode: 'entry', dy: 0,
         startX: event.clientX, startY: event.clientY, lastX: event.clientX, lastY: event.clientY,
         routineIdentity: routineIdentityRef.current,
         listIdentity: exercisesRef.current,
-        snapshot: JSON.stringify(exercisesRef.current), active: false, timer: null,
+        snapshot: JSON.stringify(exercisesRef.current), active: false, timer: null, unitTimer: null,
       }
       gesture.timer = window.setTimeout(() => lift(gesture), ROUTINE_LONG_PRESS_MS)
       gestureRef.current = gesture
@@ -227,9 +302,14 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
       if (!gesture || event.pointerId !== gesture.pointerId) return
       if (!gesture.active) {
         if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > ROUTINE_DRAG_SLOP) {
-          clearTimer(gesture); gestureRef.current = null
+          clearTimers(gesture); gestureRef.current = null
         } else { gesture.lastX = event.clientX; gesture.lastY = event.clientY }
         return
+      }
+      // Moving off before the longer hold settles it: it is the one exercise that travels.
+      if (gesture.unitTimer != null && Math.abs(event.clientY - gesture.grabY) > ROUTINE_DRAG_SLOP) {
+        window.clearTimeout(gesture.unitTimer)
+        gesture.unitTimer = null
       }
       event.preventDefault()
       updateDrag(gesture, event.clientX, event.clientY)
@@ -276,8 +356,9 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
     window.addEventListener('blur', cancelActive)
     return () => {
       const gesture = gestureRef.current
-      clearTimer(gesture); clearFrame(); gestureRef.current = null
+      clearTimers(gesture); clearFrame(); gestureRef.current = null
       releaseCapture(gesture)
+      if (gesture?.active) engineRef.current?.release()
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('touchmove', onTouchMove)
       document.removeEventListener('pointermove', onPointerMove)
@@ -298,7 +379,7 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
     window.clearTimeout(suppressTimerRef.current)
     event.preventDefault(); event.stopPropagation()
   }
-  return { listRef, drag, onClickCapture }
+  return { listRef, svgRef, gooRef, drag, onClickCapture }
 }
 
 export default function RoutineEdit() {
@@ -313,9 +394,13 @@ export default function RoutineEdit() {
   // included: this still unmounts after the delete button navigates away.
   useEffect(() => () => useStore.getState().autoBackupNow(), [])
   const edit = fn => update(s => { fn(s.routines.find(x => x.id === id).ex) })
-  const reorder = useRoutineReorder(r, r?.ex || [], (sourceIndex, targetSlot) => {
-    edit(exercises => { reorderRoutineUnit(exercises, sourceIndex, targetSlot) })
-  })
+  // A drop from the list or from the dock above it. Guarded before update so a drop that changes
+  // nothing never persists or backs up.
+  const dropEntry = (index, intent) => {
+    if (!r || !dropRoutineEntry(r.ex.map(e => ({ ...e })), index, intent)) return
+    edit(ex => { dropRoutineEntry(ex, index, intent) })
+  }
+  const reorder = useRoutineReorder(r, r?.ex || [], dropEntry)
   if (!r) return null
   const move = (i, dir) => {
     // Guard before update so a stale/boundary activation cannot trigger persistence or cleanup.
@@ -334,11 +419,30 @@ export default function RoutineEdit() {
     else { const gid = prev.sg || ('sg' + uid()); prev.sg = gid; cur.sg = gid }
     cleanupSg(ex)
   })
+  const configure = i => {
+    const e = r.ex[i]
+    if (!e) return
+    exConfigSheet(exOr(e.id), e, cfg => edit(x => { x[i] = { id: x[i].id, sg: x[i].sg, ...cfg } }), () => edit(x => { x.splice(i, 1); cleanupSg(x) }), r)
+  }
+  const addExercise = () => exercisePicker(ex => addExerciseToRoutine(ex, r, cfg => edit(x => { x.push({ id: ex.id, ...cfg }) })))
+  // Same choosing and configuring as adding one (its config from another routine, or seeded for
+  // its class), but it lands in this row's place and superset. One pick, then back to the plan.
+  const swapExercise = i => {
+    const key = dockKeys(r.ex)[i]
+    if (!key) return
+    const picker = exercisePicker(ex => addExerciseToRoutine(ex, r, cfg => {
+      picker.close()
+      edit(x => { replaceRoutineEntry(x, key, ex.id, cfg) })
+    }))
+  }
 
   const units = supersetUnits(r.ex)
   const unitIndex = new Map(units.flatMap((unit, index) => unit.map(i => [i, index])))
   const unitFirst = new Set(units.filter(u => u.length > 1).map(u => u[0]))
+  const unitLast = new Set(units.filter(u => u.length > 1).map(u => u.at(-1)))
   const inSS = new Set(units.filter(u => u.length > 1).flat())
+  // Each superset in the colour its capsule has here and on the dock.
+  const hueOf = new Map(dockItems(r.ex).flatMap(item => item.hue == null ? [] : item.indices.map(i => [i, item.hue])))
   const profile = activeProfile(S)
   const missingCount = profile ? r.ex.filter(e => !exAvailable(S, exOr(e.id))).length : 0
 
@@ -381,27 +485,54 @@ export default function RoutineEdit() {
       </div>
     </div>}
 
+    {/* The routine's running order as the session will show it: the same strip, magnets and
+        liquid capsules. Hold a thumbnail to drag it, let go on another to superset the two,
+        pull it clear of its capsule to leave; hold longer to carry the whole superset. */}
+    <WorkoutDock className="routine-dock" entries={r.ex} cur={null}
+      onSelect={configure} onReorder={dropEntry} onAdd={addExercise} />
+
     {r.ex.length ? <div ref={reorder.listRef} onClickCapture={reorder.onClickCapture}
-      className={'list routine-list' + (reorder.drag ? ' is-reordering' : '')}>{r.ex.map((e, i) => {
+      className={'list routine-list' + (reorder.drag ? ' is-reordering' : '')}>
+      {/* The superset capsules, drawn as liquid behind the rows the way the dock draws its own:
+          blurred together and cut back to a sharp edge, so a row pulled away stretches its
+          capsule into a neck before it snaps. */}
+      <svg className="routine-goo" ref={reorder.svgRef} aria-hidden="true">
+        <defs>
+          <filter id="routine-goo" filterUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11" result="drop" />
+            <feMorphology in="drop" operator="erode" radius="1.5" result="inner" />
+            <feComposite in="drop" in2="inner" operator="out" result="ring" />
+            <feComponentTransfer in="drop" result="fill"><feFuncA type="linear" slope="0.16" /></feComponentTransfer>
+            <feComponentTransfer in="ring" result="edge"><feFuncA type="linear" slope="0.6" /></feComponentTransfer>
+            <feMerge><feMergeNode in="fill" /><feMergeNode in="edge" /></feMerge>
+          </filter>
+        </defs>
+        <g ref={reorder.gooRef} />
+      </svg>
+      {r.ex.map((e, i) => {
       // An unresolvable id is shown rather than skipped — hiding it left an entry you
       // could neither see nor delete, but that still turned up in the workout.
       const ex = exOr(e.id)
       const noEquip = profile && !exAvailable(S, ex)
       const linkedPrev = i > 0 && e.sg && r.ex[i - 1].sg === e.sg
       const isDragging = reorder.drag && i >= reorder.drag.first && i <= reorder.drag.last
+      const hue = hueOf.get(i)
       return <div key={i} data-routine-row data-ex-index={i}
-        className={'routine-drag-row' + (isDragging ? ' is-dragging' : '')}
-        style={isDragging ? { transform: `translate3d(0, ${reorder.drag.deltaY}px, 0)` } : undefined}>
+        className={'routine-drag-row' + (isDragging ? ' is-dragging' : '') + (reorder.drag?.join === i ? ' magnet' : '')
+          + (unitFirst.has(i) && i > 0 ? ' ss-start' : '') + (unitLast.has(i) && i < r.ex.length - 1 ? ' ss-end' : '')}
+        style={hue == null ? undefined : { '--ss': rowHsl(hue) }}>
         {unitFirst.has(i) && <div className="ss-label"><Icon name="link" />{t('Superset')}</div>}
-        <div className={'item' + (inSS.has(i) ? ' in-ss' : '')} onClick={() => {
-          exConfigSheet(ex, e, cfg => edit(x => { x[i] = { id: x[i].id, sg: x[i].sg, ...cfg } }), () => edit(x => { x.splice(i, 1); cleanupSg(x) }), r)
-        }}>
+        <div className={'item' + (inSS.has(i) ? ' in-ss' : '')} onClick={() => configure(i)}>
           <Thumb ex={ex} />
           <div className="grow"><div className="tt capitalize">{exerciseNameFor(ex)}</div><div className="ss">{exLine(e, S.unit)}</div>
             {e.note && <div className="small dim" style={{ marginTop: 2 }}>{e.note}</div>}</div>
           {noEquip && <span className="tag" style={{ color: 'var(--orange)', borderColor: 'var(--orange)' }} title={t('Needs {0} — not in your active profile', t(ex.eq))}><Icon name="warning" /></span>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 'none', alignItems: 'center' }}>
-            {i > 0 && <button className={'iconbtn' + (linkedPrev ? ' on-ss' : '')} title={t('Superset with exercise above')} style={{ width: 32, height: 28, borderRadius: 8, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); toggleLink(i) }}><Icon name="link" /></button>}
+            <div style={{ display: 'flex', gap: 2 }}>
+              {i > 0 && <button className={'iconbtn' + (linkedPrev ? ' on-ss' : '')} title={t('Superset with exercise above')} style={{ width: 28, height: 28, borderRadius: 8, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); toggleLink(i) }}><Icon name="link" /></button>}
+              <button className="iconbtn" aria-label={t('Swap exercise')} title={t('Swap exercise')} style={{ width: 28, height: 28, borderRadius: 8, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); swapExercise(i) }}><Icon name="shuffle" /></button>
+            </div>
             <div style={{ display: 'flex', gap: 2 }}>
               <button className="iconbtn" aria-label={t('Move up')} title={t('Move up')} disabled={unitIndex.get(i) === 0} style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, -1) }}><Icon name="chevronUp" /></button>
               <button className="iconbtn" aria-label={t('Move down')} title={t('Move down')} disabled={unitIndex.get(i) === units.length - 1} style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, 1) }}><Icon name="chevronDown" /></button>
@@ -409,7 +540,7 @@ export default function RoutineEdit() {
           </div>
         </div>
       </div>
-    })}{reorder.drag && <div className="routine-drop-indicator" data-testid="routine-drop-indicator"
+    })}{reorder.drag && <div className={'routine-drop-indicator' + (reorder.drag.join != null ? ' join' : '')} data-testid="routine-drop-indicator"
       aria-hidden="true" style={{ top: `${reorder.drag.indicatorTop}px` }} />}</div> : <div className="empty"><div className="ico"><Icon name="dumbbell" /></div>{t('No exercises yet — add your first one.')}</div>}
 
     {/* Coverage of the routine as planned, so a gap shows up while you're building it
@@ -427,7 +558,7 @@ export default function RoutineEdit() {
     })()}
 
     <div className="small dim row" style={{ margin: '10px 2px', gap: 5 }}><Icon name="link" style={{ fontSize: 13 }} />{t('Tap the link button on an exercise to superset it with the one above — you’ll do them back-to-back.')}</div>
-    <Button variant="primary" onClick={() => exercisePicker(ex => addExerciseToRoutine(ex, r, cfg => edit(x => { x.push({ id: ex.id, ...cfg }) })))} icon="plus">{t('Add exercise')}</Button>
+    <Button variant="primary" onClick={addExercise} icon="plus">{t('Add exercise')}</Button>
     <div style={{ height: 10 }} />
     <Button variant="danger" onClick={() => confirmSheet({
       title: t('Delete routine?'), message: t('“{0}” and its exercises will be removed.', r.name), confirmText: t('Delete'), danger: true,

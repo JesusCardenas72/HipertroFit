@@ -1,13 +1,13 @@
 import { create } from 'zustand'
 import { uid } from '../lib/format.js'
-import { beep, vibrate, playClips, stopClips, clipsDuration, setAudioFocusHooks } from '../lib/sound.js'
+import { beep, vibrate, playClips, stopClips, clipsDuration, setAudioFocusHooks, holdFocus } from '../lib/sound.js'
 // The rest alert: a single boxing-bell ring, or the audio file picked in Settings. It is
 // scheduled to *land* on zero rather than start there — the end of the sound and the end of the
 // rest are the same instant — so it begins its own length before the timer runs out.
 // (playClips takes a list because the alert used to be two separate files; a single-entry one
 // is the same call, and keeping the list means adding a second clip needs no new plumbing.)
-import { restAlertClips, loadCustomSound, progressSound, exerciseEndSound } from '../lib/custom-sound.js'
-import { MOBILE, pauseOtherAudio, releaseOtherAudio } from '../lib/mobile.js'
+import { restAlertClips, loadCustomSound, progressSound, exerciseEndSound, setSoundMirror } from '../lib/custom-sound.js'
+import { MOBILE, pauseOtherAudio, releaseOtherAudio, nativeSounds } from '../lib/mobile.js'
 import { api } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
 import { useStore } from './useStore.js'
@@ -53,16 +53,18 @@ const maybeRestNotification = async () => {
   }
 }
 
+// Native build: the picked sounds also live in files, so an app update cannot take them away.
+if (MOBILE) setSoundMirror(nativeSounds)
 // Read the saved custom sound up front so the first rest already knows which clip to measure.
 loadCustomSound()
 progressSound.load()
 // Measuring it also decodes it, so the first exercise of a session does not wait on the network.
 exerciseEndSound.load().then(() => clipsDuration(exerciseEndSound.clips())).catch(() => {})
-// Native Android: pause the user's music while the alert plays and give it back afterwards.
+// Native Android: pause the user's music while any sound plays and give it back afterwards.
 if (MOBILE) setAudioFocusHooks({ acquire: pauseOtherAudio, release: releaseOtherAudio })
 
 // Silence held on each side of the alert: the music is paused this long before the bell starts,
-// and handed back this long after it ends (see playClips' focusGap).
+// and handed back this long after it ends (see playClips' focusGap). sound.js' FOCUS_GAP_MS.
 export const REST_ALERT_FOCUS_GAP_MS = 1500
 
 /* The rest that is counting is written down beside the workout, so it outlives the page: a phone
@@ -91,6 +93,10 @@ let timerTick = null
 let workInt = null
 let workTick = null
 let workDone = null
+// The work countdown's beeps are known in advance, so the music is paused ahead of them — the
+// "3" then sounds on time instead of 1.5 s late (see holdFocus).
+let workFocusTm = null
+let workFocusOff = null
 
 /* The rest alert is scheduled to *end* on zero, not to start there: it begins however long the
    two clips run before the rest is up, so the bell's last moment and the end of the rest are
@@ -288,6 +294,12 @@ export const useUI = create((set, get) => ({
     const endsAt = Date.now() + total * 1000
     workDone = onDone
     set({ work: { left: total, total, endsAt, label } })
+    // The first beep comes as the countdown reads 3 (rounded: up to 3.5 s before the end), and
+    // the music has to be quiet by then.
+    workFocusTm = setTimeout(() => {
+      workFocusTm = null
+      if (useStore.getState().S.sound) workFocusOff = holdFocus()
+    }, Math.max(0, endsAt - 3500 - REST_ALERT_FOCUS_GAP_MS - Date.now()))
     workTick = () => {
       const wk = get().work
       if (!wk) return
@@ -323,6 +335,9 @@ export const useUI = create((set, get) => ({
     if (workInt) clearInterval(workInt); workInt = null
     if (workTick) document.removeEventListener('visibilitychange', workTick); workTick = null
     workDone = null
+    clearTimeout(workFocusTm); workFocusTm = null
+    // The final beeps hold the focus on their own, so letting go here never cuts them short.
+    if (workFocusOff) { workFocusOff(); workFocusOff = null }
     set({ work: null })
   }
 }))

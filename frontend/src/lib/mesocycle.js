@@ -15,6 +15,7 @@
 
 import { cyclePosition } from './microcycle.js'
 import { isWarmupRow } from './workout-model.js'
+import { snapLoad, minLoadOf } from './load-scale.js'
 
 /** Loading microcycles after which a deload is suggested. */
 export const DELOAD_AFTER = 3
@@ -173,11 +174,12 @@ export function setDeloadPct(S, pct) {
   return { ...mesoOf(S), pct: v }
 }
 
-// Weight rounded to something loadable: the exercise's own increment, never down to nothing.
+// Weight rounded to something loadable: the exercise's own increment (or the rungs of its
+// adjustable dumbbells), never down to nothing.
 const roundLoad = (w, step) => {
   if (!(w > 0)) return w || 0
-  const s = step > 0 ? step : 2.5
-  return Math.max(s, Math.round(w / s) * s)
+  const s = (step && typeof step === 'object') || step > 0 ? step : 2.5
+  return Math.max(minLoadOf(s), snapLoad(w, s))
 }
 
 /**

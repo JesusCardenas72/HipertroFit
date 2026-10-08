@@ -1,4 +1,5 @@
 import { supersetUnits } from './history.js'
+import { dropActiveWorkoutEntry } from './active-workout-order.js'
 
 /**
  * The workout dock: the strip of exercise thumbnails under the session, one entry per
@@ -52,11 +53,75 @@ export function dockItems(entries) {
   })
 }
 
-/** A unit is done when every set of every exercise in it is checked off. */
+/**
+ * A stable name for each entry that survives a reorder, so whatever draws it can glide from
+ * where it was to where it landed: the exercise id plus which occurrence of it this is.
+ */
+export function dockKeys(entries) {
+  const seen = {}
+  return (Array.isArray(entries) ? entries : []).map(e => {
+    seen[e.id] = (seen[e.id] || 0) + 1
+    return e.id + '#' + seen[e.id]
+  })
+}
+
+/**
+ * The hue of the capsule dropping entry `index` with `intent` (`{ slot, join }`) would make, so
+ * the drop can wear it while it is still being dragged. Falls back to the first hue.
+ */
+export function joinHue(entries, index, intent) {
+  const copy = { cur: 0, entries: (Array.isArray(entries) ? entries : []).map(e => ({ ...e })) }
+  const moving = copy.entries[index]
+  if (!moving || !dropActiveWorkoutEntry(copy, index, intent)) return SUPERSET_HUES[0]
+  const at = copy.entries.indexOf(moving)
+  return dockItems(copy.entries).find(item => item.indices.includes(at))?.hue ?? SUPERSET_HUES[0]
+}
+
+/** A unit is done when every set of every exercise in it is checked off. A routine's
+ * exercises carry a planned set count rather than logged sets, so they are never done. */
 export function unitDone(entries, indices) {
   const list = Array.isArray(entries) ? entries : []
-  const sets = indices.flatMap(index => list[index]?.sets || [])
+  const sets = indices.flatMap(index => Array.isArray(list[index]?.sets) ? list[index].sets : [])
   return sets.length > 0 && sets.every(set => set.done)
+}
+
+// The middle of a thumbnail, as a share of its width either side of the centre: let go there
+// and the dragged exercise supersets with it.
+export const DOCK_CORE = 0.35
+// How far past its resting place beside its own superset a member can be pulled and still be
+// held — the stretch the capsule takes before it snaps (lib/dock-physics.js necks down over the
+// same distance).
+export const DOCK_STICK = 56
+
+/**
+ * What letting go of a dragged thumbnail at `x` means. `thumbs` are the other thumbnails in
+ * strip order as `{ index, sg, left, right }`; `ownSg` is the dragged entry's superset id.
+ *
+ * Returns `{ slot, join }`: `slot` is where the entry lands among `thumbs`, `join` the entry
+ * index it ends up supersetted with, or null to stand alone. Over a thumbnail's middle it joins
+ * that exercise (or its superset); in the gap inside a capsule it joins that capsule; near its
+ * own capsule it sticks to it; anywhere else it stands alone.
+ */
+export function dockIntent(thumbs, x, ownSg = null, stick = DOCK_STICK) {
+  const centre = thumb => (thumb.left + thumb.right) / 2
+  let core = null
+  for (let i = 0; i < thumbs.length && !core; i++) {
+    const thumb = thumbs[i]
+    if (Math.abs(x - centre(thumb)) <= (thumb.right - thumb.left) * DOCK_CORE) {
+      core = { thumb, intent: { slot: x < centre(thumb) ? i : i + 1, join: thumb.index } }
+    }
+  }
+  if (core && (!ownSg || core.thumb.sg === ownSg)) return core.intent
+  const slot = thumbs.reduce((count, thumb) => count + (x > centre(thumb) ? 1 : 0), 0)
+  const left = thumbs[slot - 1]
+  const right = thumbs[slot]
+  // Its own capsule holds on first, even over a neighbour: leaving takes a real pull. Measured
+  // from beside the mate, where the dragged thumbnail would sit: half a thumbnail out.
+  if (ownSg && left?.sg === ownSg && x - left.right <= (left.right - left.left) / 2 + stick) return { slot, join: left.index }
+  if (ownSg && right?.sg === ownSg && right.left - x <= (right.right - right.left) / 2 + stick) return { slot, join: right.index }
+  if (core) return core.intent
+  if (left?.sg && left.sg === right?.sg) return { slot, join: left.index }
+  return { slot, join: null }
 }
 
 /**

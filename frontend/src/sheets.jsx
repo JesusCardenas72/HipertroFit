@@ -30,6 +30,7 @@ import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-sha
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
 import { normalizeRepRange } from './lib/rep-range.js'
+import { ladderOf, snapLoad, ADJUSTABLE_DUMBBELLS } from './lib/load-scale.js'
 import { routineExerciseConfig, classifyExercise, CLASS_NAME, CLASS_REP_RANGE, EXERCISE_CLASSES } from './lib/exercise-class.js'
 import { buildCustomExercise, stepsText, NAME_MAX, DESC_MAX, MAX_IMAGE_BYTES } from './lib/custom-exercise.js'
 import { pictureFromFile, gifFromDataUrl, frameCanvas, frameToJpeg } from './lib/image-file.js'
@@ -953,7 +954,7 @@ export const equipmentProfileSheet = profile => ui().openSheet(close => <Equipme
 // "how does this lift go up" belongs next to sets and reps, not in a separate screen. Left
 // on "follow the routine" it inherits, so most people never touch it.
 const progressionStepOf = (c, mode, ex, unit) =>
-  c.inc >= 0 ? c.inc : (mode === 'time' ? 5 : defaultIncrement(ex.id, unit))
+  c.inc >= 0 ? c.inc : (mode === 'time' ? 5 : (ladderOf(c)?.step || defaultIncrement(ex.id, unit)))
 // One remembered value, as it reads in the "changes every routine" dialog.
 function fmtGlobalValue(field, value, unit) {
   if (field === 'bodyweight' || field === 'side') return value ? t('On') : t('Off')
@@ -962,6 +963,7 @@ function fmtGlobalValue(field, value, unit) {
   if (field === 'prog') return t(POLICY_NAME[value] || value)
   if (field === 'restSec') return t('{0}s', fmtNum(value))
   if (field === 'inc' || field === 'weight') return fmtNum(value) + ' ' + unit
+  if (field === 'adj') return t('From {0} {2}, +{1} {2}', fmtNum(value.from), fmtNum(value.step), unit)
   return fmtNum(value)
 }
 const progressionStepIsValid = (step, policy) =>
@@ -974,6 +976,8 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit, perSide, gcls }) 
   const active = policyFor({ ...c, id: ex.id }, routine, mode)
   const inc = progressionStepOf(c, mode, ex, unit)
   const invalid = !progressionStepIsValid(inc, active)
+  // On adjustable dumbbells a step that is not a whole number of clicks lands between rungs.
+  const ladder = mode === 'time' ? null : ladderOf(c)
   const stride = mode === 'reps' && perSide ? 2 : 1
   const range = active === 'double' ? normalizeRepRange(c.reps, c.repsMin, stride) : null
   const setRule = v => setC(x => {
@@ -992,7 +996,7 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit, perSide, gcls }) 
     <div className="small dim" style={{ marginBottom: active === 'off' ? 18 : 10 }}>{t(POLICY_DESC[active])}</div>
     {active !== 'off' && <div className="row cfgrow" style={{ marginBottom: 18 }}>
       <Stepper label={mode === 'time' ? t('Step (seconds)') : t('Step ({0})', unit)} value={inc}
-        step={mode === 'time' ? 5 : 1.25} decimal={mode !== 'time'} invalid={invalid}
+        step={mode === 'time' ? 5 : ladder ? ladder.step : 1.25} decimal={mode !== 'time'} invalid={invalid}
         className={(invalid ? 'invalid' : '') + gcls('inc')}
         onChange={v => setC(x => ({ ...x, inc: v }))} />
       {active === 'double' && <>
@@ -1030,6 +1034,20 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
   // Both default from the dataset and are then whatever the config says — see isBw.
   const bw = !cardio && isBw({ ...c, id: ex.id })
   const perSide = isPerSide(c)
+  // Adjustable dumbbells (see lib/load-scale.js): the weight steppers walk the rungs the set
+  // actually has. Offered on dumbbell work and on custom exercises, whose equipment may be
+  // anything; bodyweight work has no weight to step.
+  const ladder = !cardio && !bw ? ladderOf(c) : null
+  const offerAdj = !cardio && !bw && (ex.eq === 'dumbbell' || !ex.eq || ex.eq === 'custom' || !!c.adj)
+  const setAdj = v => setC(x => {
+    if (!v) return { ...x, adj: undefined }
+    const adj = x.adj && ladderOf(x) ? x.adj : { ...ADJUSTABLE_DUMBBELLS }
+    return { ...x, adj, weight: snapLoad(x.weight || 0, adj) }
+  })
+  const setAdjField = (field, v) => setC(x => {
+    const adj = { ...(x.adj || ADJUSTABLE_DUMBBELLS), [field]: v }
+    return { ...x, adj, weight: ladderOf({ adj }) ? snapLoad(x.weight || 0, adj) : x.weight }
+  })
   const progressionPolicy = policyFor({ ...c, id: ex.id }, routine, mode)
   const progressionStepInvalid = !progressionStepIsValid(progressionStepOf(c, mode, ex, st.unit), progressionPolicy)
   // Colour says where a value lives. A global field belongs to the exercise: what you type
@@ -1102,8 +1120,12 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
     // was. Mode-independent — a heavy triple, a plank and a cardio interval all rest.
     const restSec = Math.max(0, Math.round(c.restSec) || 0)
     const withRest = restSec ? { restSec } : {}
+    // Only on loaded work, and only when it is a ladder that can load something — so a barbell
+    // config keeps exactly the shape it had. The planned weight lands on one of its rungs.
+    const withAdj = ladder ? { adj: { from: ladder.from, step: ladder.step } } : {}
+    const loadOf = w => (ladder ? snapLoad(Math.max(0, w || 0), ladder) : Math.max(0, w || 0))
     if (cardio) commit({ sets, min: Math.max(1, Math.round(c.min) || 20), speed: Math.max(0, c.speed || 8), ...withNote, ...withRest })
-    else if (mode === 'time') commit({ sets, mode: 'time', sec: Math.max(1, Math.round(c.sec) || 45), weight: Math.max(0, c.weight || 0), ...flags, ...prog, ...withNote, ...withWarmups, ...withRest })
+    else if (mode === 'time') commit({ sets, mode: 'time', sec: Math.max(1, Math.round(c.sec) || 45), weight: loadOf(c.weight), ...flags, ...prog, ...withNote, ...withWarmups, ...withRest, ...withAdj })
     else {
       // A unilateral target is stored even: the split has to divide, and a typed 15 would
       // otherwise plan seven reps on one side and eight on the other, every session.
@@ -1115,7 +1137,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
         range = normalizeRepRange(reps, c.repsMin, stride)
         reps = range.reps
       }
-      const out = { sets, mode: 'reps', reps, weight: Math.max(0, c.weight || 0), ...flags, ...(perSide ? { side: true } : {}), ...prog, ...withNote, ...withWarmups, ...withRest }
+      const out = { sets, mode: 'reps', reps, weight: loadOf(c.weight), ...flags, ...(perSide ? { side: true } : {}), ...prog, ...withNote, ...withWarmups, ...withRest, ...withAdj }
       if (double) out.repsMin = range.repsMin
       // A ceiling below the working reps would tell you to add a set on day one.
       if (bw && !(out.weight > 0) && c.repsMax > 0) out.repsMax = Math.max(reps, Math.round(c.repsMax))
@@ -1161,7 +1183,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
       </> : mode === 'time' ? <>
         <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={v => setC(x => ({ ...x, sets: v }))} />
         <Stepper label={t('Seconds')} value={c.sec} step={5} decimal={false} onChange={v => setC(x => ({ ...x, sec: v }))} />
-        <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} onChange={v => setC(x => ({ ...x, weight: v }))} />
+        <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} ladder={ladder} onChange={v => setC(x => ({ ...x, weight: v }))} />
       </> : <>
         {/* Rest-pause always trains as exactly two rows — a warm-up at this rep count, then one
             rest-pause work set — so "Sets" has nothing left to mean and only invites a mismatch. */}
@@ -1171,7 +1193,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
           className={gcls('reps')} onChange={v => setC(x => ({ ...x, reps: v }))} />}
         {/* On bodyweight work the weight stepper is the click #32 is about, so it is not here
             until there is a belt to describe — see the added-weight row below. */}
-        {!bw && <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} onChange={v => setC(x => ({ ...x, weight: v }))} />}
+        {!bw && <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} ladder={ladder} onChange={v => setC(x => ({ ...x, weight: v }))} />}
       </>}
     </div>
     {c.intensifier?.type === 'restpause' && <div className="small dim" style={{ marginTop: -10, marginBottom: 18 }}>
@@ -1221,7 +1243,24 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
             : next
         })} />
       </Row>}
+      {offerAdj && <Row className={gcls('adj')} icon="dumbbell" iconTint="var(--acc)" title={t('Adjustable dumbbells')}
+        subtitle={ladder
+          ? t('Weights go {0}, {1}, {2}… {3}', fmtNum(ladder.from), fmtNum(ladder.from + ladder.step), fmtNum(ladder.from + 2 * ladder.step), st.unit)
+          : t('Weights in fixed clicks from a starting weight, e.g. from 4 kg in 1.5 kg steps.')}>
+        <Switch checked={!!c.adj} onChange={setAdj} />
+      </Row>}
     </div>}
+    {offerAdj && c.adj && <>
+      <div className="row cfgrow" style={{ marginBottom: 8 }}>
+        <Stepper label={t('Starting weight ({0})', st.unit)} value={c.adj.from} step={0.5} className={gcls('adj')}
+          invalid={!(c.adj.from > 0)} onChange={v => setAdjField('from', v)} />
+        <Stepper label={t('Per click ({0})', st.unit)} value={c.adj.step} step={0.25} className={gcls('adj')}
+          invalid={!(c.adj.step > 0)} onChange={v => setAdjField('step', v)} />
+      </div>
+      <div className="small dim" style={{ marginBottom: 18 }}>
+        {t('The weight steppers, progression, warm-ups and deloads only land on these weights.')}
+      </div>
+    </>}
     {/* A stepper is too wide to sit in a list row next to a label — it squeezes the text to
         one word per line — so added weight gets the same full-width treatment as sets and
         reps, with its explanation underneath. */}

@@ -42,6 +42,8 @@ function cleanEx(e) {
   // without its rule is just a list of weights.
   if (e.prog) o.prog = e.prog
   if (e.inc > 0) o.inc = e.inc
+  // Adjustable dumbbells: the weights only make sense on the rungs they were planned on.
+  if (mode !== 'cardio' && e.adj && e.adj.from > 0 && e.adj.step > 0) o.adj = { from: +e.adj.from, step: +e.adj.step }
   if (e.repsMin != null) o.repsMin = e.repsMin
   if (e.repsMax != null) o.repsMax = e.repsMax
   // The exercise's own rest (issue #10) is part of how it is prescribed, so it travels too —
@@ -72,6 +74,12 @@ function cleanWarmupSets(v) {
 function cleanRestSec(v) {
   const n = Math.round(Number(v)) || 0
   return n > 0 ? n : 0
+}
+
+/** An adjustable-dumbbell ladder with a positive first rung and step, or nothing. */
+function cleanAdj(x) {
+  const from = Number(x && x.from), step = Number(x && x.step)
+  return from > 0 && step > 0 && from < 1000 && step < 100 ? { from, step } : null
 }
 
 /** Keep the floors the config sheet and applyIntensifierPlan already enforce, and nothing else:
@@ -145,8 +153,9 @@ export function parsePlan(raw) {
       const warm = cleanWarmupSets(e.warmupSets)
       const intens = cleanIntensifier(e.intensifier)
       const rest = cleanRestSec(e.restSec)
-      const { warmupSets, intensifier, restSec, ...passthrough } = e
-      return { ...passthrough, ...(warm ? { warmupSets: warm } : {}), ...(intens ? { intensifier: intens } : {}), ...(rest ? { restSec: rest } : {}) }
+      const adj = cleanAdj(e.adj)
+      const { warmupSets, intensifier, restSec, adj: _adj, ...passthrough } = e
+      return { ...passthrough, ...(warm ? { warmupSets: warm } : {}), ...(intens ? { intensifier: intens } : {}), ...(rest ? { restSec: rest } : {}), ...(adj ? { adj } : {}) }
     })
   }))
   return {

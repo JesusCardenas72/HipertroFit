@@ -24,3 +24,6 @@ node_modules
 
 # Locally built APKs (the release APK comes from CI)
 dist-apk/
+
+# Docker images packed for the NAS (scripts/build-nas.ps1)
+dist-nas/

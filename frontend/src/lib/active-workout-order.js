@@ -1,4 +1,4 @@
-import { supersetUnits } from './history.js'
+import { cleanupSg, supersetUnits } from './history.js'
 
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value))
 
@@ -60,4 +60,47 @@ export function moveActiveWorkoutUnitTo(active, index, targetSlot) {
   const keep = active.entries[Number.isInteger(active.cur) ? active.cur : 0]
   remaining.splice(slot, 0, units[source])
   return applyOrder(active, remaining.flat(), keep)
+}
+
+function freshSg(entries) {
+  let n = 1
+  while (entries.some(e => e.sg === 'sg-dock-' + n)) n++
+  return 'sg-dock-' + n
+}
+
+/**
+ * Drop one exercise where a thumbnail dragged along the workout dock was let go:
+ * `{ slot, join }` from `dockIntent`. `slot` counts the other entries (the dragged one lifted
+ * out); `join` is the neighbour it ends up supersetted with — taking that neighbour's superset,
+ * or starting a new one with it — or null to stand alone, leaving any superset it was in.
+ * A superset left with a single member stops being one.
+ *
+ * Returns `{ indices }` like the siblings above, or null when neither the order nor any
+ * pairing changed.
+ */
+export function dropActiveWorkoutEntry(active, index, { slot, join = null } = {}) {
+  if (!active || !Array.isArray(active.entries) || !active.entries[index]) return null
+  const entries = active.entries
+  const order = entries.map((_, i) => i).filter(i => i !== index)
+  const at = clamp(Number.isFinite(slot) ? Math.trunc(slot) : index, 0, order.length)
+  order.splice(at, 0, index)
+  // Standing alone between two members of one superset is not a place: it joins them.
+  if (join == null && entries[order[at - 1]]?.sg && entries[order[at - 1]].sg === entries[order[at + 1]]?.sg) join = order[at - 1]
+  if (join != null && (!entries[join] || join === index || Math.abs(order.indexOf(join) - at) !== 1)) return null
+
+  const sgs = order.map(i => ({ sg: entries[i].sg }))
+  if (join == null) delete sgs[at].sg
+  else {
+    const group = entries[join].sg || freshSg(entries)
+    sgs[at].sg = group
+    sgs[order.indexOf(join)].sg = group
+  }
+  cleanupSg(sgs)
+  const same = order.every((i, k) => i === k && (sgs[k].sg ?? null) === (entries[k].sg ?? null))
+  if (same) return null
+
+  const keep = entries[Number.isInteger(active.cur) ? active.cur : 0]
+  const moved = applyOrder(active, order, keep)
+  active.entries.forEach((e, k) => { if (sgs[k].sg) e.sg = sgs[k].sg; else delete e.sg })
+  return moved
 }

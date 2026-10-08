@@ -631,3 +631,40 @@ describe('drop-sets and rest-pause sets in progression', () => {
     expect(out[1]).toEqual({ type: 'dropset', w: 0, r: 10, done: false })
   })
 })
+
+describe('adjustable dumbbells (a ladder from 4 kg in 1.5 kg steps)', () => {
+  const ADJ = { adj: { from: 4, step: 1.5 } }
+  const cfg = { id: LIFT, sets: 3, reps: 5, prog: 'linear', ...ADJ }
+
+  it('loads onto the ladder: 5.5 kg goes up to 7, never to 7.5', () => {
+    const p = nextPrescription(hist(LIFT, [[5.5, 5, 5, 5]]), cfg, null)
+    expect(p.kind).toBe('up')
+    expect(p.weight).toBe(7)
+  })
+
+  it('a weight logged between rungs moves up onto the next one', () => {
+    expect(nextPrescription(hist(LIFT, [[6, 5, 5, 5]]), cfg, null).weight).toBe(7)
+  })
+
+  it('a deload lands on a rung and never below the first one', () => {
+    const fails = [[8.5, 5, 5, 3], [8.5, 5, 5, 3], [8.5, 5, 5, 3]]
+    const p = nextPrescription(hist(LIFT, fails), cfg, null)
+    expect(p.kind).toBe('deload')
+    expect(p.weight).toBe(7)
+    const low = nextPrescription(hist(LIFT, [[4, 5, 3, 3], [4, 5, 3, 3], [4, 5, 3, 3]]), cfg, null)
+    expect(low.weight).toBe(4)
+  })
+
+  it('double progression offers one rung as the weight step', () => {
+    const p = nextPrescription(hist(LIFT, [[8.5, 12, 12, 12]]), { id: LIFT, sets: 3, reps: 12, repsMin: 8, prog: 'double', ...ADJ }, null)
+    expect(p.kind).toBe('decide')
+    expect(p.choice.inc).toBe(1.5)
+    expect(p.choice.weight).toBe(10)
+  })
+
+  it('warm-ups ramp onto the rungs', () => {
+    const sets = [{ w: 0, r: 5, done: false, phase: 'warmup', warmup: true }, { w: 13, r: 5, done: false }]
+    const out = applyPrescription(sets, { policy: 'linear', kind: 'up', weight: 13 }, ADJ.adj)
+    expect(out[0].w).toBe(5.5)   // half of 13 is 6.5, floored onto the ladder
+  })
+})

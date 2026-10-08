@@ -4,7 +4,7 @@
 // Imports both history.js and progression.js (which itself imports history.js); nothing in
 // either imports this file, so there is no cycle.
 import { buildSets, applyIntensifierPlan, sessionSetCount, lastEntryFor, modeOf, effortOf } from './history.js'
-import { nextPrescription, applyPrescription, defaultIncrement } from './progression.js'
+import { nextPrescription, applyPrescription, loadScaleFor } from './progression.js'
 import { applyDeload } from './mesocycle.js'
 import { seedTargets } from './set-reference.js'
 import { isWarmupRow } from './workout-model.js'
@@ -13,7 +13,7 @@ import { isWarmupRow } from './workout-model.js'
 // against the same set last time — including the effort, when the policy holds weight and reps
 // and the overload is a rep closer to failure.
 function prescribedSets(st, cfg, plan, { useTarget = false } = {}) {
-  const step = defaultIncrement(cfg.id, st.unit)
+  const step = loadScaleFor(cfg, st.unit)
   const progressed = seedTargets(applyPrescription(buildSets(st, cfg, { step, useTarget }), plan, step),
     lastEntryFor(st, cfg.id)?.sets, { mode: modeOf(cfg), plan, effort: effortOf(st), step })
   return applyIntensifierPlan(progressed, cfg)
@@ -28,7 +28,7 @@ export function buildSessionEntries(st, r, { deload = 0 } = {}) {
   const excluded = r?.excludeFromProgression === true || deload > 0
   const entries = (r ? r.ex : []).map(cfg => {
     const plan = excluded ? { policy: 'off', kind: 'off' } : nextPrescription(st, cfg, r)
-    const step = defaultIncrement(cfg.id, st.unit)
+    const step = loadScaleFor(cfg, st.unit)
     const built = prescribedSets(st, cfg, plan, { useTarget: excluded })
     const sets = deload > 0 ? applyDeload(built, deload, step) : built
     // The set count comes from the exercise's own history, not the routine (sessionSetCount),
@@ -51,7 +51,7 @@ export function deloadActiveSession(active, pct, unit = 'kg') {
     ...active,
     deload: pct,
     excludeFromProgression: true,
-    entries: (active.entries || []).map(e => ({ ...e, sets: applyDeload(e.sets || [], pct, defaultIncrement(e.id, unit)) })),
+    entries: (active.entries || []).map(e => ({ ...e, sets: applyDeload(e.sets || [], pct, loadScaleFor({ ...(e.target || {}), id: e.id }, unit)) })),
   }
 }
 

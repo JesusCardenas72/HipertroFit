@@ -13,12 +13,8 @@ function context() {
 function wake(ac) {
   try { if (ac.state === 'suspended') { const p = ac.resume(); if (p && p.catch) p.catch(() => {}) } } catch (e) { /* */ }
 }
-export function beep(enabled, freq, dur, when) {
-  if (!enabled) return
+function tone(ac, freq, dur, when) {
   try {
-    const ac = context()
-    if (!ac) return
-    wake(ac)
     const o = ac.createOscillator(), g = ac.createGain()
     o.connect(g); g.connect(ac.destination)
     o.frequency.value = freq || 880; o.type = 'sine'
@@ -28,6 +24,24 @@ export function beep(enabled, freq, dur, when) {
     g.gain.exponentialRampToValueAtTime(0.001, t0 + (dur || 0.18))
     o.start(t0); o.stop(t0 + (dur || 0.18) + 0.05)
   } catch (e) { /* */ }
+}
+/* Like every sound here it plays inside the audio-focus hold (see claim below): with music
+   playing, the music is paused first and the beep sounds FOCUS_GAP_MS later; with nothing
+   playing it sounds at once. Calls made together — a three-note chime — share one pause. */
+export function beep(enabled, freq, dur, when) {
+  if (!enabled) return
+  let ac
+  try { ac = context() } catch (e) { return }
+  if (!ac) return
+  // Unlocked now, inside the tap that made the beep: a timer later would not count as one.
+  wake(ac)
+  const owner = {}
+  const len = ((when || 0) + (dur || 0.18) + 0.05) * 1000
+  claim(owner, h => {
+    const wait = Math.max(0, h.at - Date.now())
+    tone(ac, freq, dur, wait / 1000 + (when || 0))
+    setTimeout(() => unclaim(owner), wait + len + (h.paused ? FOCUS_GAP_MS : 0))
+  })
 }
 // A short rising arpeggio with a held top note — the built-in "time to progress" sound.
 export function fanfare(enabled) {
@@ -46,9 +60,9 @@ export function vibrate(p) { try { navigator.vibrate && navigator.vibrate(p) } c
    instead. The <audio> element stays as the fallback for a clip that will not decode or a
    context that has not been unlocked by a tap yet.
 
-   Around the whole sequence the audio-focus hooks run (see setAudioFocusHooks): they ask the
-   OS to *pause* other audio for the length of the alert and hand it back once it ends, so the
-   music stops, the bell rings on its own and the music picks up again where it was.
+   Around the whole sequence the audio focus is held (see claim): other audio is *paused* for
+   the length of the alert and handed back once it ends, so the music stops, the bell rings on
+   its own and the music picks up again where it was.
 
    Both caches are per source and live for the session, which doubles as the preload: the second
    rest of a session starts its alert instantly instead of waiting on the network. */
@@ -152,28 +166,74 @@ export function forgetClip(src) {
 }
 
 /* ---- audio focus ----
-   `acquire` runs as an alert starts and `release` once it has finished or been cut off — the
-   native build points them at the AudioFocus plugin, which pauses other apps' audio and gives it
-   back. Browsers get the Audio Session API where they have it (Safari): 'transient-solo' is the
-   type for a short sound that silences someone else's playback while it lasts. Both are
-   best-effort and never throw. */
+   Every sound the app makes — beeps, the fanfare, the recorded clips — plays inside a focus
+   hold: other apps' audio (music, a podcast) is paused first, the sound starts FOCUS_GAP_MS
+   later, and the audio is handed back FOCUS_GAP_MS after the sound ends. Sounds that overlap
+   share one hold, so the music pauses once and comes back once, after whichever ends last.
+
+   The hooks do the pausing (setAudioFocusHooks): the native build points them at the AudioFocus
+   plugin. `acquire` resolves to { active } — whether something else was actually playing. When
+   nothing was there is nothing to wait for, and the sound starts at once: a tap's beep is never
+   held back 1.5 s for a pause that did not happen. Without hooks (the web build) nothing can be
+   paused or known, so no gap is waited either, beyond one a caller asks for outright (playClips'
+   focusGap). Safari also gets the Audio Session API: 'transient-solo' silences other playback
+   while the hold lasts. All of it best-effort; none of it throws. */
+export const FOCUS_GAP_MS = 1500
+
 let focusHooks = null
-let focusHeld = false
+const holders = new Set()
+let hold = null   // { at, paused, known, waiting } while anything holds the focus
 
 export function setAudioFocusHooks(hooks) { focusHooks = hooks || null }
 
-function focus(on) {
-  if (on === focusHeld) return
-  focusHeld = on
+function setSession(on) {
   try {
     const session = typeof navigator !== 'undefined' ? navigator.audioSession : null
     if (session) session.type = on ? 'transient-solo' : 'auto'
   } catch (e) { /* */ }
+}
+
+/* Add `owner` to the hold, taking the focus if it is the first. `run(hold)` is called once it is
+   known when the other audio is quiet — `hold.at`, a Date.now() time — and whether anything was
+   paused at all (`hold.paused`, which also decides the tail). Synchronously when that is already
+   known; never for an owner that has let go in the meantime. */
+function claim(owner, run) {
+  holders.add(owner)
+  if (!hold) {
+    const h = hold = { at: Date.now(), paused: false, known: false, waiting: [] }
+    setSession(true)
+    const settle = r => {
+      if (h.known) return
+      h.known = true
+      if (r && r.active) { h.paused = true; h.at += FOCUS_GAP_MS }
+      h.waiting.splice(0).forEach(([o, fn]) => { if (hold === h && holders.has(o)) fn(h) })
+    }
+    let r = null
+    try { const fn = focusHooks && focusHooks.acquire; r = fn ? fn() : null } catch (e) { r = null }
+    if (r && typeof r.then === 'function') r.then(settle, () => settle(null))
+    else settle(r)
+  }
+  if (hold.known) run(hold)
+  else hold.waiting.push([owner, run])
+}
+
+function unclaim(owner) {
+  if (!holders.delete(owner) || holders.size) return
+  hold = null
+  setSession(false)
   try {
-    const fn = focusHooks && (on ? focusHooks.acquire : focusHooks.release)
+    const fn = focusHooks && focusHooks.release
     const p = fn && fn()
     if (p && typeof p.catch === 'function') p.catch(() => {})
   } catch (e) { /* */ }
+}
+
+/** Take the focus now, ahead of sounds known to be coming (a countdown's beeps): they then start
+    on time instead of waiting out the pause. Returns the function that lets go. */
+export function holdFocus() {
+  const owner = {}
+  claim(owner, () => {})
+  return () => unclaim(owner)
 }
 
 /** Stop whatever sequence is mid-flight. A rest that ends must not ring into the next set. */
@@ -186,17 +246,19 @@ export function stopClips() {
   if (cur.begin) cur.begin()
   if (cur.node) { try { cur.node.onended = null; cur.node.stop() } catch (e) { /* */ } }
   if (cur.el) { try { cur.el.pause(); cur.el.currentTime = 0 } catch (e) { /* */ } }
-  focus(false)
+  unclaim(cur)
 }
 
 /**
  * Play `sources` in order, each starting when the previous one ends. `enabled` gates it the
  * same way it gates `beep`. Returns immediately — playback is asynchronous.
  *
- * `focusGap` (ms) puts silence on both sides of the sequence while the focus is held: the other
- * app's audio is paused that long before the first clip starts, and given back that long after
- * the last one ends — so the bell never plays over the tail of a fading song, and the song does
- * not jump back in on the bell's last note. A stopClips() during either gap ends it at once.
+ * The focus is held around it (see claim): with other audio playing, that audio is paused
+ * FOCUS_GAP_MS before the first clip and given back FOCUS_GAP_MS after the last — so the bell
+ * never plays over the tail of a fading song, and the song does not jump back in on the bell's
+ * last note. `focusGap` (ms) makes that silence unconditional: the rest alert is started that
+ * much early so as to land on zero, and must not ring early because nothing was playing. A
+ * stopClips() during either gap ends it at once.
  *
  * `onStart` runs once, the moment the first clip starts — after the leading gap. Something that
  * is timed from the sound (the rest between exercises) hangs off it. It also runs, at once, when
@@ -220,11 +282,12 @@ export function playClips(enabled, sources, { focusGap = 0, onStart = null } = {
   // since an 'ended' handler can outlive the stopClips() that cancelled it.
   const token = { el: null, node: null, src: null, gapTm: null, begin }
   playing = token
-  focus(true)
+  const t0 = Date.now()
+  let tail = focusGap
   const done = () => {
     if (playing !== token) return
     playing = null
-    focus(false)
+    unclaim(token)
   }
   const step = i => {
     if (playing !== token) return
@@ -232,7 +295,7 @@ export function playClips(enabled, sources, { focusGap = 0, onStart = null } = {
       // Finished on its own: give the other app its audio back after the gap. The token stays
       // current until then, so a stopClips() in between still releases the focus right away.
       token.el = null; token.node = null; token.src = null
-      if (focusGap > 0) token.gapTm = setTimeout(done, focusGap)
+      if (tail > 0) token.gapTm = setTimeout(done, tail)
       else done()
       return
     }
@@ -262,6 +325,11 @@ export function playClips(enabled, sources, { focusGap = 0, onStart = null } = {
       if (p && typeof p.catch === 'function') p.catch(() => { if (playing === token && token.el === el) step(i + 1) })
     } catch (e) { step(i + 1) }
   }
-  if (focusGap > 0) token.gapTm = setTimeout(() => { token.gapTm = null; step(0) }, focusGap)
-  else step(0)
+  claim(token, h => {
+    if (playing !== token) return
+    if (h.paused) tail = Math.max(tail, FOCUS_GAP_MS)
+    const wait = Math.max(t0 + focusGap, h.at) - Date.now()
+    if (wait > 0) token.gapTm = setTimeout(() => { token.gapTm = null; step(0) }, wait)
+    else step(0)
+  })
 }

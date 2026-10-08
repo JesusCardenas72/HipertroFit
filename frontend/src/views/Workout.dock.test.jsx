@@ -8,7 +8,7 @@ import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 
 vi.mock('../lib/sound.js', () => ({
-  beep: vi.fn(), vibrate: vi.fn(), playClips: vi.fn(), stopClips: vi.fn(),
+  beep: vi.fn(), vibrate: vi.fn(), playClips: vi.fn(), stopClips: vi.fn(), holdFocus: vi.fn(() => () => {}),
   clipsDuration: vi.fn(() => Promise.resolve(0)),
 }))
 vi.mock('../lib/api.js', () => ({ api: vi.fn(() => Promise.resolve({})) }))
@@ -47,10 +47,10 @@ const ids = () => useStore.getState().S.active.entries.map(e => e.id)
 const curIdx = () => useStore.getState().S.active.cur
 
 // Lay the strip out by hand: happy-dom measures everything as zero, and the drop slot is
-// decided entirely from these rects. Each unit is 60px wide with a 20px gap.
+// decided entirely from these rects. Each thumbnail is 60px wide with a 20px gap.
 function layOut() {
   dock().querySelector('.wdock-strip').getBoundingClientRect = () => ({ left: 0, right: 400, top: 0, bottom: 60, width: 400, height: 60 })
-  units().forEach((node, i) => {
+  thumbs().forEach((node, i) => {
     const left = i * 80
     node.getBoundingClientRect = () => ({ left, right: left + 60, top: 0, bottom: 60, width: 60, height: 60 })
   })
@@ -113,9 +113,10 @@ describe('workout dock', () => {
     expect(units()).toHaveLength(3)
     expect(capsules).toHaveLength(2)
     expect(capsules[0].querySelectorAll('[data-dock-index]')).toHaveLength(2)
-    const hue = node => node.style.getPropertyValue('--ss-hue')
-    expect(hue(capsules[0])).toBeTruthy()
-    expect(hue(capsules[0])).not.toBe(hue(capsules[1]))
+    // each capsule is its own drop, painted in its own colour
+    const drops = [...dock().querySelectorAll('.wdock-goo g[fill]')].map(g => g.getAttribute('fill'))
+    expect(drops).toHaveLength(2)
+    expect(drops[0]).not.toBe(drops[1])
   })
 
   it('badges a finished exercise', () => {
@@ -130,12 +131,77 @@ describe('workout dock', () => {
     expect(ids()).toEqual(['1002', '1003', '1001'])
   })
 
-  it('moves a superset as one capsule, keeping the pair together', () => {
+  const sgs = () => useStore.getState().S.active.entries.map(e => e.sg ?? null)
+
+  it('dropped onto another exercise, the two become a superset', () => {
+    renderWorkout([entry('1001'), entry('1002'), entry('1003')])
+    // over the middle of '1003' (160–220 once '1001' is lifted out), on its left half
+    dragThumb(thumbs()[0], 185)
+    expect(ids()).toEqual(['1002', '1001', '1003'])
+    expect(sgs()[0]).toBe(null)
+    expect(sgs()[1]).toBeTruthy()
+    expect(sgs()[1]).toBe(sgs()[2])
+    expect(units()).toHaveLength(2)
+  })
+
+  it('moving a member inside its capsule reorders it and keeps the superset', () => {
     renderWorkout([entry('1001'), entry('1002', { sg: 'sg' }), entry('1003', { sg: 'sg' })])
-    dragThumb(thumbs()[1], 5)
+    dragThumb(thumbs()[1], 200)
+    expect(ids()).toEqual(['1001', '1003', '1002'])
+    expect(sgs()).toEqual([null, 'sg', 'sg'])
+  })
+
+  it('a member dragged just past its capsule is pulled back in', () => {
+    renderWorkout([entry('1001', { sg: 'sg' }), entry('1002', { sg: 'sg' }), entry('1003')])
+    dragThumb(thumbs()[0], 150)
+    expect(ids()).toEqual(['1002', '1001', '1003'])
+    expect(sgs()).toEqual(['sg', 'sg', null])
+  })
+
+  it('a member dragged well clear of its capsule leaves, and the superset is gone', () => {
+    renderWorkout([entry('1001', { sg: 'sg' }), entry('1002', { sg: 'sg' }), entry('1003')])
+    dragThumb(thumbs()[0], 300)
     expect(ids()).toEqual(['1002', '1003', '1001'])
-    expect(useStore.getState().S.active.entries[0].sg).toBe('sg')
-    expect(useStore.getState().S.active.entries[1].sg).toBe('sg')
+    expect(sgs()).toEqual([null, null, null])
+  })
+
+  it('held on longer, a member lifts its whole capsule and the pair travels together', () => {
+    renderWorkout([entry('1001'), entry('1002', { sg: 'sg' }), entry('1003', { sg: 'sg' })])
+    act(() => pointer('pointerdown', thumbs()[1], 30))
+    act(() => { vi.advanceTimersByTime(400) })
+    act(() => { vi.advanceTimersByTime(450) })
+    layOut()
+    act(() => pointer('pointermove', document, 5))
+    expect(thumbs()[1].className).toContain('lifted')
+    expect(thumbs()[2].className).toContain('lifted')
+    act(() => pointer('pointerup', document, 5))
+    expect(ids()).toEqual(['1002', '1003', '1001'])
+    expect(sgs()).toEqual(['sg', 'sg', null])
+  })
+
+  it('moving off before the longer hold settles it takes only the one exercise', () => {
+    renderWorkout([entry('1001'), entry('1002', { sg: 'sg' }), entry('1003', { sg: 'sg' })])
+    act(() => pointer('pointerdown', thumbs()[1], 110))
+    act(() => { vi.advanceTimersByTime(400) })
+    layOut()
+    act(() => pointer('pointermove', document, 5))
+    act(() => { vi.advanceTimersByTime(450) })
+    expect(thumbs()[2].className).not.toContain('lifted')
+    act(() => pointer('pointerup', document, 5))
+    expect(ids()).toEqual(['1002', '1001', '1003'])
+    expect(sgs()).toEqual([null, null, null])
+  })
+
+  it('rings the exercise the lifted one would pair with', () => {
+    renderWorkout([entry('1001'), entry('1002'), entry('1003')])
+    act(() => pointer('pointerdown', thumbs()[0], 30))
+    act(() => { vi.advanceTimersByTime(400) })
+    layOut()
+    act(() => pointer('pointermove', document, 185))
+    expect(thumbs()[2].className).toContain('magnet')
+    act(() => pointer('pointermove', document, 300))
+    expect(thumbs()[2].className).not.toContain('magnet')
+    act(() => pointer('pointerup', document, 300))
   })
 
   it('keeps you on the exercise you were doing after a reorder', () => {
@@ -161,7 +227,7 @@ describe('workout dock', () => {
     layOut()
     act(() => pointer('pointermove', document, 300))
     expect(container.querySelector('[data-testid="workout-dock-marker"]')).toBeTruthy()
-    expect(units()[0].className).toContain('lifted')
+    expect(thumbs()[0].className).toContain('lifted')
     act(() => pointer('pointerup', document, 300))
     expect(container.querySelector('[data-testid="workout-dock-marker"]')).toBe(null)
   })

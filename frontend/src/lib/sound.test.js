@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { beep, clipsDuration, forgetClip, playClips, setAudioFocusHooks, stopClips } from './sound.js'
+import { beep, clipsDuration, fanfare, forgetClip, holdFocus, playClips, setAudioFocusHooks, stopClips } from './sound.js'
 
 // A stand-in for HTMLAudioElement: records what was asked of it and lets a test decide when a
 // clip "ends", how long it claims to be, or whether play() is refused (the autoplay case).
@@ -348,7 +348,10 @@ describe('WebAudio playback', () => {
       this.sources.push(node)
       return node
     }
-    createOscillator() { return { connect() {}, start() {}, stop() {}, frequency: {} } }
+    createOscillator() {
+      const tones = this.tones = this.tones || []
+      return { connect() {}, start(t) { tones.push(t) }, stop() {}, frequency: {} }
+    }
     createGain() { return { connect() {}, gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} } } }
     get destination() { return {} }
   }
@@ -425,5 +428,103 @@ describe('WebAudio playback', () => {
     forgetClip(a)
     await clipsDuration([a])
     expect(vi.mocked(fetch).mock.calls.filter(c => c[0] === a)).toHaveLength(2)
+  })
+
+  // "Every sound pauses the music the same way": 1.5 s of quiet before it, 1.5 s after — but a
+  // beep is not held back when there was no music to pause.
+  describe('every sound holds the focus', () => {
+    let hooks, music
+    beforeEach(async () => {
+      // Let the beep from the outer beforeEach hand its focus back before the hooks go in.
+      await new Promise(resolve => setTimeout(resolve, 100))
+      music = true
+      hooks = { acquire: vi.fn(() => Promise.resolve({ granted: true, active: music })), release: vi.fn() }
+      setAudioFocusHooks(hooks)
+      ctx.tones = []
+      vi.useFakeTimers()
+    })
+    afterEach(async () => {
+      stopClips()
+      await vi.runAllTimersAsync()
+      vi.useRealTimers()
+      setAudioFocusHooks(null)
+    })
+
+    test('with music playing, a beep sounds 1.5 s after the pause and the music returns 1.5 s after it', async () => {
+      beep(true, 1040, 0.12)
+      expect(hooks.acquire).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(ctx.tones).toEqual([1.5])               // scheduled on the audio clock, 1.5 s out
+      await vi.advanceTimersByTimeAsync(1500 + 170 + 1499)
+      expect(hooks.release).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
+
+    test('with nothing playing, a beep sounds at once and lets go when it ends', async () => {
+      music = false
+      beep(true, 1040, 0.12)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(ctx.tones).toEqual([0])
+      await vi.advanceTimersByTimeAsync(170)
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
+
+    test('a chime of several beeps pauses the music once and gives it back once', async () => {
+      fanfare(true)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(hooks.acquire).toHaveBeenCalledTimes(1)
+      expect(ctx.tones.map(t => +t.toFixed(2))).toEqual([1.5, 1.62, 1.74, 1.86])
+      await vi.advanceTimersByTimeAsync(10000)
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
+
+    test('a clip played without a focusGap still waits for the pause when there is music', async () => {
+      const [a] = srcs('a')
+      await clipsDuration([a])
+      playClips(true, [a])
+      await vi.advanceTimersByTimeAsync(1499)
+      expect(ctx.sources).toHaveLength(0)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(ctx.sources).toHaveLength(1)
+      ctx.sources[0].onended()
+      await vi.advanceTimersByTimeAsync(1499)
+      expect(hooks.release).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
+
+    test('…and starts at once when there is none', async () => {
+      music = false
+      const [a] = srcs('a')
+      await clipsDuration([a])
+      playClips(true, [a])
+      await vi.advanceTimersByTimeAsync(0)
+      expect(ctx.sources).toHaveLength(1)
+      ctx.sources[0].onended()
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
+
+    test('a clip cut off while the pause is still being asked for never plays', async () => {
+      const [a] = srcs('a')
+      await clipsDuration([a])
+      playClips(true, [a])
+      stopClips()
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(ctx.sources).toHaveLength(0)
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
+
+    test('holdFocus pauses ahead of time: beeps inside it are on time, and it all ends once', async () => {
+      const off = holdFocus()
+      await vi.advanceTimersByTimeAsync(2000)        // the countdown reaches 3
+      beep(true, 660, 0.1)
+      expect(ctx.tones).toEqual([0])
+      off()
+      expect(hooks.release).not.toHaveBeenCalled()   // the beep still holds it
+      await vi.advanceTimersByTimeAsync(150 + 1500)
+      expect(hooks.acquire).toHaveBeenCalledTimes(1)
+      expect(hooks.release).toHaveBeenCalledTimes(1)
+    })
   })
 })

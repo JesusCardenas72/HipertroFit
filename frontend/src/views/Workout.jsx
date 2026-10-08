@@ -14,14 +14,15 @@ import Media, { Thumb } from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, swapActiveWorkoutExercise } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, SelectSheet } from '../components/ui.jsx'
-import { nextPrescription, applyPrescription, defaultIncrement } from '../lib/progression.js'
+import { nextPrescription, applyPrescription, loadScaleFor } from '../lib/progression.js'
+import { ladderOf, stepLoad, snapLoad } from '../lib/load-scale.js'
 import { progressionGuidance } from '../lib/progression-copy.js'
 import { doubleProgressStatus, applyProgressionChoice } from '../lib/double-progress.js'
 import { DoubleProgressMeter, progressionSheet } from '../components/DoubleProgress.jsx'
 import { playProgressSound } from '../lib/custom-sound.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { isWarmupRow, isDropSet, isRestPauseSet, dropsOf, clustersOf, addDrop, addCluster, removeDropAt, removeClusterAt, setDropAt, setClusterAt, nextDropWeight, nextBurstReps } from '../lib/workout-model.js'
-import { moveActiveWorkoutUnitTo } from '../lib/active-workout-order.js'
+import { dropActiveWorkoutEntry, moveActiveWorkoutUnitTo } from '../lib/active-workout-order.js'
 import WorkoutDock from '../components/WorkoutDock.jsx'
 import { DeloadStatus, DeloadSessionBand } from '../components/Deload.jsx'
 import { isDeloadWorkout } from '../lib/mesocycle.js'
@@ -99,14 +100,17 @@ function useSetColumns(entryIdx, onField) {
   const prevSets = last ? last.sets : []
   // The prescription speaks about last session's top weight; each row moves from its own set.
   const prevTop = topWeight(prevSets)
-  const loadStep = defaultIncrement(entry.id, S.unit)
   // A bodyweight set has no weight to type, so the column is not there (issue #32) — one
   // stepper instead of two, which is the whole point of the flag. Adding a belt weight in the
   // config brings it back, now labelled as the addition it is.
   const cfg = { ...(entry.target || {}), id: entry.id }
+  // The weights this exercise can carry: on adjustable dumbbells the weight stepper walks the
+  // ladder (4, 5.5, 7…) instead of adding 2.5 — see lib/load-scale.js.
+  const loadStep = loadScaleFor(cfg, S.unit)
+  const ladder = ladderOf(cfg)
   const bw = !cardio && isBw(cfg)
   const added = bw && entry.sets.some(s => s.w > 0)
-  const loadCol = { f: 'w', step: 2.5, dec: true, hd: bw ? t('Added ({0})', S.unit) : t('Weight ({0})', S.unit) }
+  const loadCol = { f: 'w', step: 2.5, ladder, dec: true, hd: bw ? t('Added ({0})', S.unit) : t('Weight ({0})', S.unit) }
   // The reps column is the total in every mode, unilateral included — the stepper walks in
   // twos there so the number you land on is one you can actually split evenly.
   const repCol = { f: 'r', step: repStep(cfg), dec: false, hd: t('Reps') }
@@ -126,9 +130,9 @@ function useSetColumns(entryIdx, onField) {
   // with no ceiling, as they always did.
   const bump = (s, i, col, dir) => {
     if (col.eff) return onField(i, col.f, stepEffort(col.eff, s[col.f], dir))
-    onField(i, col.f, Math.max(0, Math.round(((s[col.f] || 0) + dir * col.step) * 100) / 100))
+    onField(i, col.f, stepLoad(s[col.f], dir, col.ladder || col.step))
   }
-  return { entry, mode, cardio, timed, cfg, last, prevSets, prevTop, loadStep, plan, kind, col1, col2, col3, bump }
+  return { entry, mode, cardio, timed, cfg, last, prevSets, prevTop, loadStep, ladder, plan, kind, col1, col2, col3, bump }
 }
 
 // Drops/bursts mutate the row in place — same card, not a new set with its own long rest.
@@ -143,7 +147,11 @@ function useRowEditors(entryIdx) {
     const drops = dropsOf(row)
     const base = drops.length ? drops[drops.length - 1].w : (row.w || 0)
     const pct = entry.target?.intensifier?.type === 'dropset' ? entry.target.intensifier.pct : undefined
-    return addDrop(row, { w: nextDropWeight(base, pct), r: row.r })
+    // On adjustable dumbbells the drop lands on a rung at or below the cut — never a weight
+    // the set does not have.
+    const lad = ladderOf(entry.target)
+    const w = nextDropWeight(base, pct)
+    return addDrop(row, { w: lad ? Math.min(base, snapLoad(w, lad, 'floor')) : w, r: row.r })
   })
   // A rest-pause row's own reps are always the total across every burst (see
   // applyIntensifierPlan/history.js) — clusters are the breakdown of that total, not extra on
@@ -170,11 +178,12 @@ function useRowEditors(entryIdx) {
 
 // A smaller stepper for a drop's weight/reps or a burst's reps — editing what the plan (or a
 // live "+ Drop"/"+ Burst" tap) already put on the row, not typing into a fresh field.
+// `step` may be a ladder (adjustable dumbbells), which the taps then walk rung by rung.
 const miniStepper = (value, step, dec, onChange) => (
   <div className="stp mini">
-    <button aria-label={t('Decrease')} onClick={() => onChange(Math.max(0, Math.round(((value || 0) - step) * 100) / 100))}><Icon name="minus" /></button>
+    <button aria-label={t('Decrease')} onClick={() => onChange(stepLoad(value, -1, step))}><Icon name="minus" /></button>
     <span className="val"><NumberField decimal={dec} value={value ?? ''} onChange={onChange} /></span>
-    <button aria-label={t('Increase')} onClick={() => onChange(Math.max(0, Math.round(((value || 0) + step) * 100) / 100))}><Icon name="plus" /></button>
+    <button aria-label={t('Increase')} onClick={() => onChange(stepLoad(value, 1, step))}><Icon name="plus" /></button>
   </div>
 )
 
@@ -185,7 +194,7 @@ function ExerciseBlock({ entryIdx, compact, drum, nameless, nextSet = -1, onTogg
   const entry = S.active.entries[entryIdx]
   const { addDropRow, addBurstRow, removeDrop, removeCluster, setDropField, setClusterField } = useRowEditors(entryIdx)
   const ex = exOr(entry.id)
-  const { mode, cardio, timed, cfg, last, prevSets, prevTop, loadStep, plan, kind, col1, col2, col3, bump } = useSetColumns(entryIdx, onField)
+  const { mode, cardio, timed, cfg, last, prevSets, prevTop, loadStep, ladder, plan, kind, col1, col2, col3, bump } = useSetColumns(entryIdx, onField)
   const [mediaOpen, setMediaOpen] = useState(false)
   const standingNote = exNoteFor(S, entry.id)
   // Only worth surfacing while there is still work left: once the exercise is finished, a note
@@ -370,7 +379,7 @@ function ExerciseBlock({ entryIdx, compact, drum, nameless, nextSet = -1, onTogg
             {dropsOf(s).map((d, di) => (
               <div className="subrow" key={'d' + di}>
                 <span className="subn">{t('Drop {0}', di + 1)}</span>
-                {miniStepper(d.w, 2.5, true, v => setDropField(i, di, 'w', v))}
+                {miniStepper(d.w, ladder || 2.5, true, v => setDropField(i, di, 'w', v))}
                 {miniStepper(d.r, 1, false, v => setDropField(i, di, 'r', v))}
                 <button className="iconbtn" aria-label={t('Remove drop')} onClick={() => removeDrop(i, di)}><Icon name="xmark" /></button>
               </div>
@@ -419,7 +428,7 @@ function DrumHero({ chamber, members, onToggle, onField, onStartTimed, onRemoveS
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const { entry: entryIdx, set: i } = chamber
-  const { entry, mode, timed, cfg, last, prevSets, prevTop, loadStep, plan, kind, col1, col2, col3, bump } = useSetColumns(entryIdx, (row, f, v) => onField(entryIdx, row, f, v))
+  const { entry, mode, timed, cfg, last, prevSets, prevTop, loadStep, ladder, plan, kind, col1, col2, col3, bump } = useSetColumns(entryIdx, (row, f, v) => onField(entryIdx, row, f, v))
   const { addDropRow, addBurstRow, removeDrop, removeCluster, setDropField, setClusterField } = useRowEditors(entryIdx)
   const s = entry.sets[i]
   if (!s) return null
@@ -481,7 +490,7 @@ function DrumHero({ chamber, members, onToggle, onField, onStartTimed, onRemoveS
       {drops.map((d, di) => (
         <div className="subrow" key={'d' + di}>
           <span className="subn">{t('Drop {0}', di + 1)}</span>
-          {miniStepper(d.w, 2.5, true, v => setDropField(i, di, 'w', v))}
+          {miniStepper(d.w, ladder || 2.5, true, v => setDropField(i, di, 'w', v))}
           {miniStepper(d.r, 1, false, v => setDropField(i, di, 'r', v))}
           <button className="iconbtn" aria-label={t('Remove drop')} onClick={() => removeDrop(i, di)}><Icon name="xmark" /></button>
         </div>
@@ -742,7 +751,7 @@ function ActiveWorkout() {
   // rows are all on the card together, so that reads as the insertion it is.
   const addWarmup = idx => mutEntry(idx, e => {
     const m = modeOf({ ...(e.target || {}), id: e.id })
-    e.sets = insertWarmupRow(e.sets, m, e.target || {}, defaultIncrement(e.id, S.unit))
+    e.sets = insertWarmupRow(e.sets, m, e.target || {}, loadScaleFor({ ...(e.target || {}), id: e.id }, S.unit))
   })
   const removeSetAt = (idx, i) => mutEntry(idx, e => { e.sets = removeRowAt(e.sets, i) })
   const pairAt = (first, second) => update(s => {
@@ -772,9 +781,12 @@ function ActiveWorkout() {
       }
     }, true)
   }
-  // A dropped thumbnail can land anywhere in the session, not just one place over — and it
-  // carries its whole superset with it, so an order that splits a pair is not expressible.
-  const reorderUnitTo = (index, slot) => applyReorder(a => moveActiveWorkoutUnitTo(a, index, slot))
+  // A dropped thumbnail can land anywhere in the session, and where it lands decides its
+  // superset too: next to its own capsule it stays in, onto another exercise it pairs with it.
+  // Held longer, it carries its whole superset and only the order changes (`intent.unit`).
+  const dropEntry = (index, intent) => applyReorder(a => intent.unit != null
+    ? moveActiveWorkoutUnitTo(a, index, intent.unit)
+    : dropActiveWorkoutEntry(a, index, intent))
   const selectExercise = index => update(s => {
     if (s.active?.entries?.[index]) s.active.cur = index
   })
@@ -922,7 +934,7 @@ function ActiveWorkout() {
       if (!activeEntry) return
       const full = { ...cfg, id: activeEntry.id }
       const activeRoutine = s.routines.find(r => r.id === s.active.routineId)
-      const step = defaultIncrement(activeEntry.id, s.unit)
+      const step = loadScaleFor(full, s.unit)
       // A config without a set count keeps the rows the session already has.
       if (!(full.sets > 0)) full.sets = activeEntry.sets.filter(x => !isWarmupRow(x)).length || 1
       const plan = nextPrescription(s, full, activeRoutine)
@@ -951,7 +963,7 @@ function ActiveWorkout() {
     update(s => {
       const e = s.active?.entries?.[idx]
       if (!e) return
-      const next = applyProgressionChoice(e, choice, { step: defaultIncrement(e.id, s.unit), unit: s.unit })
+      const next = applyProgressionChoice(e, choice, { step: loadScaleFor({ ...(e.target || {}), id: e.id }, s.unit), unit: s.unit })
       s.active.entries[idx] = next
       decided = next.decided
     })
@@ -995,9 +1007,10 @@ function ActiveWorkout() {
     exConfigSheet(ex, null, cfg => update(s => {
       const full = { ...cfg, id: ex.id }
       const plan = freestyle ? null : nextPrescription(s, full, s.routines.find(r => r.id === s.active.routineId))
-      const sets = buildSets(s, full, { step: defaultIncrement(ex.id, s.unit), ...(freestyle ? { preferLast: true } : {}) })
-      const progressed = freestyle ? sets : seedTargets(applyPrescription(sets, plan, defaultIncrement(ex.id, s.unit)),
-        lastEntryFor(s, ex.id)?.sets, { mode: modeOf(full), plan, effort: effortOf(s), step: defaultIncrement(ex.id, s.unit) })
+      const step = loadScaleFor(full, s.unit)
+      const sets = buildSets(s, full, { step, ...(freestyle ? { preferLast: true } : {}) })
+      const progressed = freestyle ? sets : seedTargets(applyPrescription(sets, plan, step),
+        lastEntryFor(s, ex.id)?.sets, { mode: modeOf(full), plan, effort: effortOf(s), step })
       const insertAt = insertionIndexAfterCurrentUnit(supersetUnits(s.active.entries), s.active.cur, s.active.entries.length)
       s.active.entries.splice(insertAt, 0, { id: ex.id, target: { ...cfg }, plan, sets: applyIntensifierPlan(progressed, full) })
       s.active.cur = insertAt
@@ -1362,7 +1375,7 @@ function ActiveWorkout() {
           below do the same two things without a pointer, so nothing here is the only way in.
           It stays when the header folds: it is how you get around the session. */}
       <WorkoutDock entries={A.entries} cur={cur} disabled={!!work}
-        onSelect={selectExercise} onReorder={reorderUnitTo} onAdd={addExercise} />
+        onSelect={selectExercise} onReorder={dropEntry} onAdd={addExercise} />
       {!slimTop && <>
       <DeloadSessionBand active={A} />
       {A.backfill && <div className="muted small" style={{ marginBottom: 8 }}>{t('Logging a past workout — no rest timers.')}</div>}

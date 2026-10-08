@@ -54,6 +54,59 @@ export async function saveRemoteFile(data) {
   } catch (e) { /* worst case: onboarding asks again next launch */ }
 }
 
+// The sounds picked in Settings (lib/custom-sound.js) get a file each beside the state mirror, for
+// the same reason: they live in the WebView's IndexedDB, and that does not reliably survive an
+// app update. Kept out of opengym-state.json — that file is what gets synced and exported.
+// Base64 inside JSON: Filesystem only moves strings across the bridge.
+const soundFile = key => `sounds/${key}.json`
+
+export function bytesToBase64(buf) {
+  const bytes = new Uint8Array(buf)
+  let s = ''
+  // In slices: String.fromCharCode.apply over a whole 5 MB clip overflows the call stack.
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000))
+  return btoa(s)
+}
+
+export function base64ToBytes(b64) {
+  const s = atob(b64)
+  const bytes = new Uint8Array(s.length)
+  for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i)
+  return bytes.buffer
+}
+
+/** The custom-sound mirror for setSoundMirror(): records are { name, type, data: ArrayBuffer }. */
+export const nativeSounds = {
+  async read(key) {
+    try {
+      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+      const r = await Filesystem.readFile({ path: soundFile(key), directory: Directory.Data, encoding: Encoding.UTF8 })
+      const rec = JSON.parse(r.data)
+      return rec && rec.data ? { name: rec.name || '', type: rec.type || '', data: base64ToBytes(rec.data) } : null
+    } catch (e) { return null }   // never saved, or unreadable — the default sound plays
+  },
+  async has(key) {
+    try {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem')
+      await Filesystem.stat({ path: soundFile(key), directory: Directory.Data })
+      return true
+    } catch (e) { return false }
+  },
+  async write(key, record) {
+    try {
+      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+      const data = JSON.stringify({ name: record.name || '', type: record.type || '', data: bytesToBase64(record.data) })
+      await Filesystem.writeFile({ path: soundFile(key), directory: Directory.Data, data, encoding: Encoding.UTF8, recursive: true })
+    } catch (e) { /* keep the IndexedDB copy */ }
+  },
+  async remove(key) {
+    try {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem')
+      await Filesystem.deleteFile({ path: soundFile(key), directory: Directory.Data })
+    } catch (e) { /* nothing there */ }
+  },
+}
+
 // Keep enough dates queued to cover normal app use between foregrounds without creating an
 // unbounded notification list. The next sync cancels and replaces this whole window.
 export const REMINDER_WINDOW_DAYS = 60
@@ -163,17 +216,27 @@ export function backupFileName(today = todayISO()) {
 // S is what gets exported and synced. Settings therefore reads it back through backupFolder().
 // registerPlugin is resolved once, lazily: importing @capacitor/core at module scope would pull
 // it into every bundle, including the web build where MOBILE folds this file away.
-let pluginOnce = null
-function backupPlugin() {
-  if (!MOBILE) return Promise.resolve(null)
-  if (!pluginOnce) {
-    pluginOnce = import('@capacitor/core')
-      .then(({ registerPlugin, Capacitor }) =>
-        Capacitor.getPlatform() === 'android' ? registerPlugin('BackupFolder') : null)
-      .catch(() => null)
-  }
-  return pluginOnce
+//
+// The plugin comes back in a box, never bare. A Capacitor plugin proxy answers *every* property
+// with a native-method stub — `then` included — so a promise resolved with one takes it for a
+// thenable, calls a native `then()` that does not exist and never settles on the plugin: every
+// call made through it silently went nowhere. `core` is the @capacitor/core module.
+export function androidPluginBox(core, name) {
+  return core.Capacitor.getPlatform() === 'android' ? { plugin: core.registerPlugin(name) } : null
 }
+
+// Resolves to the box (or null); unwrap it with `(await get())?.plugin` at the point of use —
+// returning the bare plugin from an async function would hit the same thenable trap again.
+function lazyAndroidPlugin(name) {
+  if (!MOBILE) return () => Promise.resolve(null)
+  let once = null
+  return () => {
+    if (!once) once = import('@capacitor/core').then(core => androidPluginBox(core, name)).catch(() => null)
+    return once
+  }
+}
+
+const backupPlugin = lazyAndroidPlugin('BackupFolder')
 
 /**
  * { supported, folder } — `supported` is false where there is no folder picker at all (iOS, and
@@ -181,7 +244,7 @@ function backupPlugin() {
  * the chosen folder's name, null when none is set or the grant has been revoked.
  */
 export async function backupFolderStatus() {
-  const p = await backupPlugin()
+  const p = (await backupPlugin())?.plugin
   if (!p) return { supported: false, folder: null }
   try { return { supported: true, folder: (await p.status()).folder || null } } catch (e) {
     return { supported: true, folder: null }
@@ -190,7 +253,7 @@ export async function backupFolderStatus() {
 
 /** Opens the system folder picker. Resolves to the same shape as backupFolderStatus(). */
 export async function pickBackupFolder() {
-  const p = await backupPlugin()
+  const p = (await backupPlugin())?.plugin
   if (!p) return { supported: false, folder: null }
   try { return { supported: true, folder: (await p.pick()).folder || null } } catch (e) {
     return { supported: true, folder: null }
@@ -199,33 +262,26 @@ export async function pickBackupFolder() {
 
 /** Forget the folder and hand the permission back; backups fall back to Documents. */
 export async function clearBackupFolder() {
-  const p = await backupPlugin()
+  const p = (await backupPlugin())?.plugin
   if (p) { try { await p.clear() } catch (e) { /* nothing to release */ } }
   return { supported: !!p, folder: null }
 }
 
-// Audio focus around the rest-end alert (android/…/AudioFocusPlugin.java): pause whatever else is
-// playing while the alert rings, then hand the focus back so that app resumes by itself.
+// Audio focus around every sound the app plays (android/…/AudioFocusPlugin.java): pause whatever
+// else is playing while it sounds, then hand the focus back so that app resumes by itself.
+// pauseOtherAudio resolves to { granted, active } — `active`: something else was playing, so
+// lib/sound.js waits out the gap — or null where nothing can be paused.
 // Android only — iOS and the web build get navigator.audioSession from lib/sound.js instead.
-let focusOnce = null
-function audioFocusPlugin() {
-  if (!MOBILE) return Promise.resolve(null)
-  if (!focusOnce) {
-    focusOnce = import('@capacitor/core')
-      .then(({ registerPlugin, Capacitor }) =>
-        Capacitor.getPlatform() === 'android' ? registerPlugin('AudioFocus') : null)
-      .catch(() => null)
-  }
-  return focusOnce
-}
+const audioFocusPlugin = lazyAndroidPlugin('AudioFocus')
 
 export async function pauseOtherAudio() {
-  const p = await audioFocusPlugin()
-  if (p) { try { await p.pause() } catch (e) { /* older APK without the plugin */ } }
+  const p = (await audioFocusPlugin())?.plugin
+  if (!p) return null
+  try { return await p.pause() } catch (e) { return null /* older APK without the plugin */ }
 }
 
 export async function releaseOtherAudio() {
-  const p = await audioFocusPlugin()
+  const p = (await audioFocusPlugin())?.plugin
   if (p) { try { await p.release() } catch (e) { /* older APK without the plugin */ } }
 }
 
@@ -235,7 +291,7 @@ export async function releaseOtherAudio() {
 export async function writeAutoBackup(state) {
   const name = backupFileName()
   const data = JSON.stringify(state)
-  const p = await backupPlugin()
+  const p = (await backupPlugin())?.plugin
   if (p) {
     try {
       await p.write({ name, data })

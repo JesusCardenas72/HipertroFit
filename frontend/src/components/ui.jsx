@@ -16,6 +16,7 @@
 import { useRef, useState, useEffect, useCallback, forwardRef } from 'react'
 import Icon from './Icon.jsx'
 import { t } from '../lib/i18n.js'
+import { stepLoad } from '../lib/load-scale.js'
 
 /* ============================ text ============================ */
 
@@ -116,14 +117,19 @@ export function Segmented({ options, value, onChange, className = '' }) {
 
 /* ============================ stepper ============================ */
 
-export function Stepper({ value, step = 1, onChange, decimal = true, className = '', label, unit, invalid = false }) {
+// `ladder` ({ from, step }, see lib/load-scale.js) makes the buttons walk its rungs — the
+// weights a set of adjustable dumbbells actually has — instead of adding `step`.
+export function Stepper({ value, step = 1, ladder = null, onChange, decimal = true, className = '', label, unit, invalid = false }) {
   const set = v => onChange(Math.max(0, Math.round((v || 0) * 100) / 100))
   // Holding a button repeats the step; the latest value/step live in a ref so
   // the interval doesn't keep stepping from the value it was started with.
-  const live = useRef({ value, step, set })
-  live.current = { value, step, set }
+  const live = useRef({ value, step, ladder, set })
+  live.current = { value, step, ladder, set }
   const hold = useRef({ delay: null, tick: null, count: 0, repeated: false })
-  const bump = dir => { const { value, step, set } = live.current; set((+value || 0) + dir * step) }
+  const bump = dir => {
+    const { value, step, ladder, set } = live.current
+    set(ladder ? stepLoad(value, dir, ladder) : (+value || 0) + dir * step)
+  }
   const stopHold = () => {
     const h = hold.current
     window.clearTimeout(h.delay); window.clearInterval(h.tick)

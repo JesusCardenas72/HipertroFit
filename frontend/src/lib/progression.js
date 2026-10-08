@@ -20,6 +20,7 @@ import { modeOf, repStep, rerampWarmups } from './history.js'
 import { EXIDX } from './exercises.js'
 import { isWarmupRow } from './workout-model.js'
 import { normalizeRepRange } from './rep-range.js'
+import { ladderOf, snapLoad, stepOf, minLoadOf } from './load-scale.js'
 
 export const POLICIES = ['off', 'linear', 'greyskull', 'double', 'time']
 
@@ -61,6 +62,11 @@ export function defaultIncrement(exId, unit) {
   if (unit === 'lb') return heavy ? 10 : 5
   return heavy ? 5 : 2.5
 }
+// The weights this exercise can be loaded with (see lib/load-scale.js): the ladder of a set of
+// adjustable dumbbells when it is set up for them, else multiples of the default increment.
+export function loadScaleFor(cfg, unit) {
+  return ladderOf(cfg) || defaultIncrement(cfg && cfg.id, unit)
+}
 export const DEFAULT_SEC_INCREMENT = 5
 // Where adding another set of push-ups stops being progress and starts being a way to spend
 // an evening. Past this the honest advice is load or a harder variation (issue #33).
@@ -75,20 +81,16 @@ export function policyFor(cfg, routine, mode) {
   return allowed.includes(pick) ? pick : 'off'
 }
 
-const round1 = v => Math.round(v * 10) / 10
-// Snap to a loadable multiple of the step.
-function snap(v, step) {
-  if (!(step > 0)) return round1(v)
-  return round1(Math.round(v / step) * step)
-}
+// Snap to a loadable weight: a multiple of the step, or a rung of the ladder.
+const snap = (v, scale) => snapLoad(v, scale)
 // Back off by DELOAD_FACTOR, landing on something you can actually load. Rounding to the
 // nearest step keeps the cut close to the intended 10 %, but on small weights the nearest
 // step can be the weight you started from — so a deload that did not actually reduce
-// anything takes one step down instead. Never goes below a single step.
-function deloadTo(cur, step) {
-  let next = snap(cur * DELOAD_FACTOR, step)
-  if (next >= cur) next = snap(cur - step, step)
-  return Math.max(step, next)
+// anything takes one step down instead. Never goes below a single step (or the first rung).
+function deloadTo(cur, scale) {
+  let next = snap(cur * DELOAD_FACTOR, scale)
+  if (next >= cur) next = snap(cur - stepOf(scale), scale)
+  return Math.max(minLoadOf(scale), next)
 }
 
 /**
@@ -211,7 +213,11 @@ export function nextPrescription(S, cfg, routine) {
   const mode = modeOf(cfg)
   const policy = policyFor(cfg, routine, mode)
   const unit = S.unit || 'kg'
-  const inc = cfg.inc > 0 ? cfg.inc : (mode === 'time' ? DEFAULT_SEC_INCREMENT : defaultIncrement(cfg.id, unit))
+  const ladder = mode === 'time' ? null : ladderOf(cfg)
+  const inc = cfg.inc > 0 ? cfg.inc
+    : (mode === 'time' ? DEFAULT_SEC_INCREMENT : ladder ? ladder.step : defaultIncrement(cfg.id, unit))
+  // Where a new weight has to land: on adjustable dumbbells 5.5 + 1.5 is 7, not 7.5.
+  const scale = ladder || inc
   if (policy === 'off') return { policy, kind: 'off' }
 
   const sessions = sessionsFor(S, cfg.id, cfg).filter(s => s.mode === mode)
@@ -271,12 +277,12 @@ export function nextPrescription(S, cfg, routine) {
       const sets = Math.max(1, last.setCount || cfg.sets || 1)
       return {
         policy, kind: 'decide', weight: w, reps: top, top, stride: repStep(cfg),
-        choice: { inc, weight: snap(w + inc, inc), sets, reps: bottom },
+        choice: { inc, weight: snap(w + inc, scale), sets, reps: bottom },
         why: ['Top of the rep range in every set — time to progress: more weight or another set.']
       }
     }
     if (dstalls >= deloadAt) {
-      const dw = deloadTo(w, inc)
+      const dw = deloadTo(w, scale)
       return { policy, kind: 'deload', weight: dw, reps: bottom, why: ['Stalled {0} sessions — deload to {1} {2}.', dstalls, dw, unit] }
     }
     if (last.fatigued) {
@@ -295,14 +301,14 @@ export function nextPrescription(S, cfg, routine) {
     const dbl = policy === 'greyskull' && last.goal > 0 && last.amrap >= last.goal * 2
     const step = dbl ? inc * 2 : inc
     return {
-      policy, kind: 'up', weight: snap(w + step, inc),
+      policy, kind: 'up', weight: snap(w + step, scale),
       why: dbl
         ? ['Last set hit {0} reps — twice the target, so take a double jump of {1} {2}.', last.amrap, step, unit]
         : ['Every rep last time — {0} {1} more.', step, unit]
     }
   }
   if (stalls >= deloadAt) {
-    const dw = deloadTo(w, inc)
+    const dw = deloadTo(w, scale)
     return {
       policy, kind: 'deload', weight: dw,
       why: stalls > 1

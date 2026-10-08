@@ -10,7 +10,7 @@ import { isWarmupRow } from '../lib/workout-model.js'
 import { LANGS } from '../lib/i18n-core.js'
 
 vi.mock('../lib/sound.js', () => ({
-  beep: vi.fn(), vibrate: vi.fn(), playClips: vi.fn(), stopClips: vi.fn(),
+  beep: vi.fn(), vibrate: vi.fn(), playClips: vi.fn(), stopClips: vi.fn(), holdFocus: vi.fn(() => () => {}),
   clipsDuration: vi.fn(() => Promise.resolve(0)),
 }))
 vi.mock('../lib/api.js', () => ({ api: vi.fn(() => Promise.resolve({})) }))

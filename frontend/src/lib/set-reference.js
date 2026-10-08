@@ -11,6 +11,7 @@
 
 import { isWarmupRow } from './workout-model.js'
 import { rerampWarmups } from './history.js'
+import { snapLoad } from './load-scale.js'
 
 const num = v => (v == null || v === '' ? null : Number(v))
 const same = (a, b) => {
@@ -91,9 +92,11 @@ function positionWeight(plan, reference, base, step) {
   if (rw == null || !(base > 0) || rw >= base) return pw
   if (plan.kind === 'deload') {
     const v = rw * pw / base
-    return step > 0 ? Math.round(Math.round(v / step) * step * 10) / 10 : Math.round(v * 10) / 10
+    return snapLoad(v, step)
   }
-  return Math.max(0, Math.round((rw + pw - base) * 10) / 10)
+  // On a ladder (adjustable dumbbells) the moved weight has to be a rung as well.
+  const moved = Math.max(0, Math.round((rw + pw - base) * 10) / 10)
+  return step && typeof step === 'object' ? snapLoad(moved, step) : moved
 }
 
 /**

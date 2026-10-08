@@ -12,7 +12,7 @@
 // the caller (a saved config only writes the flag when it differs from the dataset, so
 // `cfg.bodyweight` on its own cannot be trusted). See isBw in history.js.
 
-export const GLOBAL_FIELDS = ['bodyweight', 'reps', 'repsMin', 'repsMax', 'restSec', 'side', 'weight', 'intensifier', 'prog', 'inc']
+export const GLOBAL_FIELDS = ['bodyweight', 'reps', 'repsMin', 'repsMax', 'restSec', 'side', 'weight', 'intensifier', 'prog', 'inc', 'adj']
 
 // English label per field, for the "this changes it everywhere" dialog. Plain strings, so this
 // module stays loadable without the i18n runtime — the caller passes them through t().
@@ -27,6 +27,7 @@ export const GLOBAL_LABEL = {
   intensifier: 'Intensifier',
   prog: 'Progression rule',
   inc: 'Increment',
+  adj: 'Adjustable dumbbells',
 }
 
 // `weight` is global only on bodyweight work, where the stepper means "Added ({unit})" — the
@@ -38,7 +39,7 @@ export const GLOBAL_LABEL = {
 // stepper. Everything outside the mode's set is left exactly as it was.
 export const GLOBAL_FIELDS_BY_MODE = {
   reps: GLOBAL_FIELDS,
-  time: ['bodyweight', 'restSec', 'weight', 'prog'],
+  time: ['bodyweight', 'restSec', 'weight', 'prog', 'adj'],
   cardio: ['restSec'],
 }
 export const fieldsForMode = mode => GLOBAL_FIELDS_BY_MODE[mode] || GLOBAL_FIELDS

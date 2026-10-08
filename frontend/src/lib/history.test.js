@@ -888,3 +888,11 @@ describe('exNoteFor', () => {
     expect(exNoteFor({}, '0025')).toBeNull()
   })
 })
+
+describe('insertWarmupRow on adjustable dumbbells', () => {
+  it('lands the ramp on the ladder, and never under its first rung', () => {
+    const L = { from: 4, step: 1.5 }
+    expect(insertWarmupRow([{ w: 16, r: 8 }], 'reps', { reps: 8 }, L)[0].w).toBe(7)
+    expect(insertWarmupRow([{ w: 5.5, r: 8 }], 'reps', { reps: 8 }, L)[0].w).toBe(4)
+  })
+})
