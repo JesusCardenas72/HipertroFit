@@ -355,6 +355,11 @@ export const PT_BR_OVERRIDES = {
   'Pick a day up to today': 'Escolha um dia até hoje',
   'Finish the current workout first.': 'Termine primeiro o treino atual.',
   'Logging a past workout — no rest timers.': 'Registrando um treino passado — sem temporizadores de descanso.',
+  // --- log extra work (lib/extra-log.js) ---
+  'Log extra work': 'Registrar exercício avulso',
+  'Extra work': 'Trabalho extra',
+  'Sets done outside a session. They go into your history and count as volume, without changing your progression.': 'Séries feitas fora de uma sessão. Vão para o seu histórico e contam como volume, sem alterar a sua progressão.',
+  'Logged — it counts toward this microcycle’s volume': 'Registrado — conta para o volume deste microciclo',
   'rep': 'rep',
   'No overload': 'Sem sobrecarga',
   'No overload — accumulated fatigue': 'Sem sobrecarga por fadiga acumulada',

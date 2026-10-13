@@ -749,6 +749,11 @@ export default {
   'Add as second workout': 'เพิ่มเป็นการฝึกครั้งที่สอง',
   'Finish the current workout first.': 'จบการฝึกปัจจุบันก่อน',
   'Logging a past workout — no rest timers.': 'กำลังบันทึกการฝึกย้อนหลัง — ไม่มีตัวจับเวลาพัก',
+  // --- log extra work (lib/extra-log.js) ---
+  'Log extra work': 'บันทึกท่าฝึกเพิ่มเติม',
+  'Extra work': 'การฝึกเพิ่มเติม',
+  'Sets done outside a session. They go into your history and count as volume, without changing your progression.': 'เซ็ตที่ทำนอกรอบการฝึก จะถูกบันทึกในประวัติและนับเป็นปริมาณงาน โดยไม่เปลี่ยนการพัฒนาของคุณ',
+  'Logged — it counts toward this microcycle’s volume': 'บันทึกแล้ว — นับรวมในปริมาณงานของไมโครไซเคิลนี้',
   'rep': 'ครั้ง',
   'No overload': 'ไม่มีการเพิ่มโหลด',
   'No overload — accumulated fatigue': 'ไม่เพิ่มโหลดเพราะความล้าสะสม',

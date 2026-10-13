@@ -356,9 +356,9 @@ describe('routine long-press reorder', () => {
     expect(exercises().map(e => e.id)).toEqual(['b', 'c', 'a'])
   })
 
-  it('cancels active ownership for a second pointer outside the list and pending lost capture', () => {
-    let layout = mount([configured('a'), configured('b'), configured('c')])
-    let item = rows()[0].querySelector('.item')
+  it('cancels active ownership for a second pointer outside the list', () => {
+    const layout = mount([configured('a'), configured('b'), configured('c')])
+    const item = rows()[0].querySelector('.item')
     const before = localStorage.getItem('gym_state_v1')
     lift(rows()[0], layout.centers[0])
     pointer(item, 'pointermove', { y: layout.centers[2] })
@@ -367,14 +367,27 @@ describe('routine long-press reorder', () => {
     expect(exercises().map(e => e.id)).toEqual(['a', 'b', 'c'])
     expect(localStorage.getItem('gym_state_v1')).toBe(before)
     expect(host.querySelector('.is-dragging')).toBeNull()
+  })
 
-    act(() => root.unmount()); host.remove(); root = null; host = null
-    layout = mount([configured('a'), configured('b')])
-    item = rows()[0].querySelector('.item')
+  it('survives the app-level slider taking the pointer before the lift and handing it over at it', () => {
+    // ScreenSlider captures every press for itself (a touch also starts captured by what it
+    // landed on), so both hand-overs reach the document as lostpointercapture — on the slider and
+    // on the original target. Neither is the row's own capture and neither may end the gesture.
+    const layout = mount([configured('a'), configured('b'), configured('c')])
+    const item = rows()[0].querySelector('.item')
+    const slider = document.createElement('div')
+    document.body.appendChild(slider)
     pointer(item, 'pointerdown', { y: layout.centers[0] })
     pointer(item, 'lostpointercapture', { y: layout.centers[0] })
     act(() => vi.advanceTimersByTime(ROUTINE_LONG_PRESS_MS))
-    expect(host.querySelector('.is-dragging')).toBeNull()
+    expect(rows()[0].classList.contains('is-dragging')).toBe(true)
+    pointer(slider, 'lostpointercapture', { y: layout.centers[0] })
+    pointer(item, 'pointermove', { y: layout.centers[2] + 1 })
+    expect(rows()[0].classList.contains('is-dragging')).toBe(true)
+    pointer(item, 'pointerup', { y: layout.centers[2] + 1 })
+    expect(exercises().map(e => e.id)).toEqual(['b', 'c', 'a'])
+    expect(JSON.parse(localStorage.getItem('gym_state_v1')).routines[0].ex.map(e => e.id)).toEqual(['b', 'c', 'a'])
+    slider.remove()
   })
 
   it('cancels when equal serialized exercises acquire a new current routine/list identity', () => {

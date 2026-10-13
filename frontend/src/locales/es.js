@@ -861,6 +861,11 @@ export default {
   'Add as second workout': 'Añadir como segundo entrenamiento',
   'Finish the current workout first.': 'Termina primero el entrenamiento actual.',
   'Logging a past workout — no rest timers.': 'Registrando un entrenamiento pasado — sin temporizadores de descanso.',
+  // --- log extra work (lib/extra-log.js) ---
+  'Log extra work': 'Registrar ejercicio suelto',
+  'Extra work': 'Trabajo extra',
+  'Sets done outside a session. They go into your history and count as volume, without changing your progression.': 'Series hechas fuera de una sesión. Van a tu historial y cuentan como volumen, sin cambiar tu progresión.',
+  'Logged — it counts toward this microcycle’s volume': 'Registrado — cuenta para el volumen de este microciclo',
 
   // Exercise-wide fields (lib/exercise-defaults.js)
   'Accept': 'Aceptar',

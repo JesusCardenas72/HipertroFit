@@ -736,6 +736,11 @@ export default {
   'Add as second workout': 'Dodaj jako drugi trening',
   'Finish the current workout first.': 'Najpierw zakończ bieżący trening.',
   'Logging a past workout — no rest timers.': 'Zapisywanie minionego treningu — bez minutników przerw.',
+  // --- log extra work (lib/extra-log.js) ---
+  'Log extra work': 'Zapisz dodatkowe ćwiczenie',
+  'Extra work': 'Praca dodatkowa',
+  'Sets done outside a session. They go into your history and count as volume, without changing your progression.': 'Serie wykonane poza sesją. Trafiają do historii i liczą się do objętości, nie zmieniając progresji.',
+  'Logged — it counts toward this microcycle’s volume': 'Zapisano — liczy się do objętości tego mikrocyklu',
   'rep': 'powt.',
   'No overload': 'Bez progresji',
   'No overload — accumulated fatigue': 'Bez progresji – nagromadzone zmęczenie',

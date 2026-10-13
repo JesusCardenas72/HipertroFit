@@ -736,6 +736,11 @@ export default {
   'Add as second workout': '두 번째 운동으로 추가',
   'Finish the current workout first.': '먼저 진행 중인 운동을 마치세요.',
   'Logging a past workout — no rest timers.': '지난 운동 기록 중 — 휴식 타이머 없음.',
+  // --- log extra work (lib/extra-log.js) ---
+  'Log extra work': '추가 운동 기록',
+  'Extra work': '추가 운동',
+  'Sets done outside a session. They go into your history and count as volume, without changing your progression.': '운동 세션 밖에서 한 세트입니다. 기록에 저장되고 볼륨에 포함되지만 진행 단계는 바뀌지 않습니다.',
+  'Logged — it counts toward this microcycle’s volume': '기록됨 — 이번 마이크로사이클 볼륨에 포함됩니다',
   'rep': '회',
   'No overload': '과부하 없음',
   'No overload — accumulated fatigue': '누적 피로로 과부하 없음',

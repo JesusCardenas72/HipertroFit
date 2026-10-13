@@ -5,6 +5,8 @@ import { cycleWorkouts, cyclePosition } from '../lib/microcycle.js'
 import { cycleVolume } from '../lib/volume.js'
 import BodyMap, { BodyMapLegend } from './BodyMap.jsx'
 import VolumeGroupBars from './VolumeGroupBars.jsx'
+import Icon from './Icon.jsx'
+import { logExtraSheet } from '../sheets.jsx'
 
 // The muscle map from Stats, windowed on the microcycle instead of the week, over the
 // effective-set bars for the same block. Same numbers as the Stats card by construction:
@@ -20,7 +22,11 @@ export default function MuscleVolumeCard({ S }) {
   return <div className="card">
     <div className="row between" style={{ marginBottom: 8 }}>
       <h2 style={{ margin: 0 }}>{t('Volume')}</h2>
-      <span className="small muted">{t('Micro')} #{pos.cycle + 1}</span>
+      <div className="row" style={{ gap: 10, flexWrap: 'nowrap' }}>
+        <span className="small muted">{t('Micro')} #{pos.cycle + 1}</span>
+        {/* Sets done outside a session go in from here — this card is where they show up. */}
+        <button className="iconbtn" onClick={logExtraSheet} aria-label={t('Log extra work')} title={t('Log extra work')}><Icon name="plus" /></button>
+      </div>
     </div>
     {win.length ? <>
       <BodyMap className="tappable" load={load} body={S.body} selected={sel}

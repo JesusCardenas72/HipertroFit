@@ -110,7 +110,8 @@ export function cyclePosition(S) {
  * closed the old one into it. Then it starts the day after the last logged session.
  */
 export function nextCycleStart(S, today = todayISO()) {
-  const last = sorted(S && S.workouts).at(-1)
+  // Loose extra work is not a session: logged today, it goes with the block that opens today.
+  const last = sorted(S && S.workouts).filter(w => !isExtra(w)).at(-1)
   if (!last || String(last.d) < today) return today
   const d = new Date(String(last.d) + 'T12:00:00')
   d.setDate(d.getDate() + 1)
@@ -152,7 +153,14 @@ export const trainingSteps = program =>
  * the plan, or the block would never advance at all.
  */
 export const isPlannedSession = (S, w) =>
-  !trainingSteps(S && S.program).length || !!(w && w.routineId)
+  !isExtra(w) && (!trainingSteps(S && S.program).length || !!(w && w.routineId))
+
+/**
+ * Loose work logged outside any session (lib/extra-log.js). Never a step of the block, with
+ * or without a sequence: it is not a session, so it cannot be "the plan" the way a freestyle
+ * session is on a profile that has none. Its sets still count toward the block's volume.
+ */
+export const isExtra = w => !!w && w.extra === true
 
 /**
  * The routine id the next session should be, by position in the sequence.
@@ -178,13 +186,12 @@ export function cycleWorkouts(S) {
   const planned = []
   for (let i = 0; i < done.length; i++) if (isPlannedSession(S, done[i])) planned.push(i)
   const step = planned.length % len
-  // Where the block opened: at its first planned session, or — when the previous block
-  // just closed and this one has not started — right after that closing session, so an
-  // off-plan workout trained in between belongs to the block that is opening.
-  const from = step === 0
-    ? (planned.length ? planned[planned.length - 1] + 1 : 0)
-    : planned[planned.length - step]
-  return done.slice(from)
+  // Where the block opened: right after the session that closed the previous one (or at the
+  // start of the count for the first block) — not at its own first planned session, so
+  // off-plan work done between two blocks belongs to the one that is opening and stays in it
+  // once that block's first session is logged.
+  const closing = planned.length - step - 1
+  return done.slice(closing >= 0 ? planned[closing] + 1 : 0)
 }
 
 /**

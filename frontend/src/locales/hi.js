@@ -736,6 +736,11 @@ export default {
   'Add as second workout': 'दूसरे वर्कआउट के रूप में जोड़ें',
   'Finish the current workout first.': 'पहले मौजूदा वर्कआउट पूरा करें।',
   'Logging a past workout — no rest timers.': 'पिछला वर्कआउट दर्ज हो रहा है — कोई रेस्ट टाइमर नहीं।',
+  // --- log extra work (lib/extra-log.js) ---
+  'Log extra work': 'अतिरिक्त व्यायाम दर्ज करें',
+  'Extra work': 'अतिरिक्त काम',
+  'Sets done outside a session. They go into your history and count as volume, without changing your progression.': 'सत्र के बाहर किए गए सेट। ये आपके इतिहास में जाते हैं और वॉल्यूम में गिने जाते हैं, आपकी प्रोग्रेशन बदले बिना।',
+  'Logged — it counts toward this microcycle’s volume': 'दर्ज हुआ — इस माइक्रोसाइकल के वॉल्यूम में गिना जाएगा',
   'rep': 'रेप',
   'No overload': 'कोई ओवरलोड नहीं',
   'No overload — accumulated fatigue': 'जमा थकान के कारण कोई ओवरलोड नहीं',

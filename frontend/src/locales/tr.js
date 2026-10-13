@@ -736,6 +736,11 @@ export default {
   'Add as second workout': 'İkinci antrenman olarak ekle',
   'Finish the current workout first.': 'Önce mevcut antrenmanı bitir.',
   'Logging a past workout — no rest timers.': 'Geçmiş antrenman kaydediliyor — dinlenme zamanlayıcısı yok.',
+  // --- log extra work (lib/extra-log.js) ---
+  'Log extra work': 'Ekstra egzersiz kaydet',
+  'Extra work': 'Ekstra çalışma',
+  'Sets done outside a session. They go into your history and count as volume, without changing your progression.': 'Antrenman dışında yapılan setler. Geçmişine eklenir ve hacme sayılır, ilerlemeni değiştirmez.',
+  'Logged — it counts toward this microcycle’s volume': 'Kaydedildi — bu mikrodöngünün hacmine sayılır',
   'rep': 'tekrar',
   'No overload': 'Yüklenme yok',
   'No overload — accumulated fatigue': 'Yüklenme yok — birikmiş yorgunluk',

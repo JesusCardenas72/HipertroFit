@@ -43,6 +43,7 @@ import { swapActiveExercise } from './lib/active-exercise-swap.js'
 import { useSheetKeyboard, useRevealActiveChip, tappable } from './lib/use-sheet-keyboard.js'
 import { buildSessionEntries } from './lib/session-start.js'
 import { workoutsOn, backfillStart, backfillEnd, completeBackfill } from './lib/backfill.js'
+import { buildExtraEntry, fileExtraEntry } from './lib/extra-log.js'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -1934,6 +1935,76 @@ function beginBackfill({ iso, time, durationMin, routineId, replaceId }) {
   })
   useUI.getState().stopRest()
   nav('/workout')
+}
+/* ============================ log extra work ============================ */
+// Sets done outside any session, written straight into history: pick the exercise, say how
+// many sets of how many reps at what weight, done. No workout screen, no timers, and it works
+// with a session running. See lib/extra-log.js for what an `extra` workout does and does not
+// count toward.
+function ExtraLog({ ex, close }) {
+  const st = useStore(s => s.S)
+  const today = todayISO()
+  const cfg = useMemo(() => previousRoutineConfig(st.routines, ex.id)?.cfg || defaultConfig(ex.id), [ex.id])
+  const mode = modeOf({ ...cfg, id: ex.id })
+  const last = useMemo(() => lastEntryFor(st, ex.id)?.sets.at(-1) || null, [ex.id])
+  const [date, setDate] = useState(today)
+  const [v, setV] = useState({
+    sets: 1,
+    reps: (last && last.r > 0 ? last.r : cfg.reps) || 10,
+    sec: (last && last.sec > 0 ? last.sec : cfg.sec) || 45,
+    weight: mode === 'cardio' ? 0 : (last ? last.w : cfg.weight) || 0,
+    min: (last && last.min > 0 ? last.min : cfg.min) || 20,
+    speed: (last && last.speed > 0 ? last.speed : cfg.speed) || 8,
+  })
+  const set = (k, min = 0) => x => setV(o => ({ ...o, [k]: Math.max(min, x) }))
+  const whole = (k, min = 1) => x => setV(o => ({ ...o, [k]: Math.max(min, Math.round(x)) }))
+  const weightLabel = isBw({ ...cfg, id: ex.id }) ? t('Added weight') : t('Weight ({0})', st.unit)
+
+  const save = () => {
+    if (!date || date > today) { toast(t('Pick a day up to today')); return }
+    const entry = buildExtraEntry(ex.id, cfg, v, ex.custom ? exerciseMuscleSnapshot(ex) : null)
+    update(s => {
+      s.workouts = fileExtraEntry(s.workouts, entry, { iso: date, today, id: uid(), name: t('Extra work') })
+    })
+    useStore.getState().autoBackupNow()
+    close()
+    toast(t('Logged — it counts toward this microcycle’s volume'))
+  }
+
+  return <>
+    <h3>{t('Log extra work')}</h3>
+    <div className="muted small" style={{ marginBottom: 12 }}>{t('Sets done outside a session. They go into your history and count as volume, without changing your progression.')}</div>
+    <div className="row" style={{ marginBottom: 12, gap: 10 }}>
+      <Thumb ex={ex} />
+      <div className="grow"><div className="tt capitalize" style={{ fontWeight: 600 }}>{exerciseNameFor(ex)}</div>
+        <div className="ss capitalize">{t(ex.tg || ex.bp)} · {t(ex.eq)}</div></div>
+      <button className="chip nocap" onClick={() => { close(); logExtraSheet() }}>{t('Change')}</button>
+    </div>
+    <Row icon="calendar" title={t('Date')}>
+      <input type="date" className="timef" value={date} max={today} onChange={e => setDate(e.target.value)} /></Row>
+    <div style={{ height: 10 }} />
+    <div className="row cfgrow">
+      {mode === 'cardio' ? <>
+        <Stepper label={t('Intervals')} value={v.sets} step={1} decimal={false} onChange={whole('sets')} />
+        <Stepper label={t('Minutes')} value={v.min} step={1} decimal={false} onChange={whole('min')} />
+        <Stepper label={t('Speed (km/h)')} value={v.speed} step={0.5} onChange={set('speed')} />
+      </> : <>
+        <Stepper label={t('Sets')} value={v.sets} step={1} decimal={false} onChange={whole('sets')} />
+        {mode === 'time'
+          ? <Stepper label={t('Seconds')} value={v.sec} step={5} decimal={false} onChange={whole('sec')} />
+          : <Stepper label={t('Reps')} value={v.reps} step={1} decimal={false} onChange={whole('reps')} />}
+        <Stepper label={weightLabel} value={v.weight} step={defaultIncrement(ex.id, st.unit)} onChange={set('weight')} />
+      </>}
+    </div>
+    <div style={{ height: 18 }} />
+    <Button variant="primary" onClick={save}>{t('Save')}</Button>
+  </>
+}
+export function logExtraSheet() {
+  const picker = exercisePicker(ex => {
+    picker.close()
+    ui().openSheet(close => <ExtraLog ex={ex} close={close} />)
+  })
 }
 function TopWeight({ entryIdx, close }) {
   const st = useStore(s => s.S)

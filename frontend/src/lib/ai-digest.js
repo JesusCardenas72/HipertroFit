@@ -202,7 +202,8 @@ export function buildDigest(S, { now = Date.now(), today = todayISO(), weeks = D
       date: w.d,
       routine: w.name || null,
       minutes: w.end && w.start ? Math.round((w.end - w.start) / 60000) : null,
-      deload: w.excludeFromProgression === true || undefined,
+      deload: (w.excludeFromProgression === true && w.extra !== true) || undefined,
+      extra: w.extra === true || undefined,
       exercises: (w.entries || []).map(e => ({
         exercise: nameOf(e.id, e),
         sets: (e.sets || []).filter(s => s.done && !isWarmupRow(s)).map(setText).join(' '),

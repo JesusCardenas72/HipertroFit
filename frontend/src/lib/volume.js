@@ -21,7 +21,7 @@
 // quads + glutes + hamstrings stacked. Secondary muscles still earn partial credit (the
 // 0.4 weight from musclesOf), which is the usual way fractional volume is counted.
 
-import { cycleWorkouts, microcycleLen } from './microcycle.js'
+import { cycleWorkouts, microcycleLen, isExtra } from './microcycle.js'
 import { REST } from './program.js'
 import { musclesOf } from './muscles.js'
 import { EXIDX } from './exercises.js'
@@ -115,7 +115,8 @@ export function groupVolume(workouts, pick = isEffectiveSet) {
  */
 export function cycleVolume(S) {
   const win = cycleWorkouts(S)
-  return { ...groupVolume(win), sessions: win.length }
+  // Loose extra work adds its sets but is not a session of the block.
+  return { ...groupVolume(win), sessions: win.filter(w => !isExtra(w)).length }
 }
 
 /**

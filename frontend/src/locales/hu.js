@@ -741,6 +741,11 @@ export default {
   'Add as second workout': 'Hozzáadás második edzésként',
   'Finish the current workout first.': 'Előbb fejezd be a folyó edzést.',
   'Logging a past workout — no rest timers.': 'Korábbi edzés rögzítése — nincs pihenőidőzítő.',
+  // --- log extra work (lib/extra-log.js) ---
+  'Log extra work': 'Különálló gyakorlat rögzítése',
+  'Extra work': 'Extra munka',
+  'Sets done outside a session. They go into your history and count as volume, without changing your progression.': 'Edzésen kívül végzett sorozatok. Bekerülnek az előzményekbe és beleszámítanak a volumenbe, a progressziódat nem módosítják.',
+  'Logged — it counts toward this microcycle’s volume': 'Rögzítve — beleszámít a mikrociklus volumenébe',
   'rep': 'ism.',
   'No overload': 'Nincs terhelésnövelés',
   'No overload — accumulated fatigue': 'Nincs terhelésnövelés – felgyűlt fáradtság',

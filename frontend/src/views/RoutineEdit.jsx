@@ -324,9 +324,15 @@ function useRoutineReorder(routineIdentity, exercises, onDrop) {
       const gesture = gestureRef.current
       if (gesture && event.pointerId === gesture.pointerId) finish(gesture, false)
     }
+    // Only losing the capture *this* gesture took ends it. The app-level ScreenSlider captures
+    // every press for itself (and a touch starts out captured by whatever it landed on), so the
+    // pointer is handed over once before the long-press lifts the row and again when the lift
+    // takes it: those arrive here as lostpointercapture on the slider / the original target,
+    // and counting them cancelled every drag the instant it started — or before it could.
     const onLostCapture = event => {
       const gesture = gestureRef.current
-      if (gesture && event.pointerId === gesture.pointerId) finish(gesture, false)
+      if (!gesture?.active || event.pointerId !== gesture.pointerId) return
+      if (event.target === gesture.captureTarget) finish(gesture, false)
     }
     const cancelActive = () => finish(gestureRef.current, false)
     const onKeyDown = event => {

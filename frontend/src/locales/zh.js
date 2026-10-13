@@ -736,6 +736,11 @@ export default {
   'Add as second workout': '添加为第二次训练',
   'Finish the current workout first.': '请先完成当前训练。',
   'Logging a past workout — no rest timers.': '正在补记过去的训练 — 没有休息计时器。',
+  // --- log extra work (lib/extra-log.js) ---
+  'Log extra work': '记录额外练习',
+  'Extra work': '额外练习',
+  'Sets done outside a session. They go into your history and count as volume, without changing your progression.': '在训练之外完成的组数。它们会进入历史记录并计入训练量，但不会改变你的进阶。',
+  'Logged — it counts toward this microcycle’s volume': '已记录 — 计入本小周期的训练量',
   'rep': '次',
   'No overload': '无渐进超负荷',
   'No overload — accumulated fatigue': '因累积疲劳不加负荷',

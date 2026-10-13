@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { t } from '../lib/i18n.js'
 import { todayISO } from '../lib/format.js'
 import { effectiveRoutine, nextSessionRoutine } from '../lib/history.js'
-import { cyclePosition, cycleStrip, strategyOf, STRATEGIES } from '../lib/microcycle.js'
+import { cyclePosition, cycleStrip, strategyOf, isExtra, STRATEGIES } from '../lib/microcycle.js'
 import { mesoState, acceptDeload, postponeDeload, isDeloadWorkout, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
 import { DeloadBadge, DeloadStatus } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
@@ -34,7 +34,8 @@ export default function MicrocycleCard() {
   // the next session forward.
   const planned = effectiveRoutine(S, today)
   const next = planned || nextSessionRoutine(S)
-  const doneToday = S.workouts.filter(w => w.d === today).at(-1) || null
+  // Loose extra work logged today is not today's session — the row keeps offering it.
+  const doneToday = S.workouts.filter(w => w.d === today && !isExtra(w)).at(-1) || null
   const onToday = () => {
     if (S.active) { useUI.getState().resumeWorkout(); nav('/workout') }
     else if (next) startFlow(next.id)
