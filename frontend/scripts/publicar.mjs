@@ -79,10 +79,12 @@ if (!env.JAVA_HOME) {
   const jbr = WIN ? 'C:\\Program Files\\Android\\Android Studio\\jbr' : '/Applications/Android Studio.app/Contents/jbr/Contents/Home'
   if (fs.existsSync(jbr)) env.JAVA_HOME = jbr
 }
-const run = (cmd, cwd = FRONT) => execSync(cmd, { cwd, env, stdio: 'inherit' })
+const run = (cmd, cwd = FRONT, conEnv = env) => execSync(cmd, { cwd, env: conEnv, stdio: 'inherit' })
 
 console.log(`\n▶ Generando la versión ${versionName} (versionCode ${versionCode})…\n`)
-run('npm test')
+// Los tests, con el entorno de siempre: las VITE_* de la compilación móvil cambian lo que
+// esperan (rutas de imágenes, modo móvil).
+run('npm test', FRONT, process.env)
 run('npx vite build')
 run('npx cap sync android')
 // overridePathCheck: la ruta del proyecto lleva una «ú» (C:\Jesús\…) y el plugin de Android
