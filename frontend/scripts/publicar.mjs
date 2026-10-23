@@ -89,7 +89,8 @@ run('npx vite build')
 run('npx cap sync android')
 // overridePathCheck: la ruta del proyecto lleva una «ú» (C:\Jesús\…) y el plugin de Android
 // se niega a compilar con caracteres no ASCII si no se le dice que siga.
-run((WIN ? 'gradlew.bat' : './gradlew') + ' assembleDebug -Pandroid.overridePathCheck=true', ANDROID)
+// Con ruta completa: cmd no siempre busca ejecutables en la carpeta actual.
+run(`"${path.join(ANDROID, WIN ? 'gradlew.bat' : 'gradlew')}" assembleDebug -Pandroid.overridePathCheck=true`, ANDROID)
 
 const salida = path.join(ANDROID, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
 if (!fs.existsSync(salida)) fallar('No se ha generado android/app/build/outputs/apk/debug/app-debug.apk.')
