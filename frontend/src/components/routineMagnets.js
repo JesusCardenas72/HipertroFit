@@ -12,6 +12,37 @@ export const ROW_PAD = 5
 const LIFT = { k: 0.45, d: 0.6 }
 export const rowHsl = hue => `hsl(${hue},70%,55%)`
 
+const clampTo = (value, low, high) => Math.max(low, Math.min(high, value))
+
+// The scroller a lifted row should scroll when held near its edge, and how far this frame.
+export function scrollHostFor(node) {
+  for (let parent = node.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+    const overflowY = window.getComputedStyle(parent).overflowY
+    if (/(auto|scroll)/.test(overflowY) && parent.scrollHeight > parent.clientHeight) return parent
+  }
+  return window
+}
+
+export function autoScrollStep(host, clientY) {
+  const edge = 64
+  const maxStep = 14
+  let top, bottom, scrollTop, maxScroll
+  if (host === window) {
+    const root = document.scrollingElement || document.documentElement
+    top = window.visualViewport?.offsetTop || 0
+    bottom = top + (window.visualViewport?.height || window.innerHeight || root.clientHeight)
+    scrollTop = window.scrollY || root.scrollTop || 0
+    maxScroll = Math.max(root.scrollHeight, document.body?.scrollHeight || 0) - (bottom - top)
+  } else {
+    const rect = host.getBoundingClientRect()
+    top = rect.top; bottom = rect.bottom
+    scrollTop = host.scrollTop; maxScroll = host.scrollHeight - host.clientHeight
+  }
+  if (clientY < top + edge && scrollTop > 0) return -Math.ceil(maxStep * clampTo((top + edge - clientY) / edge, 0, 1))
+  if (clientY > bottom - edge && scrollTop < maxScroll) return Math.ceil(maxStep * clampTo((clientY - bottom + edge) / edge, 0, 1))
+  return 0
+}
+
 function gooMarkup(layers) {
   const f = n => n.toFixed(1)
   return layers.map(layer => `<g filter="url(#routine-goo)" fill="${layer.fill}">`

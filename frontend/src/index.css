@@ -509,6 +509,18 @@ h4.sec{
 .folder-body{margin:8px 0 0 18px;padding-left:10px;border-left:2px solid var(--sep)}
 .folder-empty{padding:6px 4px 4px;line-height:1.4;grid-column:1/-1}
 .folder{grid-column:1/-1;min-width:0}
+/* Plan ▸ Routines: hold a routine to drag it (views/Plan.jsx). The rows ride springs like the plan
+   editor's exercises (components/routineMagnets.js), which own every transform */
+.plan-routines{position:relative}
+.plan-routines [data-plan-kind=routine]{touch-action:pan-y;-webkit-touch-callout:none;position:relative}
+.plan-routines.is-reordering{user-select:none;-webkit-user-select:none}
+.plan-routines.is-reordering [data-routine-row]:not(.is-dragging):not(.magnet){opacity:.8}
+.plan-routines [data-routine-row].is-dragging{z-index:2;pointer-events:none;box-shadow:0 10px 28px rgba(0,0,0,.22);background:var(--surface-2)}
+/* the folder the lifted routine goes into if let go now */
+.plan-routines .folder-hd.magnet{position:relative;z-index:1;box-shadow:0 0 0 2.5px var(--acc),0 0 14px var(--acc)}
+/* start a routine without leaving the Plan */
+.plan-start{width:36px;height:36px;flex:none;border-radius:50%;background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc)}
+.plan-start.rec{background:var(--acc);color:var(--on-acc)}
 /* the plan editor's rows ride springs like the dock's thumbnails (components/routineMagnets.js),
    which own every transform — so no CSS transition on them */
 .routine-list{position:relative;isolation:isolate}
@@ -846,8 +858,16 @@ h4.sec{
 }
 .setrow.next .n{box-shadow:0 0 0 2px var(--acc);color:var(--acc);font-weight:600}
 .setrow.next::before,.setrow.next+.setrow::before{opacity:0}
-.setrow.done .n{background:var(--acc);color:var(--on-acc)}
-.setrow.done{opacity:.45}
+.setrow.done .n{background:none;color:var(--acc);box-shadow:inset 0 0 0 1.5px var(--acc)}
+/* a finished set stays readable: ringed in the accent, its numbers dimmed, the check filled.
+   The ring is an outline pushed 4px out (like .next's wash), so marking a row never moves it. */
+.setrow.done{
+  --done-wash:color-mix(in srgb,var(--acc) 7%,transparent);
+  background:var(--done-wash);box-shadow:0 0 0 4px var(--done-wash);
+  outline:1.5px solid var(--acc);outline-offset:4px;border-radius:8px;
+}
+.setrow.done::before,.setrow.done+.setrow::before{opacity:0}
+.setrow.done .stp .num{color:var(--label-3)}
 /* drop-set drops / rest-pause bursts riding on a work row, editable like the row itself
    (issue: drop-sets & rest-pause) */
 .subrow{display:flex;align-items:center;gap:6px;padding:3px 0 3px 32px}
@@ -1431,6 +1451,8 @@ h4.sec{
   .cols>*{min-width:0}
   .app .list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   #modal-root .list,.narrow .list{display:flex;flex-direction:column}
+  /* one column, so a routine can be dragged anywhere along it */
+  .app .list.plan-routines,.app .plan-routines .list{display:flex;flex-direction:column}
   .narrow{max-width:640px;margin:0 auto}
   .wtop{padding-top:32px;margin-top:-32px}
   .tiles{grid-template-columns:repeat(4,1fr)}
@@ -1954,8 +1976,13 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
   box-shadow:inset 0 0 0 1px var(--sep);
   transition:box-shadow var(--med) var(--ease),background var(--med) var(--ease);
 }
-.st-row.next{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--acc) 55%,transparent)}
-.st-row.done{box-shadow:inset 0 0 0 1.5px var(--acc)}
+.setswipe>.st-row.next{box-shadow:inset 0 0 0 1.5px var(--label-4)}
+/* a finished set: ringed in the accent over a faint wash of it, numbers dimmed, check filled */
+.setswipe>.st-row.done{
+  box-shadow:inset 0 0 0 1.5px var(--acc);
+  background:color-mix(in srgb,var(--acc) 6%,var(--surface));
+}
+.st-row.done .st-cell{background:color-mix(in srgb,var(--surface-2) 60%,transparent)}
 .st-row.warm .st-n{color:var(--orange)}
 .st-n{font-size:15px;font-weight:600;color:var(--label-2);height:40px;display:flex;align-items:center;justify-content:center}
 .st-n svg{width:15px;height:15px}

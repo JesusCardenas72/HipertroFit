@@ -18,7 +18,7 @@ import { loadOfRoutine, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
 import { dropActiveWorkoutEntry, moveActiveWorkoutUnitTo } from '../lib/active-workout-order.js'
 import WorkoutDock from '../components/WorkoutDock.jsx'
 import { dockIntent, dockItems, dockKeys, dropSlot, joinHue } from '../lib/workout-dock.js'
-import { createListEngine, listTargets, rowHsl, rowUnits } from '../components/routineMagnets.js'
+import { autoScrollStep, createListEngine, listTargets, rowHsl, rowUnits, scrollHostFor } from '../components/routineMagnets.js'
 import { vibrate } from '../lib/sound.js'
 
 export const ROUTINE_LONG_PRESS_MS = 380
@@ -53,34 +53,6 @@ export function replaceRoutineEntry(exercises, key, id, cfg) {
   const { id: _id, sg: _sg, ...rest } = cfg || {}
   exercises[at] = { id, ...(sg ? { sg } : {}), ...rest }
   return true
-}
-
-function scrollHostFor(node) {
-  for (let parent = node.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
-    const overflowY = window.getComputedStyle(parent).overflowY
-    if (/(auto|scroll)/.test(overflowY) && parent.scrollHeight > parent.clientHeight) return parent
-  }
-  return window
-}
-
-function autoScrollStep(host, clientY) {
-  const edge = 64
-  const maxStep = 14
-  let top, bottom, scrollTop, maxScroll
-  if (host === window) {
-    const root = document.scrollingElement || document.documentElement
-    top = window.visualViewport?.offsetTop || 0
-    bottom = top + (window.visualViewport?.height || window.innerHeight || root.clientHeight)
-    scrollTop = window.scrollY || root.scrollTop || 0
-    maxScroll = Math.max(root.scrollHeight, document.body?.scrollHeight || 0) - (bottom - top)
-  } else {
-    const rect = host.getBoundingClientRect()
-    top = rect.top; bottom = rect.bottom
-    scrollTop = host.scrollTop; maxScroll = host.scrollHeight - host.clientHeight
-  }
-  if (clientY < top + edge && scrollTop > 0) return -Math.ceil(maxStep * clamp((top + edge - clientY) / edge, 0, 1))
-  if (clientY > bottom - edge && scrollTop < maxScroll) return Math.ceil(maxStep * clamp((clientY - bottom + edge) / edge, 0, 1))
-  return 0
 }
 
 /* Press and hold a row to lift that one exercise; hold on a little longer and a superset member

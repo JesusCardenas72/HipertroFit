@@ -85,3 +85,72 @@ export function moveRoutineToFolder(s, routineId, folderId) {
   } else delete r.folder
   return true
 }
+
+/* ---- dragging a routine on the Plan list ---- */
+
+/** The Plan list's rows top to bottom as the screen draws them: each folder header, followed by
+ *  its routines while it is open, then the loose routines. Each row is
+ *  { kind: 'folder' | 'routine', id, folder, open }. */
+export function planRows(st) {
+  const { loose, folders } = groupRoutines(st)
+  const rows = []
+  for (const { folder: f, routines } of folders) {
+    rows.push({ kind: 'folder', id: f.id, folder: null, open: !!f.open })
+    if (f.open) for (const r of routines) rows.push({ kind: 'routine', id: r.id, folder: f.id, open: false })
+  }
+  for (const r of loose) rows.push({ kind: 'routine', id: r.id, folder: null, open: false })
+  return rows
+}
+
+/** Where a routine let go at `y` lands. `others` are the visible rows except the dragged one,
+ *  top to bottom, each with its measured `top` / `bottom`. Over the middle of a folder header it
+ *  goes into that folder (`join` is that row); otherwise it drops into the gap `slot`, filed with
+ *  whichever side of the gap it is nearer: after the routine above (its folder), as the first of
+ *  the open folder above, or before the routine below. With neither, it comes out loose. */
+export function planDropIntent(others, y) {
+  const list = Array.isArray(others) ? others : []
+  const slot = list.reduce((n, o) => n + (y > (o.top + o.bottom) / 2 ? 1 : 0), 0)
+  const hit = list.findIndex(o => {
+    const inset = (o.bottom - o.top) * 0.22
+    return o.kind === 'folder' && y >= o.top + inset && y <= o.bottom - inset
+  })
+  if (hit >= 0) return { slot, join: hit, folder: list[hit].id, at: 'end' }
+  const above = list[slot - 1], below = list[slot]
+  const up = above?.kind === 'routine' ? { folder: above.folder, after: above.id }
+    : above?.kind === 'folder' && above.open ? { folder: above.id, at: 'start' } : null
+  const down = below?.kind === 'routine' ? { folder: below.folder, before: below.id } : null
+  let place
+  if (up && down) place = up.folder === down.folder || y < (above.bottom + below.top) / 2 ? up : down
+  else place = up || down || { folder: null, at: above ? 'end' : 'start' }
+  return { slot, join: null, ...place }
+}
+
+/** Moves a routine to where `planDropIntent` said, filing it in (or out of) a folder and placing
+ *  it in S.routines so it shows there. A target folder opens. False when nothing changed. */
+export function dropRoutine(s, id, intent) {
+  const list = s.routines || []
+  const from = list.findIndex(r => r.id === id)
+  if (from < 0 || !intent) return false
+  const folders = s.folders || []
+  const fid = intent.folder && folders.some(f => f.id === intent.folder) ? intent.folder : null
+  const was = list.map(r => r.id + ':' + (folderOf(s, r) || '')).join()
+  const [r] = list.splice(from, 1)
+  if (fid) r.folder = fid
+  else delete r.folder
+  const inGroup = x => folderOf(s, x) === fid
+  const ref = intent.after ?? intent.before
+  let to = ref != null ? list.findIndex(x => x.id === ref) : -1
+  if (to >= 0 && intent.after != null) to += 1
+  if (to < 0) {
+    if (intent.at === 'start') {
+      to = list.findIndex(inGroup)
+      if (to < 0) to = list.length
+    } else {
+      to = list.length
+      for (let i = list.length - 1; i >= 0; i--) if (inGroup(list[i])) { to = i + 1; break }
+    }
+  }
+  list.splice(to, 0, r)
+  if (fid) folders.find(f => f.id === fid).open = true
+  return list.map(x => x.id + ':' + (folderOf(s, x) || '')).join() !== was
+}
