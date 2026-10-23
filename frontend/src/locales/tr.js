@@ -1197,4 +1197,13 @@ export default {
   'Update now': 'Şimdi güncelle',
   'Later': 'Sonra',
   'Could not open the installer. Try again later.': 'Yükleyici açılamadı. Daha sonra tekrar dene.',
+  'Updates': 'Güncellemeler',
+  'Check for updates': 'Güncellemeleri denetle',
+  'Checking…': 'Denetleniyor…',
+  'Downloading version {0}… {1}%': '{0} sürümü indiriliyor… %{1}',
+  'Downloading version {0}…': '{0} sürümü indiriliyor…',
+  'Up to date — version {0} is the latest.': 'Güncel — {0} en son sürüm.',
+  'Could not download the update. Try again later.': 'Güncelleme indirilemedi. Daha sonra tekrar dene.',
+  'Could not check for updates. Are you online?': 'Güncellemeler denetlenemedi. İnternete bağlı mısın?',
+  'Installed version {0}': 'Yüklü sürüm: {0}',
 }

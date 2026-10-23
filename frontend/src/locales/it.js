@@ -1197,4 +1197,13 @@ export default {
   'Update now': 'Aggiorna ora',
   'Later': 'Più tardi',
   'Could not open the installer. Try again later.': 'Impossibile aprire il programma di installazione. Riprova più tardi.',
+  'Updates': 'Aggiornamenti',
+  'Check for updates': 'Cerca aggiornamenti',
+  'Checking…': 'Verifica in corso…',
+  'Downloading version {0}… {1}%': 'Download della versione {0}… {1}%',
+  'Downloading version {0}…': 'Download della versione {0}…',
+  'Up to date — version {0} is the latest.': 'Aggiornata: la versione {0} è l’ultima.',
+  'Could not download the update. Try again later.': 'Impossibile scaricare l’aggiornamento. Riprova più tardi.',
+  'Could not check for updates. Are you online?': 'Impossibile verificare gli aggiornamenti. Sei online?',
+  'Installed version {0}': 'Versione installata: {0}',
 }

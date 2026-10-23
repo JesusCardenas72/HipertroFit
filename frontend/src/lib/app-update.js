@@ -65,30 +65,36 @@ async function installedBuild() {
 }
 
 /**
- * The update waiting to be installed, or null (up to date, offline, not Android, no URL).
- * Never throws.
+ * What the published version.json says about this install. Never throws:
+ *   { status: 'off' }               not Android, or no UPDATE_URL in this build
+ *   { status: 'current' }           the published version is not newer
+ *   { status: 'update', update }    a newer APK (parseManifest's shape)
+ *   { status: 'error' }             offline, or the file was missing or malformed
  */
 export async function checkForUpdate() {
-  if (!UPDATE_URL || !(await plugin())) return null
+  if (!UPDATE_URL || !(await plugin())) return { status: 'off' }
   try {
     const res = await fetch(UPDATE_URL + (UPDATE_URL.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store' })
-    if (!res.ok) return null
+    if (!res.ok) return { status: 'error' }
     const manifest = parseManifest(await res.json())
-    return isNewer(manifest, await installedBuild()) ? manifest : null
-  } catch (e) { return null }
+    if (!manifest) return { status: 'error' }
+    return isNewer(manifest, await installedBuild()) ? { status: 'update', update: manifest } : { status: 'current' }
+  } catch (e) { return { status: 'error' } }
 }
 
 /**
  * Downloads the APK into the app's cache and checks it (hash, package, versionCode).
  * Resolves true when it is ready to install; an already-downloaded copy is reused.
+ * `onProgress` gets the percentage (−1 when the size is unknown).
  */
-export async function downloadUpdate(manifest) {
+export async function downloadUpdate(manifest, onProgress) {
   const p = (await plugin())?.plugin
   if (!p) return false
+  const sub = onProgress ? await p.addListener('progress', e => onProgress(e.percent)).catch(() => null) : null
   try {
     await p.download({ url: manifest.url, sha256: manifest.sha256, versionCode: manifest.versionCode })
     return true
-  } catch (e) { return false }
+  } catch (e) { return false } finally { sub?.remove() }
 }
 
 /**

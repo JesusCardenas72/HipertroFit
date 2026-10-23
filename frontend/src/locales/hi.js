@@ -1197,4 +1197,13 @@ export default {
   'Update now': 'अभी अपडेट करें',
   'Later': 'बाद में',
   'Could not open the installer. Try again later.': 'इंस्टॉलर नहीं खुल सका। बाद में फिर कोशिश करें।',
+  'Updates': 'अपडेट',
+  'Check for updates': 'अपडेट खोजें',
+  'Checking…': 'जाँच हो रही है…',
+  'Downloading version {0}… {1}%': 'संस्करण {0} डाउनलोड हो रहा है… {1}%',
+  'Downloading version {0}…': 'संस्करण {0} डाउनलोड हो रहा है…',
+  'Up to date — version {0} is the latest.': 'अप टू डेट — संस्करण {0} नवीनतम है।',
+  'Could not download the update. Try again later.': 'अपडेट डाउनलोड नहीं हो सका। बाद में फिर कोशिश करें।',
+  'Could not check for updates. Are you online?': 'अपडेट की जाँच नहीं हो सकी। क्या आप ऑनलाइन हैं?',
+  'Installed version {0}': 'इंस्टॉल किया गया संस्करण: {0}',
 }

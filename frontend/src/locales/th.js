@@ -1210,4 +1210,13 @@ export default {
   'Update now': 'อัปเดตตอนนี้',
   'Later': 'ภายหลัง',
   'Could not open the installer. Try again later.': 'ไม่สามารถเปิดตัวติดตั้งได้ โปรดลองอีกครั้งภายหลัง',
+  'Updates': 'อัปเดต',
+  'Check for updates': 'ตรวจหาอัปเดต',
+  'Checking…': 'กำลังตรวจสอบ…',
+  'Downloading version {0}… {1}%': 'กำลังดาวน์โหลดเวอร์ชัน {0}… {1}%',
+  'Downloading version {0}…': 'กำลังดาวน์โหลดเวอร์ชัน {0}…',
+  'Up to date — version {0} is the latest.': 'เป็นเวอร์ชันล่าสุดแล้ว — เวอร์ชัน {0}',
+  'Could not download the update. Try again later.': 'ไม่สามารถดาวน์โหลดอัปเดตได้ โปรดลองอีกครั้งภายหลัง',
+  'Could not check for updates. Are you online?': 'ไม่สามารถตรวจหาอัปเดตได้ คุณออนไลน์อยู่หรือไม่',
+  'Installed version {0}': 'เวอร์ชันที่ติดตั้ง: {0}',
 }

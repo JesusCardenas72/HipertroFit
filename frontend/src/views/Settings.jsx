@@ -11,6 +11,7 @@ import { t, LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder, backupFolderStatus, pickBackupFolder, clearBackupFolder } from '../lib/mobile.js'
 import { ConnectSheet } from './MobileOnboarding.jsx'
+import { UpdateRow } from '../components/AppUpdate.jsx'
 import { loadStarterPlan, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
@@ -348,6 +349,10 @@ export default function Settings() {
       <Row icon="lightbulb" iconTint="var(--yellow)"
         title={IS_ANDROID ? t('In Chrome: ⋮ menu → Add to Home screen') : t('In Safari: Share → Add to Home Screen')}
         subtitle={t('to install HipertroFit as a full-screen app.') + ' ' + (user ? t('Your data syncs with your profile — sign in anywhere to see it.') : t('Guest data stays on this device — export a backup now and then!'))} />
+    </Section>}
+
+    {MOBILE && <Section title={t('Updates')}>
+      <UpdateRow />
     </Section>}
 
     {/* The version, at the bottom of Settings — which is where the support template has been

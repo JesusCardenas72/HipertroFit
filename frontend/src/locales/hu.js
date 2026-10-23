@@ -1202,4 +1202,13 @@ export default {
   'Update now': 'Frissítés most',
   'Later': 'Később',
   'Could not open the installer. Try again later.': 'Nem sikerült megnyitni a telepítőt. Próbáld újra később.',
+  'Updates': 'Frissítések',
+  'Check for updates': 'Frissítések keresése',
+  'Checking…': 'Ellenőrzés…',
+  'Downloading version {0}… {1}%': 'A(z) {0} verzió letöltése… {1}%',
+  'Downloading version {0}…': 'A(z) {0} verzió letöltése…',
+  'Up to date — version {0} is the latest.': 'Naprakész – a(z) {0} a legújabb verzió.',
+  'Could not download the update. Try again later.': 'Nem sikerült letölteni a frissítést. Próbáld újra később.',
+  'Could not check for updates. Are you online?': 'Nem sikerült ellenőrizni a frissítéseket. Van internetkapcsolat?',
+  'Installed version {0}': 'Telepített verzió: {0}',
 }

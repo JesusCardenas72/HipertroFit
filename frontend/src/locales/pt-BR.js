@@ -816,6 +816,15 @@ export const PT_BR_OVERRIDES = {
   'Update now': 'Atualizar agora',
   'Later': 'Mais tarde',
   'Could not open the installer. Try again later.': 'Não foi possível abrir o instalador. Tente novamente mais tarde.',
+  'Updates': 'Atualizações',
+  'Check for updates': 'Buscar atualizações',
+  'Checking…': 'Verificando…',
+  'Downloading version {0}… {1}%': 'Baixando a versão {0}… {1}%',
+  'Downloading version {0}…': 'Baixando a versão {0}…',
+  'Up to date — version {0} is the latest.': 'Atualizado: a versão {0} é a mais recente.',
+  'Could not download the update. Try again later.': 'Não foi possível baixar a atualização. Tente novamente mais tarde.',
+  'Could not check for updates. Are you online?': 'Não foi possível verificar se há atualizações. Você está conectado?',
+  'Installed version {0}': 'Versão instalada: {0}',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

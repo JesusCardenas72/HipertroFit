@@ -1197,4 +1197,13 @@ export default {
   'Update now': '지금 업데이트',
   'Later': '나중에',
   'Could not open the installer. Try again later.': '설치 프로그램을 열 수 없습니다. 나중에 다시 시도하세요.',
+  'Updates': '업데이트',
+  'Check for updates': '업데이트 확인',
+  'Checking…': '확인 중…',
+  'Downloading version {0}… {1}%': '버전 {0} 다운로드 중… {1}%',
+  'Downloading version {0}…': '버전 {0} 다운로드 중…',
+  'Up to date — version {0} is the latest.': '최신 상태입니다 — 버전 {0}이(가) 최신입니다.',
+  'Could not download the update. Try again later.': '업데이트를 다운로드할 수 없습니다. 나중에 다시 시도하세요.',
+  'Could not check for updates. Are you online?': '업데이트를 확인할 수 없습니다. 인터넷에 연결되어 있나요?',
+  'Installed version {0}': '설치된 버전: {0}',
 }

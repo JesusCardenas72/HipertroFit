@@ -1197,4 +1197,13 @@ export default {
   'Update now': 'Обновить сейчас',
   'Later': 'Позже',
   'Could not open the installer. Try again later.': 'Не удалось открыть установщик. Попробуйте позже.',
+  'Updates': 'Обновления',
+  'Check for updates': 'Проверить обновления',
+  'Checking…': 'Проверка…',
+  'Downloading version {0}… {1}%': 'Загрузка версии {0}… {1}%',
+  'Downloading version {0}…': 'Загрузка версии {0}…',
+  'Up to date — version {0} is the latest.': 'Всё актуально — версия {0} последняя.',
+  'Could not download the update. Try again later.': 'Не удалось загрузить обновление. Попробуйте позже.',
+  'Could not check for updates. Are you online?': 'Не удалось проверить обновления. Есть ли подключение?',
+  'Installed version {0}': 'Установленная версия: {0}',
 }

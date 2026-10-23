@@ -1197,4 +1197,13 @@ export default {
   'Update now': '立即更新',
   'Later': '稍后',
   'Could not open the installer. Try again later.': '无法打开安装程序，请稍后再试。',
+  'Updates': '更新',
+  'Check for updates': '检查更新',
+  'Checking…': '正在检查…',
+  'Downloading version {0}… {1}%': '正在下载版本 {0}… {1}%',
+  'Downloading version {0}…': '正在下载版本 {0}…',
+  'Up to date — version {0} is the latest.': '已是最新 — {0} 是最新版本。',
+  'Could not download the update. Try again later.': '无法下载更新，请稍后再试。',
+  'Could not check for updates. Are you online?': '无法检查更新。是否已联网？',
+  'Installed version {0}': '已安装版本：{0}',
 }
