@@ -1191,4 +1191,10 @@ export default {
   'Set': 'Set',
   'Use the target': 'Hedefi kullan',
   '{0} of {1} sets': '{0}/{1} set',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': 'Yeni sürüm {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': 'İndirildi ve hazır. Android güncellemeyi onaylamanı isteyecek; verilerin olduğu gibi kalır.',
+  'Update now': 'Şimdi güncelle',
+  'Later': 'Sonra',
+  'Could not open the installer. Try again later.': 'Yükleyici açılamadı. Daha sonra tekrar dene.',
 }

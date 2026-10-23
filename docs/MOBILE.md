@@ -120,6 +120,25 @@ zipalign -f -p 4 app-release-unsigned.apk aligned.apk
 apksigner sign --ks my.keystore --ks-key-alias opengym --out openGym.apk aligned.apk
 ```
 
+### Android — self-update from GitHub Pages (HipertroFit)
+
+HipertroFit's APK updates itself. `cd frontend && npm run publicar`
+([`scripts/publicar.mjs`](../frontend/scripts/publicar.mjs)) runs the tests, builds the mobile
+bundle and `assembleDebug`, and force-pushes the APK plus a `version.json` (versionCode, SHA-256)
+to the `gh-pages` branch, served at `updateUrl` from `frontend/package.json`. On launch and on
+every return to the foreground the app reads that file ([`lib/app-update.js`](../frontend/src/lib/app-update.js));
+a higher versionCode is downloaded in the background and checked
+([`AppUpdatePlugin.java`](../frontend/android/app/src/main/java/ch/duartesantos/opengym/AppUpdatePlugin.java)),
+then offered — never mid-workout. Android always shows its own "Update this app?" dialog, and
+the first time asks to allow installs from HipertroFit (`REQUEST_INSTALL_PACKAGES`).
+
+- Before each publish bump `version` in `frontend/package.json` and `versionName` + `versionCode`
+  in `android/app/build.gradle`; the script refuses mismatches, a versionCode not above the
+  published one, and uncommitted changes.
+- The APK is signed with this machine's `~/.android/debug.keystore`, the key the phone's copy
+  was installed with. Keep that file: another key means uninstalling (and losing local data).
+- GitHub Pages must serve the `gh-pages` branch (Settings → Pages → *Deploy from a branch*).
+
 ### iPhone — what's actually possible
 
 Apple does not allow installing apps outside the App Store, so there is no `.ipa` download

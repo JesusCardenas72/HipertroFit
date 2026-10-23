@@ -1191,4 +1191,10 @@ export default {
   'Set': 'सेट',
   'Use the target': 'लक्ष्य का उपयोग करें',
   '{0} of {1} sets': '{1} में से {0} सेट',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': 'नया संस्करण {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': 'यह डाउनलोड हो गया है। Android अपडेट की पुष्टि करने को कहेगा; आपका डेटा जैसा है वैसा ही रहेगा।',
+  'Update now': 'अभी अपडेट करें',
+  'Later': 'बाद में',
+  'Could not open the installer. Try again later.': 'इंस्टॉलर नहीं खुल सका। बाद में फिर कोशिश करें।',
 }

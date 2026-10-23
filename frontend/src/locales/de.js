@@ -1208,4 +1208,10 @@ export default {
   'Set': 'Satz',
   'Use the target': 'Ziel übernehmen',
   '{0} of {1} sets': '{0} von {1} Sätzen',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': 'Neue Version {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': 'Sie ist heruntergeladen und bereit. Android fragt dich nach einer Bestätigung; deine Daten bleiben erhalten.',
+  'Update now': 'Jetzt aktualisieren',
+  'Later': 'Später',
+  'Could not open the installer. Try again later.': 'Das Installationsprogramm konnte nicht geöffnet werden. Versuche es später erneut.',
 }

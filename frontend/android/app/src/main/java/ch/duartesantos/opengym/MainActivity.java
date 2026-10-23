@@ -40,6 +40,8 @@ public class MainActivity extends BridgeActivity {
         // AudioFocus pauses other apps' audio (music, podcasts) while the rest-end alert plays
         // and hands it back when the alert ends, so the music resumes on its own.
         registerPlugin(AudioFocusPlugin.class);
+        // AppUpdate downloads a newer APK published on gh-pages and opens the system installer.
+        registerPlugin(AppUpdatePlugin.class);
 
         // Phone upright, tablet on its side. Decided here rather than with a static
         // screenOrientation in the manifest, which can only name one value for every device.

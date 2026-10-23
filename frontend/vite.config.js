@@ -32,10 +32,14 @@ const umami = {
 // The version people are asked for in #install-help and on every bug report. Read from
 // package.json so it cannot drift from the release it was built in, and inlined at build
 // time so no runtime fetch is involved.
-const pkgVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+const pkgVersion = pkg.version
+// Where the mobile build looks for a newer APK (lib/app-update.js). The same field tells
+// scripts/publicar.mjs where it is publishing, so the two cannot point at different places.
+const updateUrl = process.env.VITE_UPDATE_URL ?? pkg.updateUrl ?? ''
 
 export default defineConfig({
-  define: { __APP_VERSION__: JSON.stringify(pkgVersion) },
+  define: { __APP_VERSION__: JSON.stringify(pkgVersion), __UPDATE_URL__: JSON.stringify(updateUrl) },
   plugins: [react(), umami],
   base: './',
   server: {

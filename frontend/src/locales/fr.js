@@ -1191,4 +1191,10 @@ export default {
   'Set': 'Série',
   'Use the target': 'Utiliser l’objectif',
   '{0} of {1} sets': '{0} sur {1} séries',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': 'Nouvelle version {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': 'Elle est téléchargée et prête. Android te demandera de confirmer la mise à jour ; tes données restent intactes.',
+  'Update now': 'Mettre à jour',
+  'Later': 'Plus tard',
+  'Could not open the installer. Try again later.': 'Impossible d’ouvrir l’installateur. Réessaie plus tard.',
 }

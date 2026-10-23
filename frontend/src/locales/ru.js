@@ -1191,4 +1191,10 @@ export default {
   'Set': 'Подход',
   'Use the target': 'Использовать цель',
   '{0} of {1} sets': '{0} из {1} подходов',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': 'Новая версия {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': 'Она загружена и готова. Android попросит подтвердить обновление; ваши данные останутся без изменений.',
+  'Update now': 'Обновить сейчас',
+  'Later': 'Позже',
+  'Could not open the installer. Try again later.': 'Не удалось открыть установщик. Попробуйте позже.',
 }

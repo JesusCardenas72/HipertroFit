@@ -1191,4 +1191,10 @@ export default {
   'Set': '세트',
   'Use the target': '목표 사용',
   '{0} of {1} sets': '{1}세트 중 {0}세트',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': '새 버전 {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': '다운로드가 완료되었습니다. Android에서 업데이트 확인을 요청합니다. 데이터는 그대로 유지됩니다.',
+  'Update now': '지금 업데이트',
+  'Later': '나중에',
+  'Could not open the installer. Try again later.': '설치 프로그램을 열 수 없습니다. 나중에 다시 시도하세요.',
 }

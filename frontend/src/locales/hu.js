@@ -1196,4 +1196,10 @@ export default {
   'Set': 'Sorozat',
   'Use the target': 'Cél használata',
   '{0} of {1} sets': '{0} / {1} sorozat',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': 'Új verzió: {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': 'Letöltve, készen áll. Az Android megerősítést kér a frissítéshez; az adataid megmaradnak.',
+  'Update now': 'Frissítés most',
+  'Later': 'Később',
+  'Could not open the installer. Try again later.': 'Nem sikerült megnyitni a telepítőt. Próbáld újra később.',
 }

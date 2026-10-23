@@ -810,6 +810,12 @@ export const PT_BR_OVERRIDES = {
   'Set': 'Série',
   'Use the target': 'Usar a meta',
   '{0} of {1} sets': '{0} de {1} séries',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': 'Nova versão {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': 'Ela já foi baixada. O Android vai pedir que você confirme a atualização; seus dados continuam como estão.',
+  'Update now': 'Atualizar agora',
+  'Later': 'Mais tarde',
+  'Could not open the installer. Try again later.': 'Não foi possível abrir o instalador. Tente novamente mais tarde.',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

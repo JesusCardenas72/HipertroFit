@@ -36,4 +36,7 @@
          on Android 12+. Where it isn't granted, scheduling silently falls back to inexact
          alarms — the reminder still arrives, just not to the minute. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Self-update (AppUpdatePlugin.java): lets the app hand a newer APK of itself to the
+         system installer. Android still shows its own confirmation every time. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

@@ -1191,4 +1191,10 @@ export default {
   'Set': '组',
   'Use the target': '使用目标',
   '{0} of {1} sets': '{0}/{1} 组',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': '新版本 {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': '已下载完成。Android 会请你确认更新；你的数据保持不变。',
+  'Update now': '立即更新',
+  'Later': '稍后',
+  'Could not open the installer. Try again later.': '无法打开安装程序，请稍后再试。',
 }

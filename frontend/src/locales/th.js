@@ -1204,4 +1204,10 @@ export default {
   'Set': 'เซ็ต',
   'Use the target': 'ใช้เป้าหมาย',
   '{0} of {1} sets': '{0} จาก {1} เซ็ต',
+  // Self-update of the Android app (components/AppUpdate.jsx)
+  'New version {0}': 'เวอร์ชันใหม่ {0}',
+  'It is downloaded and ready. Android will ask you to confirm the update; your data stays as it is.': 'ดาวน์โหลดเสร็จแล้ว Android จะขอให้คุณยืนยันการอัปเดต ข้อมูลของคุณจะยังอยู่เหมือนเดิม',
+  'Update now': 'อัปเดตตอนนี้',
+  'Later': 'ภายหลัง',
+  'Could not open the installer. Try again later.': 'ไม่สามารถเปิดตัวติดตั้งได้ โปรดลองอีกครั้งภายหลัง',
 }
