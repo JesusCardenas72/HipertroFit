@@ -1197,4 +1197,11 @@ export default {
   'Next month': 'เดือนถัดไป',
   'minus 0.1': 'ลบ 0.1',
   'plus 0.1': 'บวก 0.1',
+  'Table': 'ตาราง',
+  'Show sets as a table': 'แสดงเซ็ตเป็นตาราง',
+  'Record': 'สถิติ',
+  'Target': 'เป้าหมาย',
+  'Set': 'เซ็ต',
+  'Use the target': 'ใช้เป้าหมาย',
+  '{0} of {1} sets': '{0} จาก {1} เซ็ต',
 }

@@ -1184,4 +1184,11 @@ export default {
   'Next month': 'Mese successivo',
   'minus 0.1': 'meno 0,1',
   'plus 0.1': 'più 0,1',
+  'Table': 'Tabella',
+  'Show sets as a table': 'Mostra le serie in tabella',
+  'Record': 'Record',
+  'Target': 'Obiettivo',
+  'Set': 'Serie',
+  'Use the target': 'Usa l’obiettivo',
+  '{0} of {1} sets': '{0} di {1} serie',
 }

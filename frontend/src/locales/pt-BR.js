@@ -803,6 +803,13 @@ export const PT_BR_OVERRIDES = {
   'Next month': 'Próximo mês',
   'minus 0.1': 'menos 0,1',
   'plus 0.1': 'mais 0,1',
+  'Table': 'Tabela',
+  'Show sets as a table': 'Ver as séries em tabela',
+  'Record': 'Recorde',
+  'Target': 'Meta',
+  'Set': 'Série',
+  'Use the target': 'Usar a meta',
+  '{0} of {1} sets': '{0} de {1} séries',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

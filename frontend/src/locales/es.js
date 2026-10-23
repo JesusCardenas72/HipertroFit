@@ -1195,4 +1195,11 @@ export default {
   'rep': 'rep',
   'No overload': 'Sin sobrecarga',
   'No overload — accumulated fatigue': 'No sobrecarga por fatiga acumulada',
+  'Table': 'Tabla',
+  'Show sets as a table': 'Ver las series en tabla',
+  'Record': 'Récord',
+  'Target': 'Objetivo',
+  'Set': 'Serie',
+  'Use the target': 'Usar el objetivo',
+  '{0} of {1} sets': '{0} de {1} series',
 }

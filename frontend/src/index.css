@@ -1926,3 +1926,60 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .deload-exit svg{width:11px;height:11px}
 .deload-band-hd .deload-exit{margin-left:auto}
 .deload-band-hd .deload-pct+.deload-exit{margin-left:8px}
+
+/* ---- the set table (setView 'table'): one bare line per set, no steppers. The columns are one
+   grid shared by the header and every row, so a label can't drift off the values it names; the
+   effort column only exists when the profile logs RIR/RPE (c3 vs c2). ---- */
+.settable{margin-top:10px}
+.st-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.st-card{background:var(--surface-2);border-radius:12px;padding:9px 12px;text-align:left;min-width:0}
+.st-k{font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
+  display:flex;align-items:center;gap:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-k span{text-transform:none;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
+.st-k svg{width:12px;height:12px;color:var(--acc);flex:none}
+.st-v{font-size:17px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-v small{font-size:12px;color:var(--label-2);font-weight:500}
+.st-card.aim .st-v{color:var(--acc)}
+.st-card.aim:active{transform:scale(.98)}
+.st-row{display:grid;align-items:center;gap:8px;grid-template-columns:30px minmax(0,1.3fr) 42px}
+.st-row.c2{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) 42px}
+.st-row.c3{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 42px}
+.st-row.timed.c1{grid-template-columns:30px minmax(0,1.3fr) 36px 42px}
+.st-row.timed.c2{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) 36px 42px}
+.st-hd{font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
+  padding:0 8px 6px;text-align:center}
+.st-hd>span:first-child{text-align:center}
+.setswipe>.st-row:not(.st-hd){
+  padding:6px 8px;margin-bottom:6px;border-radius:14px;background:var(--surface);
+  box-shadow:inset 0 0 0 1px var(--sep);
+  transition:box-shadow var(--med) var(--ease),background var(--med) var(--ease);
+}
+.st-row.next{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--acc) 55%,transparent)}
+.st-row.done{box-shadow:inset 0 0 0 1.5px var(--acc)}
+.st-row.warm .st-n{color:var(--orange)}
+.st-n{font-size:15px;font-weight:600;color:var(--label-2);height:40px;display:flex;align-items:center;justify-content:center}
+.st-n svg{width:15px;height:15px}
+.st-row.done .st-n{color:var(--acc)}
+.st-cell{position:relative;background:var(--surface-2);border-radius:10px;min-width:0}
+.st-cell .num{
+  width:100%;min-width:0;height:42px;text-align:center;background:none;border:none;outline:none;
+  font-size:17px;font-weight:600;padding:0;-moz-appearance:textfield;appearance:textfield;color:var(--label);
+}
+.st-cell .num::placeholder{color:var(--label-4)}
+.st-cell .num::-webkit-inner-spin-button{display:none}
+.st-row.done .st-cell .num{color:var(--label-3)}
+/* the row has drifted from the target: the cell keeps what you typed, the target rides under it */
+.st-cell.off{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 45%,transparent)}
+.st-aim{
+  position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);
+  font-size:10px;font-weight:600;line-height:1;padding:2px 5px;border-radius:6px;
+  background:var(--acc);color:var(--on-acc);white-space:nowrap;
+}
+.st-row .chk.st-ck{width:42px;height:40px;border-radius:10px;background:var(--surface-2);box-shadow:none;color:var(--label-3)}
+.st-row .chk.st-ck.on{background:var(--acc);color:var(--on-acc)}
+.st-tools{margin-left:38px}
+.st-tools .chip.add.danger{color:var(--red)}
+.st-foot{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
+.st-add{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:500;color:var(--acc);padding:6px 0}
+.st-add svg{width:14px;height:14px}
+.st-count{margin-left:auto;font-size:12px;color:var(--label-3)}

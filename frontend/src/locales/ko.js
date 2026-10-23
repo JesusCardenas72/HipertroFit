@@ -1184,4 +1184,11 @@ export default {
   'Next month': '다음 달',
   'minus 0.1': '0.1 빼기',
   'plus 0.1': '0.1 더하기',
+  'Table': '표',
+  'Show sets as a table': '세트를 표로 보기',
+  'Record': '기록',
+  'Target': '목표',
+  'Set': '세트',
+  'Use the target': '목표 사용',
+  '{0} of {1} sets': '{1}세트 중 {0}세트',
 }

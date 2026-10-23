@@ -1189,4 +1189,11 @@ export default {
   'Next month': 'Következő hónap',
   'minus 0.1': 'mínusz 0,1',
   'plus 0.1': 'plusz 0,1',
+  'Table': 'Táblázat',
+  'Show sets as a table': 'Sorozatok megjelenítése táblázatként',
+  'Record': 'Rekord',
+  'Target': 'Cél',
+  'Set': 'Sorozat',
+  'Use the target': 'Cél használata',
+  '{0} of {1} sets': '{0} / {1} sorozat',
 }

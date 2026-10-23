@@ -1184,4 +1184,11 @@ export default {
   'Next month': '下个月',
   'minus 0.1': '减 0.1',
   'plus 0.1': '加 0.1',
+  'Table': '表格',
+  'Show sets as a table': '以表格显示组',
+  'Record': '纪录',
+  'Target': '目标',
+  'Set': '组',
+  'Use the target': '使用目标',
+  '{0} of {1} sets': '{0}/{1} 组',
 }

@@ -1184,4 +1184,11 @@ export default {
   'Next month': 'Sonraki ay',
   'minus 0.1': '0,1 eksi',
   'plus 0.1': '0,1 artı',
+  'Table': 'Tablo',
+  'Show sets as a table': 'Setleri tablo olarak göster',
+  'Record': 'Rekor',
+  'Target': 'Hedef',
+  'Set': 'Set',
+  'Use the target': 'Hedefi kullan',
+  '{0} of {1} sets': '{0}/{1} set',
 }

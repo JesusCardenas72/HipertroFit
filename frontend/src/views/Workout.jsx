@@ -26,7 +26,7 @@ import { dropActiveWorkoutEntry, moveActiveWorkoutUnitTo } from '../lib/active-w
 import WorkoutDock from '../components/WorkoutDock.jsx'
 import { DeloadStatus, DeloadSessionBand } from '../components/Deload.jsx'
 import { isDeloadWorkout } from '../lib/mesocycle.js'
-import { workIndexOf, referenceSet, suggestionFor, overloadOf, extraSetsWanted, seedTargets, topWeight } from '../lib/set-reference.js'
+import { workIndexOf, referenceSet, suggestionFor, targetFor, overloadOf, extraSetsWanted, seedTargets, topWeight } from '../lib/set-reference.js'
 import { swipeLock, rowOffset, rowArmed, navDirection, navCommit } from '../lib/swipe.js'
 import { edgeOffset } from '../lib/slide.js'
 import SlideDeck from '../components/SlideDeck.jsx'
@@ -188,7 +188,7 @@ const miniStepper = (value, step, dec, onChange) => (
 )
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, drum, nameless, nextSet = -1, onToggle, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onOpenProgression, onSwap, onRemove, swipeSet, swipeDx = 0, open = true, onToggleHead }) {
+function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1, onToggle, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onOpenProgression, onSwap, onRemove, swipeSet, swipeDx = 0, open = true, onToggleHead }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -227,24 +227,26 @@ function ExerciseBlock({ entryIdx, compact, drum, nameless, nextSet = -1, onTogg
   )
   // In the drum the set in front is the screen: the animation shrinks to a thumbnail beside the
   // name (tap it for the full one), and what the header says folds down to what fits a line.
-  const thumb = drum && S.gifSize !== 'off' && !!(ex.gif || ex.img)
-  const folded = drum && !open
+  // The table keeps the same folded header: the sets are the screen there too.
+  const slim = drum || table
+  const thumb = slim && S.gifSize !== 'off' && !!(ex.gif || ex.img)
+  const folded = slim && !open
   const note = (text, extra) => folded
     ? <button type="button" className="exnote fold" onClick={onToggleHead} {...extra}>{text}</button>
     : <div className="exnote" {...extra}>{text}</div>
   return <>
-    {!drum && <Media ex={ex} key={entry.id} compact={compact} minimizable />}
+    {!slim && <Media ex={ex} key={entry.id} compact={compact} minimizable />}
     {/* The name is the toggle: collapsed, the screen is the name and the sets; tapping it opens
         the exercise's tools, tags and last session. In a superset's drum the name already sits in
         the exercise's own box above the drum, and that box is the toggle (`nameless`), so this
         row only appears once it is open, for the tools. */}
-    {(!nameless || open) && <div className={'row between' + (drum ? ' exhead-drum' : '')} style={{ marginBottom: 6 }}>
+    {(!nameless || open) && <div className={'row between' + (slim ? ' exhead-drum' : '')} style={{ marginBottom: 6 }}>
       {thumb && <button type="button" className={'exthumb' + (mediaOpen ? ' on' : '')} aria-expanded={mediaOpen}
         aria-label={mediaOpen ? t('Minimize') : t('Expand')} onClick={() => setMediaOpen(o => !o)}>
         <Thumb ex={ex} />{ex.gif && <Icon name={mediaOpen ? 'minimize' : 'play'} />}
       </button>}
       {!nameless && <button type="button" className="exhead-tg" aria-expanded={open} onClick={onToggleHead}
-        style={{ fontSize: compact || drum ? 17 : 20 }}>
+        style={{ fontSize: compact || slim ? 17 : 20 }}>
         <span>{exerciseNameFor(ex)}</span>
         <Icon name={open ? 'chevronUp' : 'chevronDown'} className="exhead-chev" />
       </button>}
@@ -301,7 +303,10 @@ function ExerciseBlock({ entryIdx, compact, drum, nameless, nextSet = -1, onTogg
       </button>}
     {dpStatus && !folded && dpStatus.state !== 'first' && !entry.decided && <DoubleProgressMeter status={dpStatus} unit={S.unit} compact live />}
     {/* In the drum the sets are the drum's (see SetDrum) — this block is only the exercise's header. */}
-    {!drum && <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
+    {table && <SetTable entryIdx={entryIdx} best={best} nextSet={nextSet} onToggle={onToggle} onField={onField}
+      onAddSet={onAddSet} onAddWarmup={onAddWarmup} onRemoveSetAt={onRemoveSetAt} onStartTimed={onStartTimed}
+      onSetRowRef={onSetRowRef} onProgressionSettings={onProgressionSettings} swipeSet={swipeSet} swipeDx={swipeDx} />}
+    {!slim && <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
       {/* Warm-up sets seed the ramp to the work sets, so the button to add one sits at the top
           of the list, above the column legends — not down in the footer with Add/Remove set. */}
       <div className="row" style={{ marginBottom: 8 }}>
@@ -412,8 +417,120 @@ function ExerciseBlock({ entryIdx, compact, drum, nameless, nextSet = -1, onTogg
   </>
 }
 
+/* ---------- the table: every set on one line, no steppers, today's target in the cells ---------- */
+// The quiet way to draw the sets: number · weight · reps · (effort) · check, each value a field
+// you tap and type into. What the row asks for is the progression's target, not last session —
+// seedTargets already wrote it into the rows, and a cell that has drifted from it carries the
+// target underneath, one tap to put back. Everything that changes the list (a drop, a burst, a
+// warm-up, removing the set) waits behind the set's number so the resting table stays bare.
+function SetTable({ entryIdx, best, nextSet = -1, onToggle, onField, onAddSet, onAddWarmup, onRemoveSetAt, onStartTimed, onSetRowRef, onProgressionSettings, swipeSet, swipeDx = 0 }) {
+  const S = useStore(s => s.S)
+  const working = useUI(s => s.work)
+  const { entry, mode, cfg, plan, prevSets, prevTop, loadStep, ladder, kind, col1, col2, col3 } = useSetColumns(entryIdx, onField)
+  const { addDropRow, addBurstRow, removeDrop, removeCluster, setDropField, setClusterField } = useRowEditors(entryIdx)
+  const [tools, setTools] = useState(-1)
+  const timed = mode === 'time'
+  const cols = [col1, col2, col3].filter(Boolean)
+  const target = i => isWarmupRow(entry.sets[i]) ? null : targetFor({ mode, plan, reference: referenceSet(prevSets, workIndexOf(entry.sets, i)),
+    effort: col3 ? kind : null, base: prevTop, step: loadStep })
+  const works = entry.sets.filter(x => !isWarmupRow(x)).length
+  // The card beside the record names the next set to do as the plan wants it.
+  const ni = entry.sets.findIndex(x => !x.done && !isWarmupRow(x))
+  const nextAim = ni >= 0 ? { ...entry.sets[ni], ...(target(ni) || {}) } : null
+  const guidance = progressionGuidance(plan)
+  const dir = plan?.kind === 'up' ? 'arrowUp' : plan?.kind === 'deload' ? 'arrowDown' : null
+  const grid = 'st-row c' + cols.length + (timed ? ' timed' : '')
+  const cell = (s, i, col, sug) => {
+    const aim = sug && sug[col.f] != null ? sug[col.f] : null
+    return <div className={'st-cell' + (aim != null ? ' off' : '')} key={col.f}>
+      {/* a typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up */}
+      <NumberField decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''} placeholder="–" aria-label={col.hd}
+        onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} />
+      {aim != null && <button type="button" className="st-aim" aria-label={t('Use the target')} title={t('Use the target')}
+        onClick={() => onField(i, col.f, aim)}>{fmtNum(aim)}</button>}
+    </div>
+  }
+  return <div className="settable">
+    <div className="st-cards">
+      <div className="st-card">
+        <div className="st-k">{t('Record')}</div>
+        <div className="st-v">{best > 0 ? <>{fmtNum(best)} <small>{S.unit}</small></> : '—'}</div>
+      </div>
+      <button type="button" className="st-card aim" onClick={onProgressionSettings} aria-label={t('Open progression settings')}>
+        <div className="st-k">{dir && <Icon name={dir} />}{t('Target')}{guidance && <span> · {t(guidance.policyLabel)}</span>}</div>
+        <div className="st-v">{nextAim ? setLabel(entry.id, nextAim, cfg) : t('Done')}</div>
+      </button>
+    </div>
+    <div className={grid + ' st-hd'}>
+      <span>{t('Set')}</span>
+      {cols.map(col => <span key={col.f}>{col.hd}</span>)}
+      {timed && <span />}
+      <span />
+    </div>
+    {entry.sets.map((s, i) => {
+      const warm = isWarmupRow(s)
+      const phaseNum = entry.sets.slice(0, i + 1).filter(x => isWarmupRow(x) === warm).length
+      const sug = warm ? null : suggestionFor({ mode, plan, row: s, reference: referenceSet(prevSets, workIndexOf(entry.sets, i)), effort: col3 ? kind : null, base: prevTop, step: loadStep })
+      const removable = entry.sets.length > 1
+      const dragging = swipeSet === i
+      const intensify = !warm && mode === 'reps'
+      const open = tools === i
+      return <div key={i}>
+        <div className={'setswipe' + (dragging ? ' dragging' : '')}>
+          {dragging && <div className={'setswipe-track' + (rowArmed(swipeDx) ? ' armed' : '')} aria-hidden="true"><Icon name="trash" /></div>}
+          <div ref={el => onSetRowRef?.(i, el)} className={grid + (s.done ? ' done' : '') + (i === nextSet ? ' next' : '') + (warm ? ' warm' : '')}
+            data-swipe-row={entryIdx} data-swipe-set={i} data-swipe-removable={removable ? '1' : undefined}
+            style={dragging ? { transform: 'translateX(' + rowOffset(swipeDx) + 'px)' } : undefined}>
+            <button type="button" className="st-n" aria-expanded={open} aria-label={t('Set tools')} onClick={() => setTools(open ? -1 : i)}>
+              {warm ? <Icon name="flame" /> : phaseNum}
+            </button>
+            {/* A warm-up is prep, not a set taken near failure, so it logs no effort. */}
+            {cols.map(col => col.eff && warm ? <span key={col.f} /> : cell(s, i, col, sug))}
+            {timed && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
+              onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
+            <Check checked={s.done} onChange={() => onToggle(i)} className="st-ck" />
+          </div>
+        </div>
+        {intensify && dropsOf(s).map((d, di) => (
+          <div className="subrow" key={'d' + di}>
+            <span className="subn">{t('Drop {0}', di + 1)}</span>
+            {miniStepper(d.w, ladder || 2.5, true, v => setDropField(i, di, 'w', v))}
+            {miniStepper(d.r, 1, false, v => setDropField(i, di, 'r', v))}
+            <button className="iconbtn" aria-label={t('Remove drop')} onClick={() => removeDrop(i, di)}><Icon name="xmark" /></button>
+          </div>
+        ))}
+        {intensify && clustersOf(s).map((c, ci) => (
+          <div className="subrow" key={'c' + ci}>
+            <span className="subn">{t('Burst {0}', ci + 1)}</span>
+            {miniStepper(c.r, 1, false, v => setClusterField(i, ci, v))}
+            <span className="dim small">{c.restSec}s</span>
+            <button className="iconbtn" aria-label={t('Remove burst')} onClick={() => removeCluster(i, ci)}><Icon name="xmark" /></button>
+          </div>
+        ))}
+        {open && <div className="setextra st-tools" role="toolbar" aria-label={t('Set tools')}>
+          {intensify && !isRestPauseSet(s) && <button className="chip add" onClick={() => addDropRow(i)}><Icon name="arrowDown" />{t('+ Drop')}</button>}
+          {intensify && !isDropSet(s) && <button className="chip add" onClick={() => addBurstRow(i)}><Icon name="bolt" />{t('+ Burst')}</button>}
+          <button className="chip add danger" disabled={!removable || !!working}
+            onClick={() => { setTools(-1); onRemoveSetAt(i) }}><Icon name="trash" />{t('Remove set')}</button>
+        </div>}
+      </div>
+    })}
+    <div className="st-foot">
+      <button type="button" className="st-add" onClick={onAddSet}><Icon name="plus" />{t('Add set')}</button>
+      <button type="button" className="st-add" onClick={onAddWarmup}><Icon name="flame" />{t('Add warm-up set')}</button>
+      <span className="st-count">{t('{0} of {1} sets', entry.sets.filter(x => x.done && !isWarmupRow(x)).length, works)}</span>
+    </div>
+  </div>
+}
+
 /* ---------- the drum's front chamber: one set, drawn as large as the screen allows ---------- */
 const DRUM_LETTERS = 'ABCDEFGH'
+const SET_VIEWS = ['drum', 'list', 'table']
+const SET_VIEW_COPY = {
+  drum: { label: 'Drum', aria: 'Show sets as a drum', icon: 'target' },
+  list: { label: 'List', aria: 'Show sets as a list', icon: 'list' },
+  table: { label: 'Table', aria: 'Show sets as a table', icon: 'table' },
+}
 const FIT_STEPS = 5    // how many sizes the drum screen comes in (.narrow[data-fit] in index.css)
 const FOOT_STEPS = 3   // the first of them, which only shrink the foot (prev / next and its tools)
 // "+2,5 kg", "+1 rep", "−1 RIR" — one lever of overloadOf, signed the way it reads on the bar.
@@ -1213,9 +1330,13 @@ function ActiveWorkout() {
      into view: the deck renders it for real so the two screens travel together, but it is inert,
      so it takes no refs (the superset flow's scroll targets belong to the exercise you are
      actually working) and its controls are wired to nothing. */
-  // Which way the sets are drawn: the revolver drum (one set at a time, full size) or the list.
-  // A profile saved before the drum existed gets it from the defaults (useStore DEF).
+  // Which way the sets are drawn: the revolver drum (one set at a time, full size), the list, or
+  // the table (one bare line per set). A profile saved before the drum existed gets it from the
+  // defaults (useStore DEF).
   const drumView = S.setView === 'drum'
+  const tableView = S.setView === 'table'
+  // The toggle walks drum → list → table → drum and names the view it leads to.
+  const nextView = SET_VIEWS[(SET_VIEWS.indexOf(S.setView) + 1) % SET_VIEWS.length] || 'drum'
   const slimTop = drumView && !topOpen
   const position = isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)
   const renderUnit = (index, preview) => {
@@ -1228,7 +1349,7 @@ function ActiveWorkout() {
       onToggle={i => toggle(idx, i)} onField={(i, f, v) => setField(idx, i, f, v)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onAddWarmup={() => addWarmup(idx)} onRemoveSetAt={i => removeSetAt(idx, i)} onStartTimed={i => startTimed(idx, i)} onProgressionSettings={() => openProgressionSettings(idx)}
       onOpenProgression={preview ? undefined : () => openProgression(idx, { celebrate: false })}
       onSwap={preview ? undefined : () => swapActiveWorkoutExercise(idx)} onRemove={preview ? undefined : () => confirmRemoveExercise(idx)}
-      open={!!openHeads[idx]} onToggleHead={() => toggleHead(idx)}
+      open={!!openHeads[idx]} onToggleHead={() => toggleHead(idx)} table={tableView}
       {...extra} />
     // The superset banner (hint + Unpair) belongs to the same folded-away detail.
     const ssOpen = members.some(i => openHeads[i])
@@ -1382,9 +1503,9 @@ function ActiveWorkout() {
       {!!A.entries.length && <div className="row wpos" style={{ gap: 6, marginBottom: 6 }}>
         <span className="muted small" data-testid="workout-position">{position}</span>
         <button className="giftoggle inline" data-testid="set-view"
-          aria-label={drumView ? t('Show sets as a list') : t('Show sets as a drum')}
-          onClick={() => update(s => { s.setView = drumView ? 'list' : 'drum' })}>
-          <Icon name={drumView ? 'list' : 'target'} />{drumView ? t('List') : t('Drum')}
+          aria-label={t(SET_VIEW_COPY[nextView].aria)}
+          onClick={() => update(s => { s.setView = nextView })}>
+          <Icon name={SET_VIEW_COPY[nextView].icon} />{t(SET_VIEW_COPY[nextView].label)}
         </button>
         {/* When the animation is hidden (Media's toggle stepped it to 'off'), the only way back
             lives here beside the position label, out of the way of the sets. */}
