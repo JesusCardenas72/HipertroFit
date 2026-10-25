@@ -85,8 +85,10 @@ public class AppUpdatePlugin extends Plugin {
     public void download(PluginCall call) {
         String url = call.getString("url");
         String sha = call.getString("sha256");
-        Long code = call.getLong("versionCode");
-        if (url == null || !url.startsWith("https://") || sha == null || code == null) {
+        // Not call.getLong(): a JS number this small arrives as an Integer, which getLong
+        // refuses (null) — that rejected every download. optLong takes either.
+        long code = call.getData().optLong("versionCode", -1);
+        if (url == null || !url.startsWith("https://") || sha == null || code <= 0) {
             call.reject("Missing or invalid url, sha256 or versionCode");
             return;
         }
