@@ -187,7 +187,7 @@ describe('mode-aware field sets', () => {
 })
 
 describe('previousRoutineConfig', () => {
-  const push = { id: 'push', name: 'Push', ex: [{ id: 'bench', sets: 4, reps: 12, repsMin: 8, prog: 'double', weight: 80, sg: 'g1' }] }
+  const push = { id: 'push', name: 'Push', ex: [{ id: 'bench', sets: 4, reps: 12, repsMin: 8, prog: 'double', weight: 80, sg: 'g1', slot: { pattern: 'horizontal_push', role: 'main' } }] }
   const upper = { id: 'upper', name: 'Upper', ex: [{ id: 'bench', sets: 3, reps: 10, weight: 70 }] }
 
   it('is null for an exercise no routine uses yet', () => {
@@ -195,7 +195,7 @@ describe('previousRoutineConfig', () => {
     expect(previousRoutineConfig(undefined, 'squat')).toBeNull()
   })
 
-  it('returns the whole config from another routine, local fields included, without its superset link', () => {
+  it('returns the whole config from another routine, local fields included, without its superset link or generated slot', () => {
     const found = previousRoutineConfig([push], 'bench', 'legs')
     expect(found.routine).toBe(push)
     expect(found.cfg).toEqual({ sets: 4, reps: 12, repsMin: 8, prog: 'double', weight: 80 })

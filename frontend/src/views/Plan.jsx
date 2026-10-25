@@ -9,6 +9,7 @@ import { dropRoutine, groupRoutines, planDropIntent, planRows, toggleFolder } fr
 import { programActive } from '../lib/program.js'
 import Icon from '../components/Icon.jsx'
 import MicrocycleActions from '../components/MicrocycleActions.jsx'
+
 import { Button } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
@@ -331,6 +332,14 @@ export default function Plan() {
     <div className="cols"><div>
       <h4 className="sec">{t('Programming')}</h4>
       <div className="list" style={{ marginBottom: 6 }}>
+        <div className="item" {...tappable(() => nav('/plan/generar'))}>
+          <span className="lrow-i"><Icon name="sparkles" /></span>
+          <div className="grow">
+            <div className="tt">{t('Generate plan')}</div>
+            <div className="ss">{t('Full body, Upper / Lower or Push / Pull / Legs, by movement pattern')}</div>
+          </div>
+          <Icon name="chevronRight" className="chev" />
+        </div>
         <div className="item" {...tappable(programSheet)}>
           <span className="lrow-i"><Icon name="calendar" /></span>
           <div className="grow">
@@ -387,6 +396,8 @@ export default function Plan() {
           style={{ top: `${reorder.drag.indicatorTop}px` }} />}
       </div> : <>
         <div className="empty"><div className="ico"><Icon name="clipboard" /></div>{t('No routines yet.')}<br />{t('Create one or load the starter plan.')}</div>
+        <Button variant="primary" icon="sparkles" onClick={() => nav('/plan/generar')}>{t('Generate plan')}</Button>
+        <div style={{ height: 8 }} />
         <Button icon="sparkles" onClick={loadStarterPlan}>{t('Load starter plan (Push / Pull / Legs)')}</Button>
       </>}
     </div></div>

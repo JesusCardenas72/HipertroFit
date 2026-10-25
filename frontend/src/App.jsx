@@ -27,6 +27,7 @@ import MobileOnboarding from './views/MobileOnboarding.jsx'
 import Home from './views/Home.jsx'
 import Plan from './views/Plan.jsx'
 import RoutineEdit from './views/RoutineEdit.jsx'
+import PlanGenerate from './views/PlanGenerate.jsx'
 import Workout from './views/Workout.jsx'
 import Stats from './views/Stats.jsx'
 import History from './views/History.jsx'
@@ -123,6 +124,7 @@ function Shell() {
         <Route path="/home" element={<Home />} />
         <Route path="/plan" element={<Plan />} />
         <Route path="/plan/r/:id" element={<RoutineEdit />} />
+        <Route path="/plan/generar" element={<PlanGenerate />} />
         <Route path="/workout" element={<Workout />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/history" element={<History />} />

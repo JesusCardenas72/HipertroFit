@@ -29,6 +29,15 @@ export function exAvailable(S, ex) {
   return (p.equipment || []).includes(ex.eq)
 }
 
+// Whether `profile` has what `ex` needs, whatever the Library filter is set to: true / false, or
+// null with no profile at all (nothing is known, so nothing is ruled out). The plan generator
+// sorts every slot's exercises by it (favourites, then what you own, then the rest).
+export function ownsEquipment(profile, ex) {
+  if (!profile) return null
+  if (!ex.eq || ex.eq === ALWAYS_AVAILABLE) return true
+  return (profile.equipment || []).includes(ex.eq)
+}
+
 export function newProfile(name) {
   return { id: 'eq' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, equipment: [] }
 }

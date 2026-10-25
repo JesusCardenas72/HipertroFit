@@ -138,6 +138,14 @@ function creditSet(groups, mus, n) {
   for (const g in best) groups[g] += best[g] * n
 }
 
+/** What one work set of a planned or logged exercise credits each group: { groupKey: weight }. */
+export function setCredit(entry) {
+  const groups = {}
+  for (const g of VOLUME_GROUPS) groups[g.key] = 0
+  creditSet(groups, entryMuscles(entry), 1)
+  return groups
+}
+
 /**
  * Effective-set volume per muscle group across a set of workouts.
  *

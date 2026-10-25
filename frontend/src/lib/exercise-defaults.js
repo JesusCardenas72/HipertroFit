@@ -116,6 +116,7 @@ export function previousRoutineConfig(routines, exId, routineId) {
   const withEx = (routines || []).filter(r => (r.ex || []).some(e => e.id === exId))
   const routine = withEx.find(r => r.id !== routineId) || withEx[0]
   if (!routine) return null
-  const { id, sg, ...cfg } = routine.ex.find(e => e.id === exId)
+  // The superset and the generated-routine slot belong to that routine, not to the exercise.
+  const { id, sg, slot, ...cfg } = routine.ex.find(e => e.id === exId)
   return { routine, cfg }
 }

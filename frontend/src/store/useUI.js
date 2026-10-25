@@ -155,9 +155,11 @@ export const useUI = create((set, get) => ({
     set(s => ({ timerFlashId: s.timerFlashId + 1 }))
   },
 
-  openSheet(render, { kind = 'sheet', locked = false } = {}) {
+  // `className` is added to the sheet's own box, for a screen that styles its sheets its own way
+  // (the plan generator's exercise picker, views/PlanGenerate.css).
+  openSheet(render, { kind = 'sheet', locked = false, className = '' } = {}) {
     const id = uid()
-    set(s => ({ sheets: [...s.sheets, { id, render, kind, locked }] }))
+    set(s => ({ sheets: [...s.sheets, { id, render, kind, locked, className }] }))
     const close = () => get().closeSheet(id)
     return { id, close, lock: v => set(s => ({ sheets: s.sheets.map(x => x.id === id ? { ...x, locked: v } : x) })) }
   },

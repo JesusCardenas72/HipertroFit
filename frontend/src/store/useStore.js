@@ -55,6 +55,10 @@ export const DEF = {
   // Favourite exercises (ids), marked with a heart: listed first wherever exercises are picked.
   // See lib/favorites.js.
   favEx: [],
+  // Plan ▸ Generate plan, between visits: split, level, equipment profile and the picks and set
+  // counts changed by hand — choices only; the routines exist once "Create plan" is pressed.
+  // See views/PlanGenerate.jsx planGenOf.
+  planGen: null,
   // What one set of an exercise's secondary muscles is worth as volume, 0…1 (a primary is
   // always 1). Feeds lib/muscles.js musclesOf, so it moves the home volume panel, the muscle
   // map and the recovery model together. See Settings ▸ Training volume.
