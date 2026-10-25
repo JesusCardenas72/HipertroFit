@@ -851,6 +851,16 @@ export const PT_BR_OVERRIDES = {
   'Pick at least one primary muscle group': 'Escolha pelo menos um grupo muscular principal',
   'Restore original muscles': 'Restaurar músculos originais',
   'Original muscles restored': 'Músculos originais restaurados',
+  'Chest fly': 'Crucifixo',
+  'Squat / leg press': 'Agachamento / leg press',
+  'Lunge / single leg': 'Avanço / unilateral',
+  'Hip hinge': 'Dobradiça de quadril',
+  'Hip extension': 'Extensão de quadril',
+  'Knee extension': 'Extensão de joelho',
+  'Knee flexion (hamstrings)': 'Flexão de joelho (posteriores)',
+  'Calf raise': 'Elevação de panturrilha',
+  'Hip abduction': 'Abdução de quadril',
+  'Hip adduction': 'Adução de quadril',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

@@ -97,7 +97,7 @@ function cleanIntensifier(x) {
 
 // The optional fields a custom exercise can carry (see lib/custom-exercise.js), so a shared
 // plan brings the whole exercise along — equipment, muscles, class, instructions, picture.
-const CUSTOM_FIELDS = ['desc', 'eq', 'tg', 'mg', 'sm', 'primaries', 'secondaries', 'muscleGroups', 'st', 'cls', 'img', 'gif', 'frame']
+const CUSTOM_FIELDS = ['desc', 'eq', 'tg', 'mg', 'sm', 'primaries', 'secondaries', 'muscleGroups', 'st', 'cls', 'pattern', 'img', 'gif', 'frame']
 const customFields = c => {
   const out = {}
   CUSTOM_FIELDS.forEach(k => {

@@ -2,7 +2,7 @@
 // built-in exercise.
 //
 //   node scripts/audit-exercise-muscles.mjs           write the JSON
-//   node scripts/audit-exercise-muscles.mjs --report  also print id|name|rule|primaries|secondaries
+//   node scripts/audit-exercise-muscles.mjs --report  also print id|name|rule|primaries|secondaries|pattern
 //
 // The upstream dataset names a target muscle and a free-text secondary list that is often
 // wrong for the movement (calf raises "working" the hamstrings, wrist curls the biceps,
@@ -357,8 +357,42 @@ const IDS = {
   '3698': [['abs'], ['deltoids', 'hamstring']],                            // inchworm v. 2
 }
 
+// The movement pattern a family trains, for the slots a generated routine is built from
+// (lib/movement-patterns.js). Families with no slot of their own — stretches, mobility, jumps,
+// carries, olympic lifts, wrists, the fallbacks by target muscle — get none.
+const PATTERN_OF_FAMILY = {
+  'chest press': 'horizontal_push', 'push-up': 'horizontal_push', 'squeeze press': 'horizontal_push', 'chest dip': 'horizontal_push',
+  'overhead press': 'vertical_push', 'push press': 'vertical_push', 'handstand push-up': 'vertical_push',
+  'fly': 'chest_fly', 'pullover (chest)': 'chest_fly',
+  'lateral raise': 'lateral_raise', 'upright row': 'lateral_raise', 'front raise': 'front_raise',
+  'face pull': 'rear_delt', 'rear-delt row': 'rear_delt', 'rear-delt raise': 'rear_delt',
+  'triceps extension': 'elbow_extension', 'close-grip press': 'elbow_extension', 'triceps dip': 'elbow_extension', 'close push-up': 'elbow_extension',
+  'pull-up': 'vertical_pull', 'chin-up': 'vertical_pull', 'muscle-up': 'vertical_pull',
+  'row': 'horizontal_pull', 'pullover (lats)': 'straight_arm_pull', 'straight-arm pulldown': 'straight_arm_pull',
+  'curl': 'elbow_flexion', 'hammer curl': 'elbow_flexion', 'reverse curl': 'elbow_flexion', 'shrug': 'shrug',
+  'squat': 'squat', 'leg press': 'squat', 'lunge': 'lunge', 'deadlift': 'hinge', 'hip hinge': 'hinge', 'back extension': 'hinge',
+  'hip thrust': 'hip_extension', 'hip extension': 'hip_extension', 'leg extension': 'knee_extension', 'sissy squat': 'knee_extension',
+  'leg curl': 'knee_flexion', 'calf raise': 'calf_raise', 'abduction': 'hip_abduction', 'adduction': 'hip_adduction',
+  'crunch': 'core_flexion', 'sit-up': 'core_flexion', 'leg raise': 'core_flexion', 'abs': 'core_flexion',
+  'plank': 'core_anti', 'side plank': 'core_anti', 'rollout': 'core_anti', 'anti-rotation': 'core_anti',
+  'twisting crunch': 'core_rotation', 'oblique': 'core_rotation',
+}
+// The IDS exercises lose their family; these are the ones that still belong to a slot.
+const PATTERN_IDS = {
+  '1010': 'hinge', '0232': 'straight_arm_pull', '0466': 'vertical_pull', '0467': 'vertical_pull', '3418': 'vertical_pull',
+  '0756': 'hip_extension', '3645': 'hip_extension', '1688': 'lunge', '3642': 'lunge', '3145': 'horizontal_push',
+  '1774': 'hip_abduction', '1775': 'hip_adduction',
+}
+function patternOf(e, rule) {
+  const p = rule === 'by id' ? PATTERN_IDS[e.id] : PATTERN_OF_FAMILY[rule]
+  // An incline press is its own slot; an incline push-up (hands raised) is an easier flat one.
+  if (p === 'horizontal_push' && /\bincline\b/i.test(e.n) && !/push-?up/i.test(e.n)) return 'incline_push'
+  return p || null
+}
+
 const VOCABULARY = new Set([...MUSCLES, 'lats', 'rear-delts'])
 for (const id of Object.keys(IDS)) if (!EXDB.some(e => e.id === id)) throw new Error(`IDS: no exercise ${id}`)
+for (const id of Object.keys(PATTERN_IDS)) if (!IDS[id]) throw new Error(`PATTERN_IDS: ${id} is not in IDS`)
 
 const out = {}
 const report = []
@@ -369,8 +403,9 @@ for (const e of EXDB) {
   const secondaries = [...new Set(f.s)].filter(m => !primaries.includes(m))
   const unknown = [...primaries, ...secondaries].find(m => !VOCABULARY.has(m))
   if (unknown || !primaries.length) throw new Error(`${e.id} ${e.n}: ${unknown ? 'unknown muscle ' + unknown : 'no primary'}`)
-  out[e.id] = { primaries, secondaries }
-  report.push(`${e.id}|${e.n}|${f.rule}|${primaries.join(',')}|${secondaries.join(',')}`)
+  const pattern = patternOf(e, f.rule)
+  out[e.id] = { primaries, secondaries, ...(pattern ? { pattern } : {}) }
+  report.push(`${e.id}|${e.n}|${f.rule}|${primaries.join(',')}|${secondaries.join(',')}|${pattern || ''}`)
 }
 
 fs.writeFileSync(OUT, JSON.stringify(out, null, 0).replace(/\},"/g, '},\n"').replace(/^\{/, '{\n').replace(/\}$/, '\n}') + '\n')

@@ -52,6 +52,9 @@ export const DEF = {
   // press)", 'local' = translation only), plus per-exercise manual names keyed by exercise id.
   // Both are read by lib/i18n-core.js's exerciseNameFor — see lib/exercise-name.js.
   exNameStyle: 'bilingual', exNames: {}, exMuscles: {},
+  // Favourite exercises (ids), marked with a heart: listed first wherever exercises are picked.
+  // See lib/favorites.js.
+  favEx: [],
   // What one set of an exercise's secondary muscles is worth as volume, 0…1 (a primary is
   // always 1). Feeds lib/muscles.js musclesOf, so it moves the home volume panel, the muscle
   // map and the recovery model together. See Settings ▸ Training volume.

@@ -58,7 +58,7 @@ describe('what survives a shared plan', () => {
   it('carries every field of a custom exercise, picture included', () => {
     const custom = { id: 'c9', n: 'remo x', bp: 'back', eq: 'cable', tg: 'lats', mg: 'lats', sm: ['biceps'],
       primaries: ['lats'], secondaries: ['biceps'], muscleGroups: ['lats', 'biceps'], st: ['Tira'], cls: 'machine',
-      desc: 'agarre neutro', img: 'data:image/jpeg;base64,AAAA', custom: true }
+      pattern: 'horizontal_pull', desc: 'agarre neutro', img: 'data:image/jpeg;base64,AAAA', custom: true }
     const source = { routines: [{ id: 'r1', name: 'Pull', ex: [{ id: 'c9', sets: 3, reps: 10 }] }], week: {}, customEx: [custom] }
     const s = { routines: [], customEx: [], week: {} }
     mergePlan(s, parsePlan(JSON.stringify(buildPlanBundle(source, 'Plan'))))

@@ -29,6 +29,13 @@ describe('buildCustomExercise', () => {
     })
   })
 
+  it('keeps a known movement pattern, and none for cardio or an unknown one', () => {
+    expect(buildCustomExercise({ ...base, pattern: 'horizontal_pull' }).pattern).toBe('horizontal_pull')
+    expect('pattern' in buildCustomExercise({ ...base, pattern: 'bogus' })).toBe(false)
+    expect('pattern' in buildCustomExercise({ ...base, pattern: '' })).toBe(false)
+    expect('pattern' in buildCustomExercise({ ...base, bp: 'cardio', pattern: 'horizontal_pull' })).toBe(false)
+  })
+
   it('defaults equipment to custom and leaves out an unset class and image', () => {
     const ex = buildCustomExercise({ ...base, eq: '', cls: '' })
     expect(ex.eq).toBe('custom')

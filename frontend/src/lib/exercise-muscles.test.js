@@ -5,7 +5,11 @@ import { MUSCLES, MUSCLE_CHOICES, musclesOf, volumeMusclesOf, muscleChoiceOf, mu
 
 const VOCABULARY = [...MUSCLES, 'lats', 'rear-delts']
 const duplicateFree = values => values.length === new Set(values).size
-const muscles = id => EXERCISE_MUSCLES[id]
+// The muscles alone: rows also carry a movement pattern (movement-patterns.test.js).
+const muscles = id => {
+  const m = EXERCISE_MUSCLES[id]
+  return m && { primaries: m.primaries, secondaries: m.secondaries }
+}
 
 afterEach(() => { registerMuscleEdits({}); registerCustom([]) })
 

@@ -14,6 +14,7 @@
 // MAX_IMAGE_BYTES.
 
 import { EXERCISE_CLASSES } from './exercise-class.js'
+import { isPattern } from './movement-patterns.js'
 
 export const NAME_MAX = 120
 export const DESC_MAX = 1000
@@ -69,6 +70,8 @@ export function buildCustomExercise(f) {
     desc: String(f.desc || '').trim().slice(0, DESC_MAX),
     st,
     ...(EXERCISE_CLASSES.includes(f.cls) ? { cls: f.cls } : {}),
+    // The routine slot it fills (lib/movement-patterns.js); none for cardio or when not picked.
+    ...(!cardio && isPattern(f.pattern) ? { pattern: f.pattern } : {}),
     ...(img ? { img } : {}),
     ...(gif ? { gif } : {}),
     ...(gif && Number.isInteger(f.frame) && f.frame > 0 ? { frame: f.frame } : {}),

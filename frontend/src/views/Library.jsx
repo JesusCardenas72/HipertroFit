@@ -4,6 +4,7 @@ import { EXDB, BODYPARTS, allExercises, equipmentOf, matchExercise } from '../li
 import { activeProfile, exAvailable } from '../lib/equipment.js'
 import { muscleLabel } from '../lib/muscles.js'
 import { bestWeightFor } from '../lib/history.js'
+import { isFavorite, favoritesFirst } from '../lib/favorites.js'
 import { fmtNum } from '../lib/format.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { Thumb } from '../components/Media.jsx'
@@ -21,13 +22,17 @@ export default function Library() {
   const [shown, setShown] = useState(40)
   const bpStrip = useRef(null), eqStrip = useRef(null)
   const profile = activeProfile(S)
-  const base = allExercises(S).filter(e => (!bp || e.bp === bp) && matchExercise(e, q))
+  const favCount = (S.favEx || []).length
+  // '♥' is the favourites filter; it falls back to everything once the last heart is removed.
+  const bpOn = bp === '♥' && !favCount ? '' : bp
+  const base = favoritesFirst(S, allExercises(S).filter(e =>
+    (bpOn === '♥' ? isFavorite(S, e.id) : (!bpOn || e.bp === bpOn)) && matchExercise(e, q)))
   const eqFiltered = (profile && !showAll) ? base.filter(e => exAvailable(S, e)) : base
   const eqOpts = equipmentOf(eqFiltered)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
   const eqOn = eqOpts.includes(eq) ? eq : ''
   const f = eqOn ? eqFiltered.filter(e => e.eq === eqOn) : eqFiltered
-  useRevealActiveChip(bpStrip, bp)
+  useRevealActiveChip(bpStrip, bpOn)
   useRevealActiveChip(eqStrip, eqOn)
 
   return <>
@@ -42,8 +47,9 @@ export default function Library() {
       </button>
     </div>}
     <div className="chips" ref={bpStrip} style={{ marginBottom: eqOpts.length > 1 ? 8 : 12 }}>
-      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(40) }}>{t('All')}</button>
-      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(40) }}>{t(b)}</button>)}
+      {favCount > 0 && <button className={'chip' + (bpOn === '♥' ? ' on' : '')} onClick={() => { setBp('♥'); setEq(''); setShown(40) }}><Icon name="heartFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Favourites')} ({favCount})</button>}
+      <button className={'chip nocap' + (!bpOn ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(40) }}>{t('All')}</button>
+      {BODYPARTS.map(b => <button key={b} className={'chip' + (bpOn === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(40) }}>{t(b)}</button>)}
     </div>
     {eqOpts.length > 1 && <div className="chips" ref={eqStrip} style={{ marginBottom: 12 }}>
       <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(40) }}>{t('Any equipment')}</button>
@@ -59,6 +65,7 @@ export default function Library() {
         return <div key={e.id} className="item" {...tappable(() => exerciseDetailSheet(e))}>
           <Thumb ex={e} />
           <div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(muscleLabel(e.tg || e.bp))} · {t(e.eq)}</div></div>
+          {isFavorite(S, e.id) && <span className="tag" style={{ color: 'var(--red)' }} title={t('Favourite')}><Icon name="heartFill" /></span>}
           {best > 0 && <span className="tag acc">{fmtNum(best)}</span>}
           <Button size="sm" variant="tinted" icon="plus" onClick={ev => { ev.stopPropagation(); addToRoutineSheet(e) }}>{t('Plan')}</Button>
         </div>

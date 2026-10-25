@@ -38,6 +38,8 @@ import { previousRoutineConfig, seedConfig, changedGlobals, applyGlobals, isGlob
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
 import { isWarmupRow } from './lib/workout-model.js'
+import { isFavorite, toggleFavorite, favoritesFirst } from './lib/favorites.js'
+import { PATTERNS } from './lib/movement-patterns.js'
 import { nextUnfinishedUnit, unitEntryIdx } from './lib/supersetFlow.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
 import { useSheetKeyboard, useRevealActiveChip, tappable } from './lib/use-sheet-keyboard.js'
@@ -520,8 +522,14 @@ function ExerciseDetail({ ex: shown, close }) {
   const last = lastEntryFor(st, ex.id)
   const best = bestWeightFor(st, ex.id)
   const muscles = muscleTagsOf(ex)
+  const fav = isFavorite(st, ex.id)
   return <>
-    <h3 className="capitalize">{exerciseNameFor(ex)}</h3>
+    <div className="row between" style={{ flexWrap: 'nowrap', gap: 10, alignItems: 'flex-start' }}>
+      <h3 className="capitalize" style={{ minWidth: 0 }}>{exerciseNameFor(ex)}</h3>
+      <button className="iconbtn" aria-pressed={fav} aria-label={fav ? t('Remove from favourites') : t('Add to favourites')}
+        title={fav ? t('Remove from favourites') : t('Add to favourites')} style={fav ? { color: 'var(--red)', flex: 'none' } : { flex: 'none' }}
+        onClick={() => update(s => { toggleFavorite(s, ex.id) })}><Icon name={fav ? 'heartFill' : 'heart'} /></button>
+    </div>
     <Media ex={ex} />
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
       <span className="tag acc">{t(ex.bp)}</span>
@@ -591,6 +599,7 @@ function CustomExForm({ existing, prefill, onDone, close }) {
   const [bp, setBp] = useState(existing ? existing.bp : '')
   const [eq, setEq] = useState(existing && existing.eq && existing.eq !== 'custom' ? existing.eq : '')
   const [cls, setCls] = useState(existing && existing.cls ? existing.cls : '')
+  const [pattern, setPattern] = useState(existing && existing.pattern ? existing.pattern : '')
   const [desc, setDesc] = useState(existing ? (existing.desc || '') : '')
   const [steps, setSteps] = useState(existing ? stepsText(existing.st) : '')
   const [pic, setPic] = useState(() => ({ img: existing?.img || '', gif: existing?.gif || '', frame: existing?.frame || 0 }))
@@ -602,7 +611,7 @@ function CustomExForm({ existing, prefill, onDone, close }) {
     try { setPic(await pictureFromFile(file)) }
     catch (err) { toast(err.message === 'too-large' ? t('That GIF is too big — keep it under {0} KB', Math.round(MAX_IMAGE_BYTES / 1024)) : t('That file isn’t an image')) }
   }
-  const draft = id => buildCustomExercise({ id, n, bp, eq, cls, primaries: muscles.primary, secondaries: muscles.secondary, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame })
+  const draft = id => buildCustomExercise({ id, n, bp, eq, cls, pattern, primaries: muscles.primary, secondaries: muscles.secondary, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame })
   const autoCls = classifyExercise({ ...draft((existing || {}).id), cls: undefined })
   const save = () => {
     const name = n.trim()
@@ -639,6 +648,8 @@ function CustomExForm({ existing, prefill, onDone, close }) {
         the exercise as its name, and hiding them until a chip is tapped made them easy to miss. */}
     {bp !== 'cardio' && <MusclePickers value={muscles} onChange={setMuscles} />}
     {bp && bp !== 'cardio' && <SelectRow title={t('Exercise type')} value={cls} options={clsOptions} onChange={setCls} />}
+    {bp && bp !== 'cardio' && <SelectRow title={t('Movement pattern')} value={pattern} onChange={setPattern}
+      options={[{ value: '', label: t('None') }, ...PATTERNS.map(p => ({ value: p.key, label: t(p.name) }))]} />}
     {bp === 'cardio' && <div className="small dim row" style={{ margin: '10px 0', gap: 5 }}><Icon name="figureRun" style={{ fontSize: 13 }} />{t('Cardio exercises log time + speed instead of weight × reps.')}</div>}
     <h4 className="sec">{t('Image')}</h4>
     <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPicture} />
@@ -846,6 +857,7 @@ function ExercisePicker({ onPick, close }) {
     (bp === '★' ? usage[e.id] : (!bp || e.bp === bp)) &&
     matchExercise(e, q))
   if (bp === '★') base = [...base].sort((a, b) => (usage[b.id] - usage[a.id]) || exerciseNameFor(a).localeCompare(exerciseNameFor(b)))
+  base = favoritesFirst(st, base)
   const eqFiltered = (profile && !showAll) ? base.filter(e => exAvailable(st, e)) : base
   const eqOpts = equipmentOf(eqFiltered)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
@@ -883,6 +895,7 @@ function ExercisePicker({ onPick, close }) {
       </div>}
       {f.slice(0, shown).map(e => <div key={e.id} className="item" {...tappable(() => onPick(e))}>
         <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(muscleLabel(e.tg || e.bp))} · {t(e.eq)}</div></div>
+        {isFavorite(st, e.id) && <span className="tag" style={{ color: 'var(--red)' }} title={t('Favourite')}><Icon name="heartFill" /></span>}
         {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}<Icon name="plus" className="chev" />
       </div>)}
       {f.length === 0 && bp === '★' && <div className="empty">{t('Nothing chosen yet — add exercises and they’ll show up here.')}</div>}
