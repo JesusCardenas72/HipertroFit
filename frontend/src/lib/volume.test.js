@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from './muscles.js'
 import {
-  EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS,
+  EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS, ALL_GROUP_KEYS, volumeGroups, setVolumeSplit, targetOf,
   isEffectiveSet, groupVolume, cycleVolume, plannedVolume, volumeStatus, volumeColor,
 } from './volume.js'
 
@@ -205,5 +205,110 @@ describe('plannedVolume', () => {
     const empty = plannedVolume(S([]))
     expect(empty.total).toBe(0)
     expect(empty.sessions).toBe(0)
+  })
+})
+
+// Back and Legs can each be shown as their parts (Settings ▸ Training volume, S.volumeSplit,
+// pushed in by the store). The split only regroups: the per-set credit rule is the same.
+describe('split back / legs groups', () => {
+  afterEach(() => setVolumeSplit())
+
+  const keys = split => volumeGroups(split).map(g => g.key)
+  const row = (meta, n = 1) => entry(meta, Array.from({ length: n }, () => set(2)))
+  const vol = (...entries) => groupVolume([workout('2026-09-01', entries)]).groups
+
+  it('keeps the seven whole groups when nothing is split', () => {
+    expect(keys()).toEqual(['legs', 'chest', 'back', 'delts', 'biceps', 'triceps', 'abs'])
+    expect(keys({ back: false, legs: false })).toEqual(keys())
+  })
+
+  it('splits legs and back each on its own, in place', () => {
+    expect(keys({ legs: true })).toEqual(
+      ['glutes', 'hamstrings', 'quads', 'calves', 'chest', 'back', 'delts', 'biceps', 'triceps', 'abs'])
+    expect(keys({ back: true })).toEqual(
+      ['legs', 'chest', 'upper-back', 'lats', 'erectors', 'delts', 'biceps', 'triceps', 'abs'])
+    expect(keys({ back: true, legs: true })).toHaveLength(12)
+  })
+
+  it('lists every key any split can produce, once', () => {
+    expect(new Set(ALL_GROUP_KEYS).size).toBe(ALL_GROUP_KEYS.length)
+    for (const k of [...keys(), ...keys({ back: true, legs: true })]) expect(ALL_GROUP_KEYS).toContain(k)
+  })
+
+  it('leaves no lower-body or back muscle out of the split groups', () => {
+    const muscles = split => volumeGroups(split).flatMap(g => g.muscles)
+    for (const m of volumeGroups().find(g => g.key === 'legs').muscles) expect(muscles({ legs: true })).toContain(m)
+    for (const m of volumeGroups().find(g => g.key === 'back').muscles) expect(muscles({ back: true })).toContain(m)
+  })
+
+  it('credits each leg part on its own once legs are split', () => {
+    setVolumeSplit({ legs: true })
+    // Squat: quads primary, glutes + hamstrings secondary (0.4). Calf raise: calves.
+    const g = vol(squat([set(2), set(2)]), row({ id: 'calf', tg: 'calves' }, 3), row({ id: 'add', tg: 'adductors' }))
+    expect(g.quads).toBe(2)
+    expect(g.glutes).toBeCloseTo(0.8 + 1)       // the squat's indirect 0.4 counts, and so do adductors
+    expect(g.hamstrings).toBeCloseTo(0.8)
+    expect(g.calves).toBe(3)
+    expect(g.legs).toBeUndefined()
+  })
+
+  it('tells the lats apart from the upper back and the erectors once back is split', () => {
+    setVolumeSplit({ back: true })
+    const g = vol(
+      row({ id: 'pulldown', tg: 'lats', sm: ['biceps', 'rhomboids'] }, 3),
+      row({ id: 'row', tg: 'upper back', sm: ['latissimus dorsi'] }, 2),
+      row({ id: 'shrug', tg: 'traps' }),
+      row({ id: 'hyper', tg: 'spine' }, 4),
+      row({ id: 'deadlift', tg: 'glutes', sm: ['lower back'] }, 3),   // indirect erector work
+    )
+    expect(g.lats).toBeCloseTo(3 + 2 * 0.4)
+    expect(g['upper-back']).toBeCloseTo(3 * 0.4 + 2 + 1)   // traps count with the upper back
+    expect(g.erectors).toBe(4)
+    expect(g.back).toBeUndefined()
+  })
+
+  it('counts a lat exercise as one back set when back is not split', () => {
+    const g = vol(row({ id: 'pulldown', tg: 'lats', sm: ['rhomboids'] }, 3))
+    expect(g.back).toBe(3)
+  })
+
+  it('puts a planned routine on the same split scale', () => {
+    setVolumeSplit({ back: true, legs: true })
+    const S = {
+      routines: [{ id: 'a', ex: [{ id: 'pd', tg: 'lats', sets: 3 }, { id: 'lc', tg: 'hamstrings', sets: 2 }] }],
+      program: { seq: ['a'], strategy: 'custom' },
+    }
+    const { groups } = plannedVolume(S)
+    expect(groups.lats / groups.hamstrings).toBeCloseTo(3 / 2)
+    expect(groups.back).toBeUndefined()
+  })
+
+  it('judges each part against its own band', () => {
+    const band = (split, key) => targetOf(volumeGroups(split).find(g => g.key === key))
+    expect(band({ back: true }, 'upper-back')).toEqual({ min: 10, max: 22 })
+    expect(band({ back: true }, 'lats')).toEqual({ min: 10, max: 20 })
+    expect(band({ back: true }, 'erectors')).toEqual({ min: 0, max: 6 })
+    expect(band({ legs: true }, 'quads')).toEqual({ min: 8, max: 18 })
+    expect(band({ legs: true }, 'hamstrings')).toEqual({ min: 6, max: 16 })
+    expect(band({ legs: true }, 'glutes')).toEqual({ min: 4, max: 12 })
+    expect(band({ legs: true }, 'calves')).toEqual({ min: 8, max: 20 })
+    expect(band({}, 'back')).toEqual(VOLUME_TARGET)
+    expect(volumeStatus(0, band({ back: true }, 'erectors'))).toBe('ok')
+    expect(volumeStatus(7, band({ back: true }, 'erectors'))).toBe('high')
+    expect(volumeStatus(21, band({ back: true }, 'upper-back'))).toBe('ok')
+  })
+
+  it('counts rear delts toward the split upper back, and still toward the delts', () => {
+    setVolumeSplit({ back: true })
+    const g = vol(row({ id: 'facepull', tg: 'traps', sm: ['rear deltoids'] }, 2), row({ id: 'rd', tg: 'rear deltoids' }, 3))
+    expect(g['upper-back']).toBe(2 + 3)
+    expect(g.delts).toBeCloseTo(2 * 0.4 + 3)
+  })
+
+  it('tags every part with the whole group it belongs to', () => {
+    const parts = volumeGroups({ back: true, legs: true }).filter(g => g.parent)
+    expect(parts.map(g => g.parent + ':' + g.key)).toEqual([
+      'legs:glutes', 'legs:hamstrings', 'legs:quads', 'legs:calves',
+      'back:upper-back', 'back:lats', 'back:erectors'])
   })
 })

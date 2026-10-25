@@ -19,7 +19,7 @@ import { restSound, exerciseEndSound, progressSound, playProgressSound, customSo
 import { playClips, stopClips } from '../lib/sound.js'
 import { REST_EX_PRESETS, restExLabel, settingChoice } from '../lib/rest-between.js'
 import { DEFAULT_SECONDARY, normalizeSecondaryWeight } from '../lib/muscles.js'
-import { VOLUME_TARGET } from '../lib/volume.js'
+import { VOLUME_TARGET, normalizeVolumeSplit } from '../lib/volume.js'
 
 /* A stored sound — the rest-end bell, the exercise-end bells or the "time to progress" celebration —
    or a file from this device (lib/custom-sound.js). The file is checked before it is kept — a clip
@@ -454,6 +454,7 @@ function secondaryLabel(v) {
 
 function VolumeCard({ S, update }) {
   const value = normalizeSecondaryWeight(S.secondaryVolume)
+  const split = normalizeVolumeSplit(S.volumeSplit)
   const options = (SECONDARY_PRESETS.includes(value) ? SECONDARY_PRESETS : [...SECONDARY_PRESETS, value].sort((a, b) => a - b))
     .map(v => ({
       value: v,
@@ -463,6 +464,16 @@ function VolumeCard({ S, update }) {
     footer={t('Effective sets are counted per muscle group over the current microcycle, against a target of {0}–{1}. An exercise’s main muscle always scores a full set; this is what its supporting muscles add. Changing it also moves the muscle map and the recovery estimate.', VOLUME_TARGET.min, VOLUME_TARGET.max)}>
     <SelectRow icon="target" iconTint="var(--teal)" title={t('Secondary muscle value')}
       value={value} onChange={v => update(s => { s.secondaryVolume = v })} options={options} />
+    {/* Back and Legs each fold several muscles into one bar; either can be shown as its parts
+        instead, independently of the other (lib/volume.js volumeGroups). */}
+    <Row icon="target" iconTint="var(--blue)" title={t('Split back')}
+      subtitle={t('Upper back, lats and spinal erectors')}>
+      <Switch checked={!!split.back} onChange={v => update(s => { s.volumeSplit = { ...normalizeVolumeSplit(s.volumeSplit), back: v } })} />
+    </Row>
+    <Row icon="target" iconTint="var(--green)" title={t('Split legs')}
+      subtitle={t('Glutes, hamstrings, quads and calves')}>
+      <Switch checked={!!split.legs} onChange={v => update(s => { s.volumeSplit = { ...normalizeVolumeSplit(s.volumeSplit), legs: v } })} />
+    </Row>
   </Section>
 }
 

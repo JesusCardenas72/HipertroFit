@@ -199,10 +199,32 @@ export function matchesMuscleGroups(ex, requested) {
 }
 
 /** Muscles one exercise trains: { slug: 0…1 }. Duplicate metadata never adds load twice. */
-export function musclesOf(ex) {
+export const musclesOf = ex => weightsOf(ex, canonicalMuscle)
+
+// The dataset names the lats apart from the rest of the upper back (88 "upper back" targets
+// against 81 "lats"), but the body map draws them as one region, so musclesOf folds them into
+// 'upper-back'. Volume can split the back further (Settings ▸ Training volume), and for that
+// it needs the lats on their own: these spellings resolve to the pseudo-slug 'lats' instead.
+// 'back' stays upper-back — it says nothing about which part. Rear delts get the same
+// treatment (pseudo-slug 'rear-delts'): the split upper back counts them, the map keeps them
+// in deltoids.
+export const LATS = 'lats'
+export const REAR_DELTS = 'rear-delts'
+const VOLUME_ALIAS = { lats: LATS, 'latissimus dorsi': LATS, 'rear deltoids': REAR_DELTS }
+const volumeMuscle = value =>
+  VOLUME_ALIAS[String(value || '').toLowerCase().trim()] || canonicalMuscle(value)
+
+/**
+ * musclesOf with the lats ('lats') and rear delts ('rear-delts') kept apart — what lib/volume.js counts. Everything else
+ * resolves exactly as musclesOf does. A snapshot (muscleWeights) has no raw names left, so a
+ * deleted custom exercise keeps its lats inside 'upper-back'.
+ */
+export const volumeMusclesOf = ex => weightsOf(ex, volumeMuscle)
+
+function weightsOf(ex, canon) {
   if (!ex) return {}
   const sourceEx = metadataOf(ex)
-  if (sourceEx !== ex) return musclesOf(sourceEx)
+  if (sourceEx !== ex) return weightsOf(sourceEx, canon)
   if (ex.muscleWeights && typeof ex.muscleWeights === 'object' && !Array.isArray(ex.muscleWeights)) {
     const snapshot = {}
     MUSCLES.forEach(slug => {
@@ -213,7 +235,7 @@ export function musclesOf(ex) {
   }
   const out = {}
   const add = (name, w) => {
-    const slug = canonicalMuscle(name)
+    const slug = canon(name)
     if (slug) out[slug] = Math.max(out[slug] || 0, w)
   }
   const parts = explicitPartsOf(ex)

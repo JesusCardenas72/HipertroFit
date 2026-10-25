@@ -160,7 +160,9 @@ describe('buildPrompt', () => {
     const p = buildPrompt(digest, { json: true })
     expect(p).toContain('"group"')
     expect(p).toContain('legs, chest, back, delts, biceps, triceps, abs')
-    expect(RESPONSE_SCHEMA.properties.suggestions.items.properties.group.enum).toEqual(['legs', 'chest', 'back', 'delts', 'biceps', 'triceps', 'abs'])
+    // The schema allows every key a split can produce, since the split can change after it is built.
+    expect(RESPONSE_SCHEMA.properties.suggestions.items.properties.group.enum).toEqual(expect.arrayContaining(
+      ['legs', 'chest', 'back', 'delts', 'biceps', 'triceps', 'abs', 'glutes', 'hamstrings', 'quads', 'calves', 'upper-back', 'lats', 'erectors']))
   })
 
   it('asks for JSON only when requested, matching the schema keys', () => {

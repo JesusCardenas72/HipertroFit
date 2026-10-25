@@ -14,10 +14,10 @@
 //            Sets are a routine field (weight too); reps, rest and progression belong to the
 //            exercise and are never touched here.
 
-import { plannedVolume, VOLUME_GROUPS, VOLUME_TARGET } from './volume.js'
+import { plannedVolume, VOLUME_GROUPS, targetOf } from './volume.js'
 import { microcycleLen, trainingSteps } from './microcycle.js'
 import { mesoState, acceptDeload } from './mesocycle.js'
-import { musclesOf } from './muscles.js'
+import { volumeMusclesOf } from './muscles.js'
 import { EXIDX } from './exercises.js'
 
 const round1 = v => Math.round(v * 10) / 10
@@ -30,8 +30,9 @@ export const MAX_STEP = 2
 // the same per-set credit plannedVolume gives it.
 function weightFor(S, cfg, group) {
   const custom = (S.customEx || []).find(x => x.id === cfg.id)
-  const mus = musclesOf(EXIDX[cfg.id] || custom || cfg)
-  return Math.max(0, ...group.muscles.map(slug => mus[slug] || 0))
+  const mus = volumeMusclesOf(EXIDX[cfg.id] || custom || cfg)
+  // A `direct` group (the erectors once back is split) only counts what the exercise targets primarily.
+  return Math.max(0, ...group.muscles.map(slug => mus[slug] || 0).filter(w => !group.direct || w >= 1))
 }
 
 /** The deload proposal, or null when one is already scheduled. */
@@ -58,7 +59,7 @@ export function volumeProposal(S, groupKey, dir) {
   const steps = trainingSteps(S && S.program)
   if (!steps.length) return null
   const before = round1(plannedVolume(S).groups[group.key] || 0)
-  const { min, max } = VOLUME_TARGET
+  const { min, max } = targetOf(group)
   if (dir === 'up' && before >= max) return null
   if (dir === 'down' && before <= min) return null
 

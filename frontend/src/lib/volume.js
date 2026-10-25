@@ -23,7 +23,7 @@
 
 import { cycleWorkouts, microcycleLen, isExtra } from './microcycle.js'
 import { REST } from './program.js'
-import { musclesOf } from './muscles.js'
+import { volumeMusclesOf, LATS, REAR_DELTS } from './muscles.js'
 import { EXIDX } from './exercises.js'
 import { rirOf } from './effort.js'
 import { isWarmupRow } from './workout-model.js'
@@ -32,31 +32,85 @@ import { isWarmupRow } from './workout-model.js'
 // set "hard" for the muscle map; this is the product decision for what counts as volume.
 export const EFFECTIVE_RIR = 4
 
-// Effective-set target per muscle group per microcycle (the adaptive band from the note).
+// Effective-set target per muscle group per microcycle (the adaptive band from the note). A
+// group can carry its own `target` instead — the parts of a split Back or Legs do, see below.
 export const VOLUME_TARGET = { min: 10, max: 20 }
 
+/** The band a group is judged against: its own target, or the shared 10–20. */
+export const targetOf = g => (g && g.target) || VOLUME_TARGET
+
 // The muscle groups shown on the home volume panel, in display order, each folding one or
-// more canonical muscles (see lib/muscles.js MUSCLES). Names are i18n keys; `short`, when
-// present, is the compact label the bar rows use so the bars get the width.
+// more canonical muscles (see lib/muscles.js MUSCLES, plus the volume-only 'lats'). Names are
+// i18n keys; `short`, when present, is the compact label the bar rows use so the bars get the
+// width.
 //   - "Side delts" uses the whole deltoids group as a proxy: the dataset does not separate
 //     the three heads, so this over-counts pressing. Labelled as the user asked for.
-//   - Legs folds every lower-body muscle; Back is upper + lower back only, as specified.
-export const VOLUME_GROUPS = [
-  { key: 'legs', name: 'Legs', muscles: ['quadriceps', 'hamstring', 'gluteal', 'adductors', 'hip-flexors', 'calves', 'tibialis'] },
-  { key: 'chest', name: 'Chest', muscles: ['chest'] },
-  { key: 'back', name: 'Back muscles', muscles: ['upper-back', 'lower-back'] },
-  { key: 'delts', name: 'Side delts', short: 'Lat. delts', muscles: ['deltoids'] },
+//   - Legs folds every lower-body muscle; Back is upper back, lats and lower back, as specified.
+//   - Either can be split into its parts (Settings ▸ Training volume, S.volumeSplit), each
+//     independently. The parts cover every muscle the whole group did — adductors and hip
+//     flexors count with the glutes, the shins with the calves — so nothing drops out of the
+//     panel when it is split. Upper back takes the traps and the rear delts too (the whole
+//     group never did). `parent` is the whole group a part belongs to, so the panel can show
+//     the parts together under it.
+//   - Each part has its own band, because they recover so differently: the upper back
+//     (short range, slow-twitch) tolerates 10–22, the lats 10–20; the erectors get a big
+//     isometric dose from every deadlift, squat and heavy row, so only 0–6 direct sets.
+//     Quads (huge systemic fatigue) 8–18, hamstrings 6–16, calves 8–20, glutes 4–12.
+//   - `direct` parts count only sets where one of their muscles is the main target: the
+//     erector band is for direct work, so the 0.4 a squat or deadlift lends the lower back
+//     must not fill it. Glutes are NOT direct: squats and RDLs grow them about as well as
+//     hip thrusts, so their indirect sets earn the usual secondary credit like any group.
+const LEGS = { key: 'legs', name: 'Legs', muscles: ['quadriceps', 'hamstring', 'gluteal', 'adductors', 'hip-flexors', 'calves', 'tibialis'] }
+const LEGS_SPLIT = [
+  { key: 'glutes', name: 'Glutes', parent: 'legs', target: { min: 4, max: 12 }, muscles: ['gluteal', 'adductors', 'hip-flexors'] },
+  { key: 'hamstrings', name: 'Hamstrings', parent: 'legs', target: { min: 6, max: 16 }, muscles: ['hamstring'] },
+  { key: 'quads', name: 'Quads', parent: 'legs', target: { min: 8, max: 18 }, muscles: ['quadriceps'] },
+  { key: 'calves', name: 'Calves', parent: 'legs', target: { min: 8, max: 20 }, muscles: ['calves', 'tibialis'] },
+]
+const BACK = { key: 'back', name: 'Back muscles', muscles: ['upper-back', LATS, 'lower-back'] }
+const BACK_SPLIT = [
+  { key: 'upper-back', name: 'Upper back', parent: 'back', target: { min: 10, max: 22 }, muscles: ['upper-back', 'trapezius', REAR_DELTS] },
+  { key: 'lats', name: 'Lats', parent: 'back', target: { min: 10, max: 20 }, muscles: [LATS] },
+  { key: 'erectors', name: 'Spinal erectors', short: 'Erectors', parent: 'back', direct: true, target: { min: 0, max: 6 }, muscles: ['lower-back'] },
+]
+const REST_GROUPS = [
+  { key: 'delts', name: 'Side delts', short: 'Lat. delts', muscles: ['deltoids', REAR_DELTS] },
   { key: 'biceps', name: 'Biceps', muscles: ['biceps'] },
   { key: 'triceps', name: 'Triceps', muscles: ['triceps'] },
   { key: 'abs', name: 'Abs', short: 'ABS', muscles: ['abs', 'obliques'] },
 ]
+const CHEST = { key: 'chest', name: 'Chest', muscles: ['chest'] }
 
-// muscle slug -> group key, built once from VOLUME_GROUPS.
-const GROUP_OF = (() => {
-  const map = {}
-  for (const g of VOLUME_GROUPS) for (const slug of g.muscles) map[slug] = g.key
-  return map
-})()
+/** The user's split choice, tidied: { back, legs } booleans, anything else is "not split". */
+export const normalizeVolumeSplit = split => ({ back: !!(split && split.back), legs: !!(split && split.legs) })
+
+/** The panel's groups for a split choice, in display order. */
+export function volumeGroups(split) {
+  const { back, legs } = normalizeVolumeSplit(split)
+  return [...(legs ? LEGS_SPLIT : [LEGS]), CHEST, ...(back ? BACK_SPLIT : [BACK]), ...REST_GROUPS]
+}
+
+/** Every group key any split can produce — the fixed vocabulary the AI response schema allows. */
+export const ALL_GROUP_KEYS = [...new Set([...volumeGroups({ back: true, legs: true }), ...volumeGroups()].map(g => g.key))]
+
+// The groups in force. Like the secondary weight in lib/muscles.js, the split is a user setting
+// pushed in by the store, so every reader (panel, plan, AI digest and proposals) agrees on it
+// without threading it through. A live binding: importers always see the current list.
+export let VOLUME_GROUPS = volumeGroups()
+
+// muscle slug -> the groups it counts toward (rear delts count toward two once back is split).
+let GROUP_OF = {}
+const indexGroups = () => {
+  GROUP_OF = {}
+  for (const g of VOLUME_GROUPS) for (const slug of g.muscles) (GROUP_OF[slug] = GROUP_OF[slug] || []).push(g)
+}
+indexGroups()
+
+/** Set which groups are split into their parts from here on (store -> lib). */
+export function setVolumeSplit(split) {
+  VOLUME_GROUPS = volumeGroups(split)
+  indexGroups()
+}
 
 /** A completed work set that counts as volume: RIR <= 4, or unrated (counted, per product). */
 export const isEffectiveSet = s => { const r = rirOf(s); return r == null || r <= EFFECTIVE_RIR }
@@ -67,16 +121,19 @@ export const isEffectiveSet = s => { const r = rirOf(s); return r == null || r <
 function entryMuscles(entry) {
   const historical = entry.exercise || entry
   const source = historical && historical.muscleWeights ? historical : (EXIDX[entry.id] || historical)
-  return musclesOf(source)
+  return volumeMusclesOf(source)
 }
 
 // Credit `n` sets of an exercise to each group it trains, at the strongest involvement of
-// any of the group's muscles — never their sum.
+// any of the group's muscles — never their sum. A `direct` group only takes a muscle the
+// exercise targets primarily (a full 1).
 function creditSet(groups, mus, n) {
   const best = {}
   for (const slug in mus) {
-    const g = GROUP_OF[slug]
-    if (g) best[g] = Math.max(best[g] || 0, mus[slug])
+    for (const g of GROUP_OF[slug] || []) {
+      if (g.direct && mus[slug] < 1) continue
+      best[g.key] = Math.max(best[g.key] || 0, mus[slug])
+    }
   }
   for (const g in best) groups[g] += best[g] * n
 }
@@ -151,10 +208,10 @@ export function plannedVolume(S) {
   return { groups, rated: total, unrated: 0, total, sessions: len }
 }
 
-/** Traffic-light status of a group's effective-set count against the target band. */
-export function volumeStatus(v) {
-  if (v < VOLUME_TARGET.min) return 'low'
-  if (v > VOLUME_TARGET.max) return 'high'
+/** Traffic-light status of a group's effective-set count against a target band (default 10–20). */
+export function volumeStatus(v, target = VOLUME_TARGET) {
+  if (v < target.min) return 'low'
+  if (v > target.max) return 'high'
   return 'ok'
 }
 

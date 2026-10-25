@@ -3,6 +3,7 @@ import { api, setRemoteAuth } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from '../lib/muscles.js'
+import { setVolumeSplit } from '../lib/volume.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
 import { MOBILE, initReminderSync, nativeLoad, nativeSave, syncReminder, writeAutoBackup } from '../lib/mobile.js'
@@ -55,6 +56,9 @@ export const DEF = {
   // always 1). Feeds lib/muscles.js musclesOf, so it moves the home volume panel, the muscle
   // map and the recovery model together. See Settings ▸ Training volume.
   secondaryVolume: DEFAULT_SECONDARY,
+  // Whether the volume panel shows Back and Legs as one group or split into their parts, each
+  // on its own (lib/volume.js volumeGroups). See Settings ▸ Training volume.
+  volumeSplit: { back: false, legs: false },
   // Last AI analyses answered through the server (newest first, capped) — see lib/ai-report.js.
   aiReports: [],
 }
@@ -97,6 +101,7 @@ export const useStore = create((set, get) => {
     S._ts = Date.now()
     registerCustom(S.customEx)
     setSecondaryWeight(S.secondaryVolume)
+    setVolumeSplit(S.volumeSplit)
     localStorage.setItem(KEY, JSON.stringify(S))
     set({ S })
     if (MOBILE) nativePersist()
@@ -135,7 +140,7 @@ export const useStore = create((set, get) => {
   }
 
   return {
-    S: (() => { const s = loadState(); registerCustom(s.customEx); setSecondaryWeight(s.secondaryVolume); return s })(),
+    S: (() => { const s = loadState(); registerCustom(s.customEx); setSecondaryWeight(s.secondaryVolume); setVolumeSplit(s.volumeSplit); return s })(),
     user: (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })(),
     ready: false,
     needsMobileOnboarding: false,   // mobile build only — set true by boot() on a genuine first launch

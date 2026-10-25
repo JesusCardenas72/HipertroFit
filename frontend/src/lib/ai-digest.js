@@ -10,7 +10,7 @@
 // finer than a date. `findings` is the deterministic part — what the app can already flag
 // without any model at all — and doubles as a hint for the model about what to look at first.
 
-import { cycleVolume, plannedVolume, volumeStatus, VOLUME_GROUPS, VOLUME_TARGET } from './volume.js'
+import { cycleVolume, plannedVolume, volumeStatus, VOLUME_GROUPS, VOLUME_TARGET, targetOf } from './volume.js'
 import { cyclePosition, strategyOf, nextStepOf, trainingSteps } from './microcycle.js'
 import { mesoState } from './mesocycle.js'
 import { doubleProgressExercises, doubleProgressStatus } from './double-progress.js'
@@ -49,10 +49,12 @@ function setText(s) {
 
 // `judge` adds the low/ok/high status — only for a whole microcycle's worth of sets. The block in
 // progress is partial by definition, and a status on it would read "low" to a model on day one.
+// A group with a band of its own (the parts of a split Back or Legs) carries it as `target`.
 function volumeRows(v, judge) {
   return VOLUME_GROUPS.map(g => {
     const sets = round1(v.groups[g.key] || 0)
-    return judge ? { group: g.key, sets, status: volumeStatus(sets) } : { group: g.key, sets }
+    const row = judge ? { group: g.key, sets, status: volumeStatus(sets, targetOf(g)) } : { group: g.key, sets }
+    return g.target ? { ...row, target: g.target } : row
   })
 }
 
