@@ -67,10 +67,10 @@ export default function ScreenSlider({ render }) {
     // this handler bails out of — a button inside the workout's own swipe surface, say.
     swallowClick.current = false
     if (event.target.closest?.(IGNORED_TARGETS) || inSideScroller(event.target, event.currentTarget)) return
+    // No capture yet: taken here, every press belonged to the surface, and Chrome (131+) then
+    // hands the click that follows a mouse press to the capturing element instead of the button
+    // under it — so no button inside a screen answered a mouse. It is taken on the axis lock.
     gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, mode: null }
-    // Capture keeps the moves coming when the finger wanders off the card. It throws for a
-    // pointer the browser no longer holds, which must not leave a gesture half-started.
-    try { event.currentTarget.setPointerCapture?.(event.pointerId) } catch { /* the listener below still ends it */ }
   }
 
   const onPointerMove = event => {
@@ -85,6 +85,9 @@ export default function ScreenSlider({ render }) {
       if (mode === 'none') return
       // The gesture has taken the drag over, so whatever it started on must not also be tapped.
       swallowClick.current = true
+      // Capture keeps the moves coming when the finger wanders off the card. It throws for a
+      // pointer the browser no longer holds, which must not leave a gesture half-started.
+      try { surface.current?.setPointerCapture?.(event.pointerId) } catch { /* the window listener still ends it */ }
       // A mouse would otherwise paint a text selection across the screen as it drags. Cleared
       // on every move rather than once, so nothing is left highlighted behind the gesture.
       if (event.pointerType === 'mouse') window.getSelection?.()?.removeAllRanges()

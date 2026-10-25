@@ -200,6 +200,19 @@ describe('a screen that owns its own horizontal gesture', () => {
     expect(captured).toEqual([])
   })
 
+  /* Taken on every press, the capture made Chrome (131+) deliver the click after a mouse press to
+     the surface instead of the button under it: no button inside a screen answered a mouse. */
+  it('takes the pointer only once a press turns into a swipe, so a plain click reaches its button', () => {
+    render('/home')
+    const captured = []
+    surface().setPointerCapture = id => captured.push(id)
+    act(() => pointer('pointerdown', surface(), 200, 300))
+    act(() => pointer('pointerup', surface(), 200, 300))
+    expect(captured).toEqual([])
+    drag(-SWIPE_MIN_DISTANCE)
+    expect(captured.length).toBe(1)
+  })
+
   /* A touch swipe is followed by no click of its own, so the flag a committed one leaves behind
      stayed set — and the next tap to land somewhere this slider bails out of was swallowed by a
      gesture that had already ended. On the workout screen that read as buttons doing nothing. */
