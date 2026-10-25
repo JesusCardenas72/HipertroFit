@@ -15,10 +15,10 @@
 // See docs/design/generador-de-rutinas.md.
 
 import { allExercises, EXIDX } from './exercises.js'
-import { patternOf } from './movement-patterns.js'
+import { isPattern, patternOf } from './movement-patterns.js'
 import { classifyExercise, routineExerciseConfig } from './exercise-class.js'
 import { seedConfig } from './exercise-defaults.js'
-import { modeOf } from './history.js'
+import { modeOf, cleanupSg } from './history.js'
 import { isFavorite } from './favorites.js'
 import { ownsEquipment } from './equipment.js'
 import { plannedVolume, setCredit, VOLUME_GROUPS, targetOf } from './volume.js'
@@ -142,22 +142,26 @@ function validSeq(seq, days) {
 /**
  * The plan as it stands in the generator: `{ split, level, variants, days, seq }`.
  *
- * `picks` and `sets` are what the user changed, keyed by slot (`dayKey:index`); `seq` the day
- * order they chose (day keys and 'rest'), else the split's own week. Pure: S is only read.
+ * `picks` and `sets` are what the user changed, keyed by slot (`dayKey:index`, or the key an
+ * added slot got); `seq` the day order they chose (day keys and 'rest'), else the split's own
+ * week; `layout` the days whose slots they rearranged (lib/plan-layout.js). Pure: S is only read.
  */
-export function buildDraft(S, { split, level, variants, profile = null, picks = {}, sets = {}, seq = null }) {
+export function buildDraft(S, { split, level, variants, profile = null, picks = {}, sets = {}, seq = null, layout = {} }) {
   const lvl = LEVELS[level] || LEVELS.intermediate
   const v = hasVariants(split, variants)
   const used = new Set()
   const days = daysOf(split, v).map(d => {
     const inDay = new Set()
-    const slots = d.slots.slice(0, lvl.slots).map((sl, i) => {
-      const key = d.key + ':' + i
+    // A day the user rearranged (lib/plan-layout.js) keeps its own slots; otherwise the
+    // template's, as many as the level takes.
+    const own = Array.isArray(layout && layout[d.key]) ? layout[d.key].filter(sl => sl && sl.id && isPattern(sl.pattern) && SET_LIMITS[sl.role]) : null
+    const defs = own || d.slots.slice(0, lvl.slots).map((sl, i) => ({ ...sl, id: d.key + ':' + i }))
+    const slots = defs.map(({ id: key, sg, ...sl }) => {
       const picked = picks[key] && EXIDX[picks[key]] ? picks[key] : null
       const id = picked || autoPick(candidatesFor(S, sl, profile), profile, inDay, used)
       if (id) { inDay.add(id); used.add(id) }
       const pinned = sets[key] != null
-      return { key, ...sl, id, picked: !!picked, pinned, sets: pinned ? sets[key] : lvl.sets[sl.role] }
+      return { key, ...sl, ...(sg ? { sg } : {}), id, picked: !!picked, pinned, sets: pinned ? sets[key] : lvl.sets[sl.role] }
     })
     return { key: d.key, name: d.name, glyph: d.glyph, slots }
   })
@@ -248,9 +252,11 @@ export function applyDraft(s, draft, { name, label = x => x, today = todayISO() 
   const ids = {}
   for (const d of draft.days) {
     ids[d.key] = uid()
+    // Linked slots become a superset of the routine; a slot left out loosens what it broke.
+    const ex = d.slots.filter(sl => sl.id && sl.sets > 0).map(sl => ({ ...slotConfig(s, sl), ...(sl.sg ? { sg: sl.sg } : {}) }))
+    cleanupSg(ex)
     s.routines.push({
-      id: ids[d.key], name: label(d.name), emoji: d.glyph, ...(folder ? { folder: folder.id } : {}),
-      ex: d.slots.filter(sl => sl.id && sl.sets > 0).map(sl => slotConfig(s, sl)),
+      id: ids[d.key], name: label(d.name), emoji: d.glyph, ...(folder ? { folder: folder.id } : {}), ex,
     })
   }
   const closed = closeMicrocycle(s, SPLITS[draft.split].strategy, today)

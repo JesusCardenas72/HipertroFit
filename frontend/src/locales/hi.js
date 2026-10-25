@@ -1387,4 +1387,12 @@ export default {
   'Reference programs': 'संदर्भ प्रोग्राम',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': 'संदर्भ PPL प्रोग्राम हर दिन एक या दो कंपाउंड से शुरू करते हैं, कंपाउंड में 6–12 और आइसोलेशन में 8–15 रेप, RIR 1–2 और कुछ हफ़्तों में डीलोड रखते हैं।',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'यहाँ: सीमाएँ ऐप के डबल प्रोग्रेशन का पालन करती हैं (कंपाउंड 5–12, मशीन 8–10, आइसोलेशन 10–20) और मेसोसाइकिल बंद होने पर ऐप डीलोड सुझाता है।',
+  'Add a movement pattern': 'मूवमेंट पैटर्न जोड़ें',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'क्रम बदलने के लिए स्लॉट दबाकर रखें और खींचें; सुपरसेट बनाने के लिए उसे किसी दूसरे पर छोड़ें। पूरा सुपरसेट ले जाने के लिए ज़्यादा देर दबाएँ।',
+  'It goes at the end of the day; drag it wherever you want it.': 'यह दिन के अंत में जुड़ता है; जहाँ चाहें खींचकर रखें।',
+  'Remove this slot': 'यह स्लॉट हटाएँ',
+  'Push patterns': 'पुश',
+  'Pull patterns': 'पुल',
+  'Leg patterns': 'पैर',
+  'Core patterns': 'कोर',
 }

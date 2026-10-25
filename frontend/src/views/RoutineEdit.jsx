@@ -58,8 +58,9 @@ export function replaceRoutineEntry(exercises, key, id, cfg) {
 /* Press and hold a row to lift that one exercise; hold on a little longer and a superset member
    takes its whole capsule along. While it is lifted the rows behave like the dock's thumbnails
    (components/routineMagnets.js): let go over another exercise and the two become a superset,
-   move it inside its capsule and only the order changes, pull it clear and it leaves. */
-function useRoutineReorder(routineIdentity, exercises, onDrop) {
+   move it inside its capsule and only the order changes, pull it clear and it leaves. Also drives
+   the slots of a day in Plan ▸ Generate plan: anything with `id` and `sg` rows works. */
+export function useRoutineReorder(routineIdentity, exercises, onDrop) {
   const listRef = useRef(null)
   const svgRef = useRef(null)
   const gooRef = useRef(null)

@@ -1387,4 +1387,12 @@ export default {
   'Reference programs': 'Эталонные программы',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': 'Эталонные PPL открывают каждый день одним-двумя базовыми упражнениями, используют 6–12 повторений в базе и 8–15 в изоляции, RIR 1–2 и разгрузку каждые несколько недель.',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'Здесь: диапазоны следуют двойной прогрессии приложения (база 5–12, тренажёр 8–10, изоляция 10–20), а разгрузку приложение предлагает при закрытии мезоцикла.',
+  'Add a movement pattern': 'Добавить двигательный паттерн',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'Удерживайте место и перетащите, чтобы изменить порядок; отпустите на другом, чтобы сделать суперсет. Удерживайте дольше, чтобы перенести весь суперсет.',
+  'It goes at the end of the day; drag it wherever you want it.': 'Добавляется в конец дня; перетащите куда нужно.',
+  'Remove this slot': 'Убрать это место',
+  'Push patterns': 'Жимы',
+  'Pull patterns': 'Тяги',
+  'Leg patterns': 'Ноги',
+  'Core patterns': 'Кор',
 }

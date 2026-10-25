@@ -114,8 +114,12 @@
 .pg-rx { font-size: 13px; color: var(--pg-muted); font-variant-numeric: tabular-nums; white-space: nowrap }
 @media (max-width: 520px) {
   .pg-slot { grid-template-columns: 26px minmax(0, 1fr) }
-  .pg-ctl { grid-column: 1 / -1; grid-template-columns: auto 1fr auto; justify-items: start; align-items: center }
-  .pg-ctl .pg-btn { justify-self: end }
+  /* A flowing row, not a grid: the set stepper and its "3 × 10–20 reps" share the first line and
+     the buttons take their own, so nothing is squeezed on top of the stepper. */
+  .pg-ctl { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px }
+  .pg-ctl .pg-step { flex: none }
+  .pg-ctl .pg-rx { flex: 1 1 auto; min-width: 0; white-space: normal }
+  .pg-ctl > .pg-row { flex: 1 1 100%; justify-content: flex-end }
   .pg-num { font-size: 22px }
 }
 .pg-list { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px }
@@ -151,3 +155,16 @@
 .pg-heart[aria-pressed="true"] { color: var(--pg-fav) }
 .pg-empty { padding: 10px 16px 14px; font-size: 13px; color: var(--pg-muted) }
 .pg-close { justify-self: end; border: 0; background: var(--pg-surface-2); border-radius: 8px; padding: 6px 12px; font-weight: 600 }
+
+/* the day's slot list rides the routine editor's springs and capsules (components/routineMagnets.js) */
+.pg-slots.routine-list { display: grid; gap: 8px }
+.pg .routine-drag-row.ss-start { margin-top: 10px }
+.pg .routine-drag-row.ss-end { margin-bottom: 10px }
+.pg .ss-label { color: var(--ss, var(--pg-accent)); font-family: var(--pg-display); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; display: flex; gap: 5px; align-items: center; margin: 0 0 4px 4px }
+.pg-slot.in-ss { box-shadow: inset 3px 0 0 var(--ss, var(--pg-accent)) }
+.pg .routine-drag-row.magnet .pg-slot { box-shadow: 0 0 0 2.5px var(--pg-accent), 0 0 14px var(--pg-accent) }
+.pg .routine-drag-row.is-dragging .pg-slot { box-shadow: 0 10px 28px rgba(0, 0, 0, .3); background: var(--pg-surface-2) }
+.pg .routine-drop-indicator { background: var(--pg-accent) }
+.pg .routine-drop-indicator.join { box-shadow: 0 0 8px var(--pg-accent) }
+.pg-mini.on { background: var(--pg-accent-soft); border-color: var(--pg-accent); color: var(--pg-accent) }
+.pg-btn.ghost { display: inline-flex; gap: 6px; align-items: center; justify-content: center }

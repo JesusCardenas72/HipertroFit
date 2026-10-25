@@ -1387,4 +1387,12 @@ export default {
   'Reference programs': 'Referans programlar',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': 'Referans PPL programları her günü bir ya da iki bileşik hareketle açar, bileşiklerde 6–12, izolasyonda 8–15 tekrar, RIR 1–2 ve birkaç haftada bir deload kullanır.',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'Burada: aralıklar uygulamanın çift ilerlemesini izler (bileşik 5–12, makine 8–10, izolasyon 10–20) ve uygulama mezo döngü kapanınca deload önerir.',
+  'Add a movement pattern': 'Hareket kalıbı ekle',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'Sırayı değiştirmek için bir yuvayı basılı tutup sürükle; süperset yapmak için başka birinin üstüne bırak. Tüm süperseti taşımak için daha uzun bas.',
+  'It goes at the end of the day; drag it wherever you want it.': 'Günün sonuna eklenir; istediğin yere sürükle.',
+  'Remove this slot': 'Bu yuvayı kaldır',
+  'Push patterns': 'İtişler',
+  'Pull patterns': 'Çekişler',
+  'Leg patterns': 'Bacak',
+  'Core patterns': 'Core',
 }

@@ -1400,4 +1400,12 @@ export default {
   'Reference programs': 'โปรแกรมอ้างอิง',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': 'PPL อ้างอิงเริ่มแต่ละวันด้วยท่าคอมพาวด์หนึ่งหรือสองท่า ใช้ 6–12 ครั้งในคอมพาวด์และ 8–15 ในไอโซเลชัน RIR 1–2 และดีโหลดทุกไม่กี่สัปดาห์',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'ในแผนนี้: ช่วงเป็นไปตามดับเบิลโพรเกรสชันของแอป (คอมพาวด์ 5–12 เครื่อง 8–10 ไอโซเลชัน 10–20) และแอปเสนอดีโหลดเมื่อจบเมโซไซเคิล',
+  'Add a movement pattern': 'เพิ่มรูปแบบการเคลื่อนไหว',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'กดค้างที่ช่องแล้วลากเพื่อเปลี่ยนลำดับ ปล่อยบนช่องอื่นเพื่อทำซูเปอร์เซ็ต กดค้างนานขึ้นเพื่อย้ายทั้งซูเปอร์เซ็ต',
+  'It goes at the end of the day; drag it wherever you want it.': 'จะถูกเพิ่มไว้ท้ายวัน ลากไปวางตรงไหนก็ได้',
+  'Remove this slot': 'นำช่องนี้ออก',
+  'Push patterns': 'ท่าดัน',
+  'Pull patterns': 'ท่าดึง',
+  'Leg patterns': 'ขา',
+  'Core patterns': 'แกนกลาง',
 }

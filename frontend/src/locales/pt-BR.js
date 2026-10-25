@@ -911,6 +911,8 @@ export const PT_BR_OVERRIDES = {
   'Here: keep the exercises through a mesocycle (3–5 microcycles) and change them within the same pattern when the next one starts.': 'Aqui: mantenha os exercícios durante um mesociclo (3–5 microciclos) e troque-os dentro do mesmo padrão quando começar o próximo.',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': 'Os PPL de referência abrem cada dia com um ou dois compostos, usam 6–12 repetições nos compostos e 8–15 no isolamento, RIR 1–2 e deloads a cada poucas semanas.',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'Aqui: as faixas seguem a dupla progressão do app (composto 5–12, máquina 8–10, isolamento 10–20) e o app sugere o deload ao fechar o mesociclo.',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'Toque e segure um lugar e arraste para mudar a ordem; solte sobre outro para fazer um bi-set. Segure mais para levar o bi-set inteiro.',
+  'It goes at the end of the day; drag it wherever you want it.': 'Ele vai para o fim do dia; arraste para onde quiser.',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

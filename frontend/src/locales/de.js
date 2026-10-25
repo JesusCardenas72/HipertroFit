@@ -1404,4 +1404,12 @@ export default {
   'Reference programs': 'Referenzprogramme',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': 'Bekannte PPL-Programme beginnen jeden Tag mit ein oder zwei Grundübungen, nutzen 6–12 Wiederholungen bei Grundübungen und 8–15 bei Isolation, RIR 1–2 und alle paar Wochen einen Deload.',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'Hier: die Bereiche folgen der doppelten Progression der App (Grundübung 5–12, Maschine 8–10, Isolation 10–20) und die App schlägt den Deload vor, wenn der Mesozyklus endet.',
+  'Add a movement pattern': 'Bewegungsmuster hinzufügen',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'Halte einen Platz gedrückt und ziehe ihn, um die Reihenfolge zu ändern; lass ihn auf einem anderen los für einen Supersatz. Länger halten nimmt den ganzen Supersatz mit.',
+  'It goes at the end of the day; drag it wherever you want it.': 'Es kommt ans Ende des Tages; zieh es, wohin du willst.',
+  'Remove this slot': 'Diesen Platz entfernen',
+  'Push patterns': 'Drückmuster',
+  'Pull patterns': 'Zugmuster',
+  'Leg patterns': 'Beinmuster',
+  'Core patterns': 'Rumpfmuster',
 }

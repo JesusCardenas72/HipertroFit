@@ -1387,4 +1387,12 @@ export default {
   'Reference programs': 'Programy wzorcowe',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': 'Wzorcowe PPL zaczynają każdy dzień od jednego lub dwóch wielostawowych, stosują 6–12 powtórzeń w wielostawowych i 8–15 w izolacji, RIR 1–2 i deload co kilka tygodni.',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'Tutaj: zakresy podążają za podwójną progresją aplikacji (wielostawowe 5–12, maszyna 8–10, izolacja 10–20), a aplikacja proponuje deload po zamknięciu mezocyklu.',
+  'Add a movement pattern': 'Dodaj wzorzec ruchowy',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'Przytrzymaj miejsce i przeciągnij, aby zmienić kolejność; upuść na inne, aby zrobić superserię. Przytrzymaj dłużej, aby przenieść całą superserię.',
+  'It goes at the end of the day; drag it wherever you want it.': 'Trafia na koniec dnia; przeciągnij je, gdzie chcesz.',
+  'Remove this slot': 'Usuń to miejsce',
+  'Push patterns': 'Wypychania',
+  'Pull patterns': 'Przyciągania',
+  'Leg patterns': 'Nogi',
+  'Core patterns': 'Core',
 }

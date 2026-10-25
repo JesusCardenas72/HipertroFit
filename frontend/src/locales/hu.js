@@ -1392,4 +1392,12 @@ export default {
   'Reference programs': 'Referenciaprogramok',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': 'A referencia PPL-programok minden napot egy-két összetett gyakorlattal kezdenek, az összetettekben 6–12, az izolációban 8–15 ismétlést, RIR 1–2-t és néhány hetente deloadot alkalmaznak.',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'Itt: a tartományok az alkalmazás kettős progresszióját követik (összetett 5–12, gép 8–10, izoláció 10–20), és a mezociklus zárásakor az alkalmazás javasolja a deloadot.',
+  'Add a movement pattern': 'Mozgásminta hozzáadása',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'Tarts lenyomva egy helyet, és húzd a sorrend módosításához; egy másikra engedve szuperszett lesz. Tovább tartva az egész szuperszettet viszed.',
+  'It goes at the end of the day; drag it wherever you want it.': 'A nap végére kerül; húzd, ahová szeretnéd.',
+  'Remove this slot': 'Hely eltávolítása',
+  'Push patterns': 'Nyomások',
+  'Pull patterns': 'Húzások',
+  'Leg patterns': 'Láb',
+  'Core patterns': 'Törzs',
 }

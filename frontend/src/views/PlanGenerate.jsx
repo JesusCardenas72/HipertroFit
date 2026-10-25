@@ -5,12 +5,16 @@ import { useUI } from '../store/useUI.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { CATALOGUE, EXIDX, matchExercise } from '../lib/exercises.js'
 import { classifyExercise, CLASS_NAME, CLASS_REP_RANGE } from '../lib/exercise-class.js'
-import { patternName, patternOf } from '../lib/movement-patterns.js'
+import { PATTERNS, patternName, patternOf } from '../lib/movement-patterns.js'
+import { addSlot, dropSlot, layoutOfDay, removeSlot, toggleLink } from '../lib/plan-layout.js'
+import { dockItems } from '../lib/workout-dock.js'
+import { rowHsl } from '../components/routineMagnets.js'
+import { useRoutineReorder } from './RoutineEdit.jsx'
 import { isFavorite, toggleFavorite } from '../lib/favorites.js'
 import { ownsEquipment, newProfile } from '../lib/equipment.js'
 import { programActive } from '../lib/program.js'
-import { modeOf } from '../lib/history.js'
-import { DAYS } from '../lib/format.js'
+import { modeOf, supersetUnits } from '../lib/history.js'
+import { DAYS, uid } from '../lib/format.js'
 import { VOLUME_GROUPS, targetOf } from '../lib/volume.js'
 import { SPLITS, SPLIT_KEYS, hasVariants } from '../lib/split-templates.js'
 import { LEVELS, LEVEL_KEYS, applyDraft, buildDraft, candidatesFor, draftVolume } from '../lib/plan-generator.js'
@@ -62,6 +66,7 @@ export function planGenOf(S) {
     picks: g.picks && typeof g.picks === 'object' ? g.picks : {},
     sets: g.sets && typeof g.sets === 'object' ? g.sets : {},
     seq: Array.isArray(g.seq) ? g.seq : null,
+    layout: g.layout && typeof g.layout === 'object' ? g.layout : {},
   }
 }
 
@@ -78,19 +83,35 @@ export default function PlanGenerate() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
-  const g = planGenOf(S)
+  // Memoised on the stored choices, so a re-render mid-drag hands the reorder the same list.
+  const g = useMemo(() => planGenOf(S), [S.planGen, S.program?.strategy, S.activeEquipId])
   const [day, setDay] = useState(null)
   const [ordering, setOrdering] = useState(false)
   const [armed, setArmed] = useState(false)
   const profiles = S.equipProfiles || []
   const profile = profiles.find(p => p.id === g.profileId) || null
   const v = g.variants ?? LEVELS[g.level].variants
-  const draft = useMemo(() => buildDraft(S, { split: g.split, level: g.level, variants: v, profile, picks: g.picks, sets: g.sets, seq: g.seq }),
-    [S, g.split, g.level, v, profile, g.picks, g.sets, g.seq])
+  const draft = useMemo(() => buildDraft(S, { split: g.split, level: g.level, variants: v, profile, picks: g.picks, sets: g.sets, seq: g.seq, layout: g.layout }),
+    [S, g, v, profile])
   const vol = useMemo(() => draftVolume(S, draft), [S, draft])
   const cur = draft.days.find(d => d.key === day) || draft.days[0]
+  const defs = useMemo(() => layoutOfDay(cur), [cur])
   const save = patch => update(s => { s.planGen = { ...planGenOf(s), ...patch } })
-  const changed = Object.keys(g.picks).length + Object.keys(g.sets).length > 0
+  const changed = Object.keys(g.picks).length + Object.keys(g.sets).length + Object.keys(g.layout).length > 0
+
+  // The day's slots as the user arranges them: each change is written as that day's layout.
+  const editDay = fn => {
+    const copy = defs.map(d => ({ ...d }))
+    if (fn(copy) === false) return
+    save({ layout: { ...g.layout, [cur.key]: copy } })
+  }
+  const reorder = useRoutineReorder(cur.key, defs, (index, intent) => editDay(copy => dropSlot(copy, index, intent)))
+  const addPattern = () => openPatternPicker({ dayName: t(cur.name), onPick: p => editDay(copy => !!addSlot(copy, cur.key, p, uid())) })
+  const units = supersetUnits(defs)
+  const unitFirst = new Set(units.filter(u => u.length > 1).map(u => u[0]))
+  const unitLast = new Set(units.filter(u => u.length > 1).map(u => u.at(-1)))
+  const inSS = new Set(units.filter(u => u.length > 1).flat())
+  const hueOf = new Map(dockItems(defs).flatMap(item => item.hue == null ? [] : item.indices.map(i => [i, item.hue])))
 
   const writeEquip = fn => update(s => {
     s.equipProfiles = s.equipProfiles || []
@@ -112,7 +133,7 @@ export default function PlanGenerate() {
   const unpin = sl => { const n = { ...g.sets }; delete n[sl.key]; save({ sets: n }) }
   const reset = () => {
     if (!armed) { setArmed(true); setTimeout(() => setArmed(false), 4000); return }
-    setArmed(false); save({ picks: {}, sets: {} })
+    setArmed(false); save({ picks: {}, sets: {}, layout: {} })
   }
   const moveDay = (i, dir) => {
     const s2 = [...draft.seq], j = i + dir
@@ -231,11 +252,36 @@ export default function PlanGenerate() {
             </div>)}
             <p className="pg-hint">{t('Rest days only place the sessions on the calendar: train on a rest day and you simply do the next session.')}</p>
           </div>}
-          <ol className="pg-slots">
+          <p className="pg-hint">{t('Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.')}</p>
+          {/* The routine editor's list: rows on springs, supersets drawn as liquid capsules behind
+              them (components/routineMagnets.js, driven by RoutineEdit's useRoutineReorder). */}
+          <div ref={reorder.listRef} onClickCapture={reorder.onClickCapture} className={'pg-slots routine-list' + (reorder.drag ? ' is-reordering' : '')}>
+            <svg className="routine-goo" ref={reorder.svgRef} aria-hidden="true">
+              <defs>
+                <filter id="routine-goo" filterUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+                  <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11" result="drop" />
+                  <feMorphology in="drop" operator="erode" radius="1.5" result="inner" />
+                  <feComposite in="drop" in2="inner" operator="out" result="ring" />
+                  <feComponentTransfer in="drop" result="fill"><feFuncA type="linear" slope="0.16" /></feComponentTransfer>
+                  <feComponentTransfer in="ring" result="edge"><feFuncA type="linear" slope="0.6" /></feComponentTransfer>
+                  <feMerge><feMergeNode in="fill" /><feMergeNode in="edge" /></feMerge>
+                </filter>
+              </defs>
+              <g ref={reorder.gooRef} />
+            </svg>
             {cur.slots.map((sl, i) => {
               const e = sl.id ? EXIDX[sl.id] : null
               const elsewhere = e ? draft.days.filter(d => d.key !== cur.key && d.slots.some(x => x.id === e.id)).map(d => t(d.name)) : []
-              return <li key={sl.key} className={'pg-slot' + (sl.sets ? '' : ' off')}>
+              const linkedPrev = i > 0 && sl.sg && cur.slots[i - 1].sg === sl.sg
+              const isDragging = reorder.drag && i >= reorder.drag.first && i <= reorder.drag.last
+              const hue = hueOf.get(i)
+              return <div key={sl.key} data-routine-row data-ex-index={i}
+                className={'routine-drag-row' + (isDragging ? ' is-dragging' : '') + (reorder.drag?.join === i ? ' magnet' : '')
+                  + (unitFirst.has(i) && i > 0 ? ' ss-start' : '') + (unitLast.has(i) && i < cur.slots.length - 1 ? ' ss-end' : '')}
+                style={hue == null ? undefined : { '--ss': rowHsl(hue) }}>
+              {unitFirst.has(i) && <div className="ss-label"><Icon name="link" />{t('Superset')}</div>}
+              <div className={'pg-slot' + (sl.sets ? '' : ' off') + (inSS.has(i) ? ' in-ss' : '')}>
                 <div className="pg-num">{i + 1}</div>
                 <div style={{ minWidth: 0 }}>
                   <div className="pg-pat"><span className="p">{t(patternName(sl.pattern))}</span><span className={'pg-role' + (sl.role === 'main' ? ' main' : '')}>{t(ROLE[sl.role])}</span></div>
@@ -257,11 +303,21 @@ export default function PlanGenerate() {
                   </span>
                   <span className="pg-rx">{sl.sets ? (e ? sl.sets + ' × ' + rangeOf(e) : '') : t('Left out')}
                     {sl.pinned && <> · <button className="pg-link" onClick={() => unpin(sl)} title={t('Let the plan spread these sets')}>{t('fixed · auto')}</button></>}</span>
-                  <button className="pg-btn small" onClick={() => openSlot(sl)}>{t('Change')}</button>
+                  <div className="pg-row" style={{ gap: 6, justifyContent: 'flex-end' }}>
+                    {i > 0 && <button className={'pg-mini' + (linkedPrev ? ' on' : '')} onClick={() => editDay(copy => toggleLink(copy, i, 'sg' + uid()))}
+                      aria-pressed={!!linkedPrev} aria-label={t('Superset with exercise above')} title={t('Superset with exercise above')}><Icon name="link" /></button>}
+                    <button className="pg-mini" onClick={() => editDay(copy => removeSlot(copy, i))}
+                      aria-label={t('Remove this slot')} title={t('Remove this slot')}><Icon name="xmark" /></button>
+                    <button className="pg-btn small" onClick={() => openSlot(sl)}>{t('Change')}</button>
+                  </div>
                 </div>
-              </li>
+              </div>
+              </div>
             })}
-          </ol>
+            {reorder.drag && <div className={'routine-drop-indicator' + (reorder.drag.join != null ? ' join' : '')} aria-hidden="true"
+              style={{ top: `${reorder.drag.indicatorTop}px` }} />}
+          </div>
+          <button className="pg-btn ghost" onClick={addPattern}><Icon name="plus" /> {t('Add a movement pattern')}</button>
           {changed && <div className="pg-row pg-between">
             <span className="pg-hint">{t('Your changes are kept until you create the plan.')}</span>
             <button className="pg-link" onClick={reset}>{armed ? t('Tap again to go back to the suggestions') : t('Back to the suggestions')}</button>
@@ -386,6 +442,33 @@ function Picker({ slot, profile, dayName, onPick, close }) {
     </div>
   </>
 }
+
+/* ---------- adding a slot: which pattern ---------- */
+
+const REGION = { push: 'Push patterns', pull: 'Pull patterns', legs: 'Leg patterns', core: 'Core patterns' }
+const PATTERN_COUNT = Object.fromEntries(PATTERNS.map(p => [p.key, CATALOGUE.filter(ex => patternOf(ex) === p.key).length]))
+
+function PatternPicker({ dayName, onPick, close }) {
+  return <>
+    <div className="pg-sh-head">
+      <div className="pg-row pg-between"><span className="pg-label">{dayName}</span><button className="pg-close" onClick={close}>{t('Close')}</button></div>
+      <h2 style={{ fontSize: 24 }}>{t('Add a movement pattern')}</h2>
+      <p className="pg-hint">{t('It goes at the end of the day; drag it wherever you want it.')}</p>
+    </div>
+    {Object.entries(REGION).map(([region, label]) => <div key={region}>
+      <div className="pg-grp"><h3>{t(label)}</h3></div>
+      {PATTERNS.filter(p => p.region === region).map(p => <div key={p.key} className="pg-opt">
+        <button className="choose" onClick={() => { onPick(p.key); close() }}>
+          <div className="pg-exn" style={{ fontSize: 15 }}>{t(p.name)}</div>
+        </button>
+        <span className="pg-hint">{t('{0} exercises', PATTERN_COUNT[p.key])}</span>
+      </div>)}
+    </div>)}
+  </>
+}
+
+const openPatternPicker = ({ dayName, onPick }) =>
+  useUI.getState().openSheet(close => <PatternPicker dayName={dayName} onPick={onPick} close={close} />, { className: 'side pg' })
 
 const openPicker = ({ slot, profile, dayName, onPick }) =>
   useUI.getState().openSheet(close => <Picker slot={slot} profile={profile} dayName={dayName} onPick={onPick} close={close} />,

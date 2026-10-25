@@ -1387,4 +1387,12 @@ export default {
   'Reference programs': 'Programmes de référence',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': 'Les PPL de référence ouvrent chaque jour avec un ou deux polyarticulaires, utilisent 6–12 répétitions en polyarticulaire et 8–15 en isolation, RIR 1–2 et une décharge toutes les quelques semaines.',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'Ici : les plages suivent la double progression de l’app (polyarticulaire 5–12, machine 8–10, isolation 10–20) et l’app propose la décharge à la fin du mésocycle.',
+  'Add a movement pattern': 'Ajouter un schéma de mouvement',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'Maintiens un emplacement et fais-le glisser pour changer l’ordre ; lâche-le sur un autre pour faire un superset. Maintiens plus longtemps pour emporter tout le superset.',
+  'It goes at the end of the day; drag it wherever you want it.': 'Il s’ajoute à la fin du jour ; fais-le glisser où tu veux.',
+  'Remove this slot': 'Retirer cet emplacement',
+  'Push patterns': 'Poussées',
+  'Pull patterns': 'Tirages',
+  'Leg patterns': 'Jambes',
+  'Core patterns': 'Gainage',
 }

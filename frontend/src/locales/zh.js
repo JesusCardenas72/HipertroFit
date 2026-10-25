@@ -1387,4 +1387,12 @@ export default {
   'Reference programs': '参考计划',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': '参考的 PPL 计划每天以一到两个复合动作开始，复合动作 6–12 次，孤立动作 8–15 次，RIR 1–2，每隔几周减载一次。',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': '本计划：范围遵循应用的双重递进（复合 5–12，器械 8–10，孤立 10–20），中周期结束时应用会建议减载。',
+  'Add a movement pattern': '添加动作模式',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': '按住一个位置并拖动以调整顺序；松手放在另一个上即组成超级组。按住更久可移动整个超级组。',
+  'It goes at the end of the day; drag it wherever you want it.': '会添加到当天末尾；可以拖到任意位置。',
+  'Remove this slot': '移除这个位置',
+  'Push patterns': '推类',
+  'Pull patterns': '拉类',
+  'Leg patterns': '腿部',
+  'Core patterns': '核心',
 }

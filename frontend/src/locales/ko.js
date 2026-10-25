@@ -1387,4 +1387,12 @@ export default {
   'Reference programs': '참고 프로그램',
   'Reference PPL programs open each day with one or two compounds, use 6–12 reps on compounds and 8–15 on isolation work, RIR 1–2 and deloads every few weeks.': '참고용 PPL은 매일 복합 운동 한두 개로 시작하고, 복합 운동은 6–12회, 고립은 8–15회, RIR 1–2, 몇 주마다 디로드를 합니다.',
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': '여기서는: 범위는 앱의 이중 점진(복합 5–12, 머신 8–10, 고립 10–20)을 따르고, 메조사이클이 끝나면 앱이 디로드를 제안합니다.',
+  'Add a movement pattern': '움직임 패턴 추가',
+  'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': '슬롯을 길게 눌러 끌면 순서가 바뀝니다. 다른 슬롯 위에 놓으면 슈퍼세트가 됩니다. 더 오래 누르면 슈퍼세트 전체를 옮깁니다.',
+  'It goes at the end of the day; drag it wherever you want it.': '하루의 끝에 추가됩니다. 원하는 곳으로 끌어 옮기세요.',
+  'Remove this slot': '이 슬롯 제거',
+  'Push patterns': '밀기',
+  'Pull patterns': '당기기',
+  'Leg patterns': '하체',
+  'Core patterns': '코어',
 }
