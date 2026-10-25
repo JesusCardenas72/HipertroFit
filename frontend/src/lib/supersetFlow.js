@@ -26,6 +26,16 @@ export function insertionIndexAfterCurrentUnit(units, currentIndex, entryCount) 
   return Math.min(length, Math.max(...unit) + 1)
 }
 
+// "Add exercise" under one exercise puts the new one straight after it. Between two members of a
+// superset it joins that superset (its `sg`), or it would split the group in two; after the last
+// member, or after a plain exercise, it stands on its own.
+export function insertionAfterEntry(entries, idx) {
+  const list = Array.isArray(entries) ? entries : []
+  if (!Number.isInteger(idx) || !list[idx]) return { at: list.length, sg: null }
+  const sg = list[idx].sg
+  return { at: idx + 1, sg: sg && list[idx + 1]?.sg === sg ? sg : null }
+}
+
 // A completion is new progress only when it takes this exercise beyond the largest number of
 // simultaneously completed sets seen in this mounted session. Uncheck/re-check therefore does
 // not repeat navigation or rest side effects, while completing an added set still can.

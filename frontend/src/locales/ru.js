@@ -1190,6 +1190,7 @@ export default {
   'Target': 'Цель',
   'Set': 'Подход',
   'Use the target': 'Использовать цель',
+  'Warmup': 'Разминка',
   '{0} of {1} sets': '{0} из {1} подходов',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': 'Новая версия {0}',

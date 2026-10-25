@@ -1190,6 +1190,7 @@ export default {
   'Target': '목표',
   'Set': '세트',
   'Use the target': '목표 사용',
+  'Warmup': '워밍업',
   '{0} of {1} sets': '{1}세트 중 {0}세트',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': '새 버전 {0}',

@@ -1195,6 +1195,7 @@ export default {
   'Target': 'Cél',
   'Set': 'Sorozat',
   'Use the target': 'Cél használata',
+  'Warmup': 'Bemelegítő',
   '{0} of {1} sets': '{0} / {1} sorozat',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': 'Új verzió: {0}',

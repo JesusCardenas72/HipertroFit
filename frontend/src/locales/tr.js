@@ -1190,6 +1190,7 @@ export default {
   'Target': 'Hedef',
   'Set': 'Set',
   'Use the target': 'Hedefi kullan',
+  'Warmup': 'Isınma',
   '{0} of {1} sets': '{0}/{1} set',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': 'Yeni sürüm {0}',

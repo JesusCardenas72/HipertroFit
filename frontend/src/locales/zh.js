@@ -1190,6 +1190,7 @@ export default {
   'Target': '目标',
   'Set': '组',
   'Use the target': '使用目标',
+  'Warmup': '热身',
   '{0} of {1} sets': '{0}/{1} 组',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': '新版本 {0}',

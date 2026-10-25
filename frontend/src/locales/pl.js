@@ -1190,6 +1190,7 @@ export default {
   'Target': 'Cel',
   'Set': 'Seria',
   'Use the target': 'Użyj celu',
+  'Warmup': 'Rozgrzewka',
   '{0} of {1} sets': '{0} z {1} serii',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': 'Nowa wersja {0}',

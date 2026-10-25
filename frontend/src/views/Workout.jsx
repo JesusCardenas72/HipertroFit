@@ -8,7 +8,7 @@ import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
-import { insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, unitEntryIdx } from '../lib/supersetFlow.js'
+import { insertionAfterEntry, insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, unitEntryIdx } from '../lib/supersetFlow.js'
 import { restBetweenExercisesSec, restExLabel, settingChoice, REST_EX_PRESETS } from '../lib/rest-between.js'
 import Media, { Thumb } from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, swapActiveWorkoutExercise } from '../sheets.jsx'
@@ -188,7 +188,7 @@ const miniStepper = (value, step, dec, onChange) => (
 )
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1, onToggle, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onOpenProgression, onSwap, onRemove, swipeSet, swipeDx = 0, open = true, onToggleHead }) {
+function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1, onToggle, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onAddExercise, onOpenProgression, onSwap, onRemove, swipeSet, swipeDx = 0, open = true, onToggleHead }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -305,7 +305,7 @@ function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1,
     {/* In the drum the sets are the drum's (see SetDrum) — this block is only the exercise's header. */}
     {table && <SetTable entryIdx={entryIdx} best={best} nextSet={nextSet} onToggle={onToggle} onField={onField}
       onAddSet={onAddSet} onAddWarmup={onAddWarmup} onRemoveSetAt={onRemoveSetAt} onStartTimed={onStartTimed}
-      onSetRowRef={onSetRowRef} onProgressionSettings={onProgressionSettings} swipeSet={swipeSet} swipeDx={swipeDx} />}
+      onSetRowRef={onSetRowRef} onProgressionSettings={onProgressionSettings} onAddExercise={onAddExercise} swipeSet={swipeSet} swipeDx={swipeDx} />}
     {!slim && <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
       {/* Warm-up sets seed the ramp to the work sets, so the button to add one sits at the top
           of the list, above the column legends — not down in the footer with Add/Remove set. */}
@@ -423,7 +423,7 @@ function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1,
 // seedTargets already wrote it into the rows, and a cell that has drifted from it carries the
 // target underneath, one tap to put back. Everything that changes the list (a drop, a burst, a
 // warm-up, removing the set) waits behind the set's number so the resting table stays bare.
-function SetTable({ entryIdx, best, nextSet = -1, onToggle, onField, onAddSet, onAddWarmup, onRemoveSetAt, onStartTimed, onSetRowRef, onProgressionSettings, swipeSet, swipeDx = 0 }) {
+function SetTable({ entryIdx, best, nextSet = -1, onToggle, onField, onAddSet, onAddWarmup, onRemoveSetAt, onStartTimed, onSetRowRef, onProgressionSettings, onAddExercise, swipeSet, swipeDx = 0 }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const { entry, mode, cfg, plan, prevSets, prevTop, loadStep, ladder, kind, col1, col2, col3 } = useSetColumns(entryIdx, onField)
@@ -438,11 +438,20 @@ function SetTable({ entryIdx, best, nextSet = -1, onToggle, onField, onAddSet, o
   const ni = entry.sets.findIndex(x => !x.done && !isWarmupRow(x))
   const nextAim = ni >= 0 ? { ...entry.sets[ni], ...(target(ni) || {}) } : null
   const guidance = progressionGuidance(plan)
+  // The foot's "+ Drop" strips the set just done — the last work set ticked off — or, before any,
+  // the next one to do. A rest-pause set takes bursts, not drops, so it has none to give.
+  const lastDone = entry.sets.findLastIndex(x => x.done && !isWarmupRow(x))
+  const dropFor = lastDone >= 0 ? lastDone : ni
+  const dropAt = dropFor >= 0 && !isRestPauseSet(entry.sets[dropFor]) ? dropFor : -1
   const dir = plan?.kind === 'up' ? 'arrowUp' : plan?.kind === 'deload' ? 'arrowDown' : null
   const grid = 'st-row c' + cols.length + (timed ? ' timed' : '')
-  const cell = (s, i, col, sug) => {
+  const cell = (s, i, col, sug, ref) => {
     const aim = sug && sug[col.f] != null ? sug[col.f] : null
+    const was = ref && ref[col.f] != null && ref[col.f] !== '' ? ref[col.f] : null
     return <div className={'st-cell' + (aim != null ? ' off' : '')} key={col.f}>
+      {/* What this set did last time, on top of the field it belongs to — only to read, so it is
+          a quiet label rather than a button like the target under it. */}
+      {was != null && <span className="st-prev" aria-label={t('Last') + ': ' + fmtNum(was)} title={t('Last')}>{fmtNum(was)}</span>}
       {/* a typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up */}
       <NumberField decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''} placeholder="–" aria-label={col.hd}
         onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} />
@@ -470,7 +479,8 @@ function SetTable({ entryIdx, best, nextSet = -1, onToggle, onField, onAddSet, o
     {entry.sets.map((s, i) => {
       const warm = isWarmupRow(s)
       const phaseNum = entry.sets.slice(0, i + 1).filter(x => isWarmupRow(x) === warm).length
-      const sug = warm ? null : suggestionFor({ mode, plan, row: s, reference: referenceSet(prevSets, workIndexOf(entry.sets, i)), effort: col3 ? kind : null, base: prevTop, step: loadStep })
+      const ref = warm ? null : referenceSet(prevSets, workIndexOf(entry.sets, i))
+      const sug = warm ? null : suggestionFor({ mode, plan, row: s, reference: ref, effort: col3 ? kind : null, base: prevTop, step: loadStep })
       const removable = entry.sets.length > 1
       const dragging = swipeSet === i
       const intensify = !warm && mode === 'reps'
@@ -485,7 +495,7 @@ function SetTable({ entryIdx, best, nextSet = -1, onToggle, onField, onAddSet, o
               {warm ? <Icon name="flame" /> : phaseNum}
             </button>
             {/* A warm-up is prep, not a set taken near failure, so it logs no effort. */}
-            {cols.map(col => col.eff && warm ? <span key={col.f} /> : cell(s, i, col, sug))}
+            {cols.map(col => col.eff && warm ? <span key={col.f} /> : cell(s, i, col, sug, ref))}
             {timed && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
               onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
             <Check checked={s.done} onChange={() => onToggle(i)} className="st-ck" />
@@ -507,19 +517,21 @@ function SetTable({ entryIdx, best, nextSet = -1, onToggle, onField, onAddSet, o
             <button className="iconbtn" aria-label={t('Remove burst')} onClick={() => removeCluster(i, ci)}><Icon name="xmark" /></button>
           </div>
         ))}
-        {open && <div className="setextra st-tools" role="toolbar" aria-label={t('Set tools')}>
-          {intensify && !isRestPauseSet(s) && <button className="chip add" onClick={() => addDropRow(i)}><Icon name="arrowDown" />{t('+ Drop')}</button>}
-          {intensify && !isDropSet(s) && <button className="chip add" onClick={() => addBurstRow(i)}><Icon name="bolt" />{t('+ Burst')}</button>}
-          <button className="chip add danger" disabled={!removable || !!working}
+        {open && <div className="st-tools" role="toolbar" aria-label={t('Set tools')}>
+          {intensify && !isRestPauseSet(s) && <button className="st-add sm drop" onClick={() => addDropRow(i)}><Icon name="arrowDown" />{t('+ Drop')}</button>}
+          {intensify && !isDropSet(s) && <button className="st-add sm burst" onClick={() => addBurstRow(i)}><Icon name="bolt" />{t('+ Burst')}</button>}
+          <button className="st-add sm danger" disabled={!removable || !!working}
             onClick={() => { setTools(-1); onRemoveSetAt(i) }}><Icon name="trash" />{t('Remove set')}</button>
         </div>}
       </div>
     })}
+    <div className="st-count">{t('{0} of {1} sets', entry.sets.filter(x => x.done && !isWarmupRow(x)).length, works)}</div>
     <div className="st-foot">
-      <button type="button" className="st-add" onClick={onAddSet}><Icon name="plus" />{t('Add set')}</button>
-      <button type="button" className="st-add" onClick={onAddWarmup}><Icon name="flame" />{t('Add warm-up set')}</button>
-      <span className="st-count">{t('{0} of {1} sets', entry.sets.filter(x => x.done && !isWarmupRow(x)).length, works)}</span>
+      <button type="button" className="st-add" onClick={onAddSet}><Icon name="plus" />{t('Set')}</button>
+      {mode === 'reps' && <button type="button" className="st-add drop" disabled={dropAt < 0} onClick={() => addDropRow(dropAt)}><Icon name="plus" />{t('Drop')}</button>}
+      <button type="button" className="st-add warm" onClick={onAddWarmup}><Icon name="plus" />{t('Warmup')}</button>
     </div>
+    {onAddExercise && <button type="button" className="st-addex" onClick={onAddExercise}><Icon name="plus" />{t('Add exercise')}</button>}
   </div>
 }
 
@@ -1115,7 +1127,9 @@ function ActiveWorkout() {
     return () => clearTimeout(tm)
   }, [A.id, unitIdx, sheetsOpen])
 
-  const addExercise = () => exercisePicker(ex => {
+  // `after` is the exercise whose own "Add exercise" was tapped (the table's, see SetTable): the
+  // new one goes straight after it. Without it (the dock, the header) it follows the whole unit.
+  const addExercise = after => exercisePicker(ex => {
     const routine = S.routines.find(r => r.id === A.routineId)
     const freestyle = !A.routineId
     // Freestyle has no routine prescription to apply: show the last target in the config
@@ -1128,8 +1142,10 @@ function ActiveWorkout() {
       const sets = buildSets(s, full, { step, ...(freestyle ? { preferLast: true } : {}) })
       const progressed = freestyle ? sets : seedTargets(applyPrescription(sets, plan, step),
         lastEntryFor(s, ex.id)?.sets, { mode: modeOf(full), plan, effort: effortOf(s), step })
-      const insertAt = insertionIndexAfterCurrentUnit(supersetUnits(s.active.entries), s.active.cur, s.active.entries.length)
-      s.active.entries.splice(insertAt, 0, { id: ex.id, target: { ...cfg }, plan, sets: applyIntensifierPlan(progressed, full) })
+      const { at: insertAt, sg } = Number.isInteger(after)
+        ? insertionAfterEntry(s.active.entries, after)
+        : { at: insertionIndexAfterCurrentUnit(supersetUnits(s.active.entries), s.active.cur, s.active.entries.length), sg: null }
+      s.active.entries.splice(insertAt, 0, { id: ex.id, target: { ...cfg }, plan, sets: applyIntensifierPlan(progressed, full), ...(sg ? { sg } : {}) })
       s.active.cur = insertAt
       useUI.getState().shiftRestOwner(insertAt, 1)
     }), null, routine, seed)
@@ -1347,6 +1363,7 @@ function ActiveWorkout() {
       nextSet={!preview && idx === cur ? A.entries[idx].sets.findIndex(s => !s.done) : -1}
       swipeSet={!preview && rowDrag?.entry === idx ? rowDrag.set : null} swipeDx={rowDrag?.dx || 0}
       onToggle={i => toggle(idx, i)} onField={(i, f, v) => setField(idx, i, f, v)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onAddWarmup={() => addWarmup(idx)} onRemoveSetAt={i => removeSetAt(idx, i)} onStartTimed={i => startTimed(idx, i)} onProgressionSettings={() => openProgressionSettings(idx)}
+      onAddExercise={preview ? undefined : () => addExercise(idx)}
       onOpenProgression={preview ? undefined : () => openProgression(idx, { celebrate: false })}
       onSwap={preview ? undefined : () => swapActiveWorkoutExercise(idx)} onRemove={preview ? undefined : () => confirmRemoveExercise(idx)}
       open={!!openHeads[idx]} onToggleHead={() => toggleHead(idx)} table={tableView}

@@ -1190,6 +1190,7 @@ export default {
   'Target': 'Obiettivo',
   'Set': 'Serie',
   'Use the target': 'Usa l’obiettivo',
+  'Warmup': 'Riscald.',
   '{0} of {1} sets': '{0} di {1} serie',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': 'Nuova versione {0}',

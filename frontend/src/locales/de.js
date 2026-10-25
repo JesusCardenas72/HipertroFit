@@ -1207,6 +1207,7 @@ export default {
   'Target': 'Ziel',
   'Set': 'Satz',
   'Use the target': 'Ziel übernehmen',
+  'Warmup': 'Aufwärm.',
   '{0} of {1} sets': '{0} von {1} Sätzen',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': 'Neue Version {0}',

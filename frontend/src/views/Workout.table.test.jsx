@@ -120,6 +120,44 @@ describe('the set table', () => {
     expect(activeSets()).toHaveLength(2)
   })
 
+  it('prints last time’s numbers on top of each cell, only to read', () => {
+    renderWorkout({ effort: 'rir' })
+    const prev = [...rowsEl()[2].querySelectorAll('.st-prev')]
+    expect(prev.map(p => p.textContent)).toEqual(['60', '9', '1'])
+    expect(prev.every(p => p.tagName === 'SPAN')).toBe(true)
+  })
+
+  it('draws no last-time label on a warm-up', () => {
+    renderWorkout({ rows: [{ w: 30, r: 8, warmup: true, done: false }, { w: 60, r: 10, done: false }] })
+    expect(rowsEl()[0].querySelector('.st-prev')).toBeNull()
+    expect(rowsEl()[1].querySelectorAll('.st-prev')).toHaveLength(2)
+  })
+
+  it('adds a set, a drop on the set just done, or a warm-up from the foot', () => {
+    renderWorkout()
+    const foot = () => [...container.querySelectorAll('.st-foot button')]
+    expect(foot().map(b => b.textContent)).toEqual(['Set', 'Drop', 'Warmup'])
+    expect(container.textContent).not.toContain('Add warm-up set')
+    click(foot()[0])
+    expect(activeSets()).toHaveLength(4)
+    // Nothing done yet: the drop goes on the next set to do.
+    click(foot()[1])
+    expect(activeSets()[0].drops).toHaveLength(1)
+    click(rowsEl()[1].querySelector('.st-ck'))
+    click(foot()[1])
+    expect(activeSets()[1].drops).toHaveLength(1)
+    click(foot()[2])
+    expect(activeSets()[0].warmup).toBe(true)
+  })
+
+  it('offers “Add exercise” under the exercise', () => {
+    renderWorkout()
+    const btn = container.querySelector('.settable .st-addex')
+    expect(btn.textContent).toBe('Add exercise')
+    click(btn)
+    expect(useUI.getState().sheets.length).toBeGreaterThan(0)
+  })
+
   it('is the third stop of the header toggle: list → table → drum', () => {
     renderWorkout({ setView: 'list' })
     click(container.querySelector('[data-testid="set-view"]'))
@@ -132,7 +170,7 @@ describe('the set table', () => {
 })
 
 describe('set table locale coverage', () => {
-  const required = ['Table', 'Show sets as a table', 'Record', 'Target', 'Set', 'Use the target', '{0} of {1} sets']
+  const required = ['Table', 'Show sets as a table', 'Record', 'Target', 'Set', 'Use the target', '{0} of {1} sets', 'Last', 'Drop', 'Warmup', 'Add exercise']
   const packs = import.meta.glob('../locales/*.js', { eager: true, import: 'default' })
 
   it('defines every table string in every non-English locale pack', () => {

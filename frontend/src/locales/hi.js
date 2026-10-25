@@ -1190,6 +1190,7 @@ export default {
   'Target': 'लक्ष्य',
   'Set': 'सेट',
   'Use the target': 'लक्ष्य का उपयोग करें',
+  'Warmup': 'वार्म-अप',
   '{0} of {1} sets': '{1} में से {0} सेट',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': 'नया संस्करण {0}',

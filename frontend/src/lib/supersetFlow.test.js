@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, unitEntryIdx } from './supersetFlow.js'
+import { insertionAfterEntry, insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, unitEntryIdx } from './supersetFlow.js'
 
 const entry = done => ({ sets: done.map(value => ({ done: value })) })
 
@@ -116,6 +116,15 @@ describe('active workout unit ordering', () => {
     expect(insertionIndexAfterCurrentUnit([[0, 1], [2]], 0, 3)).toBe(2)
     expect(insertionIndexAfterCurrentUnit([[0], [1]], 1, 2)).toBe(2)
     expect(insertionIndexAfterCurrentUnit([], 0, 0)).toBe(0)
+  })
+
+  it('inserts straight after one exercise, joining a superset only from inside it', () => {
+    const entries = [{ id: 'a' }, { id: 'b', sg: 's1' }, { id: 'c', sg: 's1' }, { id: 'd' }]
+    expect(insertionAfterEntry(entries, 0)).toEqual({ at: 1, sg: null })
+    expect(insertionAfterEntry(entries, 1)).toEqual({ at: 2, sg: 's1' })
+    expect(insertionAfterEntry(entries, 2)).toEqual({ at: 3, sg: null })
+    expect(insertionAfterEntry(entries, 3)).toEqual({ at: 4, sg: null })
+    expect(insertionAfterEntry(entries, 9)).toEqual({ at: 4, sg: null })
   })
 
   it('finds the next unfinished unit, skips completed units, and wraps once', () => {

@@ -1203,6 +1203,7 @@ export default {
   'Target': 'เป้าหมาย',
   'Set': 'เซ็ต',
   'Use the target': 'ใช้เป้าหมาย',
+  'Warmup': 'วอร์มอัพ',
   '{0} of {1} sets': '{0} จาก {1} เซ็ต',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': 'เวอร์ชันใหม่ {0}',

@@ -2004,9 +2004,35 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 }
 .st-row .chk.st-ck{width:42px;height:40px;border-radius:10px;background:var(--surface-2);box-shadow:none;color:var(--label-3)}
 .st-row .chk.st-ck.on{background:var(--acc);color:var(--on-acc)}
-.st-tools{margin-left:38px}
-.st-tools .chip.add.danger{color:var(--red)}
-.st-foot{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
-.st-add{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:500;color:var(--acc);padding:6px 0}
-.st-add svg{width:14px;height:14px}
-.st-count{margin-left:auto;font-size:12px;color:var(--label-3)}
+/* a set's own tools: the foot's buttons, a size down — tighter top and bottom */
+.st-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px;margin:0 0 8px 38px}
+.st-add.sm{height:34px;border-radius:10px;font-size:13px;gap:5px}
+.st-add.sm svg{width:13px;height:13px}
+.st-add.burst{color:var(--blue);background:color-mix(in srgb,var(--blue) 16%,var(--surface))}
+.st-add.danger{color:var(--red);background:color-mix(in srgb,var(--red) 14%,var(--surface))}
+/* last time's number for this cell: rides on top of it like the target rides under it, but in a
+   quiet grey — it is only there to read, not to tap */
+.st-prev{
+  position:absolute;left:50%;top:-7px;transform:translateX(-50%);pointer-events:none;
+  font-size:10px;font-weight:600;line-height:1;padding:2px 5px;border-radius:6px;
+  background:var(--surface-3,var(--surface));color:var(--label-3);white-space:nowrap;
+  box-shadow:inset 0 0 0 1px var(--sep);
+}
+.st-row:has(.st-prev){padding-top:9px}
+.st-count{text-align:right;font-size:12px;color:var(--label-3);margin-top:2px}
+.st-foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;margin-top:8px}
+.st-add{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:12px;
+  font-size:15px;font-weight:600;color:var(--label);background:var(--surface-2);
+}
+.st-add svg{width:15px;height:15px}
+.st-add.drop{color:var(--purple);background:color-mix(in srgb,var(--purple) 16%,var(--surface))}
+.st-add.warm{color:var(--orange);background:color-mix(in srgb,var(--orange) 16%,var(--surface))}
+.st-add:disabled{opacity:.45}
+.st-add:active:not(:disabled){transform:scale(.97)}
+.st-addex{
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;margin-top:14px;
+  border-radius:14px;border:1.5px dashed var(--label-4);font-size:15px;font-weight:500;color:var(--label-2);
+}
+.st-addex svg{width:16px;height:16px}
+.st-addex:active{transform:scale(.98)}
