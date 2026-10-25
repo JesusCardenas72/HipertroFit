@@ -809,7 +809,14 @@ export default {
 
   // --- muscle groups ---
   'Primary muscle groups': 'Grupos musculares primarios',
-  'Additional muscle groups': 'Grupos musculares adicionales',
+  'Secondary muscle groups': 'Grupos musculares secundarios',
+  'Rear delts': 'Deltoides posterior',
+  'Edit muscle groups': 'Editar grupos musculares',
+  'Pick at least one primary muscle group': 'Elige al menos un grupo muscular primario',
+  'Restore original muscles': 'Restaurar músculos originales',
+  'Original muscles restored': 'Músculos originales restaurados',
+  'Original:': 'Original:',
+  'Volume, recovery and the muscle map will count this exercise with these muscles — past workouts included.': 'El volumen, la recuperación y el mapa muscular contarán este ejercicio con estos músculos, también en los entrenamientos pasados.',
   'No explicit muscle group': 'Sin grupo muscular explícito',
 
   // "Connect to my server" (mobile app pairing)

@@ -16,7 +16,7 @@ import {
   halfLifeDecay,
   strengthOf,
 } from './recovery.js'
-import { EXDB, registerCustom } from './exercises.js'
+import { CATALOGUE, registerCustom } from './exercises.js'
 import { MUSCLES, exerciseMuscleSnapshot, musclesOf } from './muscles.js'
 import { fatigueStateOf } from './recovery-view.js'
 
@@ -24,12 +24,13 @@ const HOUR = 60 * 60 * 1000
 const DAY = 24 * HOUR
 const NOW = Date.UTC(2026, 0, 1, 12)
 
-// Keep fixtures tied to the shipped catalogue while making the expected stimulus explicit.
-const SINGLE = EXDB.find(ex => {
+// Keep fixtures tied to the shipped catalogue (the runtime one, with its reviewed muscles,
+// which is what a logged id resolves to) while making the expected stimulus explicit.
+const SINGLE = CATALOGUE.find(ex => {
   const weights = musclesOf(ex)
   return ex.bp !== 'cardio' && Object.keys(weights).length === 1 && Object.values(weights)[0] === 1
 })
-const WEIGHTED = EXDB.find(ex => {
+const WEIGHTED = CATALOGUE.find(ex => {
   const weights = musclesOf(ex)
   return ex.bp !== 'cardio' && Object.values(weights).includes(0.4)
 })
@@ -343,7 +344,7 @@ describe('causal fatigue reference', () => {
   })
 
   it('uses the last registered bodyweight for bodyweight exercises', () => {
-    const bwEx = EXDB.find(ex => ex.eq === 'body weight' && ex.bp !== 'cardio')
+    const bwEx = CATALOGUE.find(ex => ex.eq === 'body weight' && ex.bp !== 'cardio')
     if (!bwEx) throw new Error('test requires a bodyweight exercise fixture')
     const slug = Object.keys(musclesOf(bwEx))[0]
     const workout = { d: new Date(NOW).toISOString(), start: NOW, entries: [{ id: bwEx.id, sets: [{ done: true, r: 10 }] }] }
@@ -481,12 +482,12 @@ describe('a rest-pause row\'s clusters add no extra fatigue tonnage', () => {
 })
 
 describe('canonical loads and configured bodyweight', () => {
-  const loaded = EXDB.find(ex => {
+  const loaded = CATALOGUE.find(ex => {
     const weights = musclesOf(ex)
     return ex.bp !== 'cardio' && ex.eq !== 'body weight'
       && Object.keys(weights).length === 1 && Object.values(weights)[0] === 1
   })
-  const bodyweight = EXDB.find(ex => ex.bp !== 'cardio' && ex.eq === 'body weight')
+  const bodyweight = CATALOGUE.find(ex => ex.bp !== 'cardio' && ex.eq === 'body weight')
   if (!loaded || !bodyweight) throw new Error('recovery tests require loaded and bodyweight fixtures')
   const loadedSlug = Object.keys(musclesOf(loaded))[0]
   const bodyweightSlug = Object.keys(musclesOf(bodyweight))[0]

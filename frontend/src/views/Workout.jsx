@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, muscleTagsOf } from '../lib/exercises.js'
+import { muscleLabel } from '../lib/muscles.js'
 import { effectiveRoutine, lastEntryFor, bestWeightFor, buildSets, freestyleConfig, defaultConfig, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, sideReps, repStep, EFFORT, effortOf, stepEffort, capEffort, cascadeWeight, insertWarmupRow, removeRowAt, pairAdjacent, unpairSuperset, cleanupSg, applyIntensifierPlan, pinnedNoteFor, exNoteFor } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate } from '../lib/sound.js'
@@ -306,8 +307,8 @@ function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1,
           without the rep count having to mean two different things (issue #31). */}
       {!cardio && !timed && isPerSide(cfg) && <span className="tag acc nocap"><Icon name="shuffle" />{t('{0} per side', fmtNum(sideReps(entry.sets.find(s => !s.done)?.r ?? entry.sets[0]?.r)))}</span>}
       {/* The muscles it is for, then the ones that help — told apart by colour. */}
-      {!cardio && muscles.primary.map(m => <span key={'p' + m} className="tag mus-p" title={t('Primary')}>{t(m)}</span>)}
-      {!cardio && muscles.secondary.map(m => <span key={'s' + m} className="tag mus-s" title={t('Secondary')}>{t(m)}</span>)}
+      {!cardio && muscles.primary.map(m => <span key={'p' + m} className="tag mus-p" title={t('Primary')}>{t(muscleLabel(m))}</span>)}
+      {!cardio && muscles.secondary.map(m => <span key={'s' + m} className="tag mus-s" title={t('Secondary')}>{t(muscleLabel(m))}</span>)}
       {(cardio || !muscles.primary.length) && (ex.tg || ex.bp) && <span className="tag">{t(ex.tg || ex.bp)}</span>}
       {ex.eq && <span className="tag">{t(ex.eq)}</span>}
       {best > 0 && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}

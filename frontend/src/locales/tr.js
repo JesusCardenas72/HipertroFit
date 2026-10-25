@@ -673,7 +673,14 @@ export default {
 
   // --- muscle groups ---
   'Primary muscle groups': 'Birincil kas grupları',
-  'Additional muscle groups': 'Ek kas grupları',
+  'Secondary muscle groups': 'İkincil kas grupları',
+  'Rear delts': 'Arka omuz',
+  'Edit muscle groups': 'Kas gruplarını düzenle',
+  'Pick at least one primary muscle group': 'En az bir birincil kas grubu seç',
+  'Restore original muscles': 'Orijinal kasları geri yükle',
+  'Original muscles restored': 'Orijinal kaslar geri yüklendi',
+  'Original:': 'Orijinal:',
+  'Volume, recovery and the muscle map will count this exercise with these muscles — past workouts included.': 'Hacim, toparlanma ve kas haritası bu egzersizi bu kaslarla sayacak — geçmiş antrenmanlar dahil.',
   'No explicit muscle group': 'Açık kas grubu yok',
 
   // "Connect to my server" (mobile app pairing)

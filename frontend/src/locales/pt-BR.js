@@ -848,6 +848,9 @@ export const PT_BR_OVERRIDES = {
   'Could not download the update. Try again later.': 'Não foi possível baixar a atualização. Tente novamente mais tarde.',
   'Could not check for updates. Are you online?': 'Não foi possível verificar se há atualizações. Você está conectado?',
   'Installed version {0}': 'Versão instalada: {0}',
+  'Pick at least one primary muscle group': 'Escolha pelo menos um grupo muscular principal',
+  'Restore original muscles': 'Restaurar músculos originais',
+  'Original muscles restored': 'Músculos originais restaurados',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

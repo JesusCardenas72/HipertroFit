@@ -673,7 +673,14 @@ export default {
 
   // --- muscle groups ---
   'Primary muscle groups': 'प्राथमिक मांसपेशी समूह',
-  'Additional muscle groups': 'अतिरिक्त मांसपेशी समूह',
+  'Secondary muscle groups': 'द्वितीयक मांसपेशी समूह',
+  'Rear delts': 'पिछला डेल्टॉइड',
+  'Edit muscle groups': 'मांसपेशी समूह संपादित करें',
+  'Pick at least one primary muscle group': 'कम से कम एक प्राथमिक मांसपेशी समूह चुनें',
+  'Restore original muscles': 'मूल मांसपेशियाँ बहाल करें',
+  'Original muscles restored': 'मूल मांसपेशियाँ बहाल की गईं',
+  'Original:': 'मूल:',
+  'Volume, recovery and the muscle map will count this exercise with these muscles — past workouts included.': 'वॉल्यूम, रिकवरी और मसल मैप इस व्यायाम को इन मांसपेशियों के साथ गिनेंगे — पिछले वर्कआउट भी।',
   'No explicit muscle group': 'कोई स्पष्ट मांसपेशी समूह नहीं',
 
   // "Connect to my server" (mobile app pairing)

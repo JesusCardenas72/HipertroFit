@@ -192,8 +192,8 @@ describe('the set table', () => {
     act(() => useStore.getState().update(s => { s.active.entries[0].id = '0749' }))
     click(container.querySelector('.exhead-tg'))
     const tags = cls => [...container.querySelectorAll('.tag.' + cls)].map(n => n.textContent)
-    expect(tags('mus-p')).toEqual(['glutes'])
-    expect(tags('mus-s')).toEqual(['hamstrings', 'lower back'])
+    expect(tags('mus-p')).toEqual(['Hamstrings', 'Glutes'])
+    expect(tags('mus-s')).toEqual(['Lower back', 'Adductors'])
   })
 
   it('is the third stop of the header toggle: list → table → drum', () => {

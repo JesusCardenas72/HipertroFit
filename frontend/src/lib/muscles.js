@@ -52,6 +52,35 @@ const ALIAS = {
   groin: 'adductors', 'inner thighs': 'adductors',
   ankles: null, feet: null, hands: null, 'ankle stabilizers': null,
   sternocleidomastoid: null,
+  // the volume-only pseudo-slugs the reviewed catalogue and the muscle editor store
+  'rear-delts': 'deltoids',
+}
+
+// What a person can pick when they set an exercise's muscles (custom exercises, corrections to
+// built-in ones): the drawable muscles plus the lats and rear delts, which the map folds into
+// upper back / shoulders but the volume split (lib/volume.js) counts on their own.
+export const MUSCLE_CHOICES = [
+  'trapezius', 'deltoids', 'rear-delts', 'chest', 'upper-back', 'lats', 'serratus',
+  'biceps', 'triceps', 'forearm',
+  'abs', 'obliques', 'lower-back',
+  'gluteal', 'quadriceps', 'hamstring', 'adductors', 'hip-flexors',
+  'calves', 'tibialis',
+]
+const CHOICE_NAME = { ...MUSCLE_NAME, lats: 'Lats', 'rear-delts': 'Rear delts' }
+
+/**
+ * English display name (an i18n key) for any muscle an exercise lists: a slug from
+ * MUSCLE_CHOICES, or one of the dataset's free-text names, which are their own keys.
+ */
+export const muscleLabel = name => CHOICE_NAME[name] || name
+
+/** A stored muscle name as a MUSCLE_CHOICES value, so a picker can preselect it; null if none. */
+export function muscleChoiceOf(name) {
+  const key = String(name || '').toLowerCase().trim()
+  if (MUSCLE_CHOICES.includes(key)) return key
+  if (key === 'lats' || key === 'latissimus dorsi') return 'lats'
+  if (key === 'rear deltoids') return 'rear-delts'
+  return ALIAS[key] || null
 }
 
 // Custom exercises carry only a body part, so they fall back to it. Weights inside a
@@ -210,7 +239,7 @@ export const musclesOf = ex => weightsOf(ex, canonicalMuscle)
 // in deltoids.
 export const LATS = 'lats'
 export const REAR_DELTS = 'rear-delts'
-const VOLUME_ALIAS = { lats: LATS, 'latissimus dorsi': LATS, 'rear deltoids': REAR_DELTS }
+const VOLUME_ALIAS = { lats: LATS, 'latissimus dorsi': LATS, 'rear deltoids': REAR_DELTS, 'rear-delts': REAR_DELTS }
 const volumeMuscle = value =>
   VOLUME_ALIAS[String(value || '').toLowerCase().trim()] || canonicalMuscle(value)
 

@@ -1,21 +1,20 @@
 import { EXDB } from './exercises-data.js'
-import { USER_EXERCISE_MUSCLE_OVERRIDES, exerciseMuscleMetadataFor } from './exercise-muscle-batch-1.js'
+import { exerciseMuscleMetadataFor } from './exercise-muscles.js'
 import { t, getVersion, exerciseNameSearchText } from './i18n-core.js'
 
 export { EXDB }
 
 // The generated dataset remains the compatibility/raw export. The runtime catalogue applies
-// owner-approved muscle metadata as a narrow overlay, so imports and historical tests that rely
-// on the upstream shape keep working while EXIDX and pickers see the corrected model.
+// the reviewed muscle metadata (lib/exercise-muscles.js) as a narrow overlay, so imports and
+// historical tests that rely on the upstream shape keep working while EXIDX and pickers see the
+// corrected model.
 const catalogueExercise = ex => {
   const metadata = exerciseMuscleMetadataFor(ex?.id)
   if (!Object.keys(metadata).length) return ex
   const out = { ...ex, ...metadata }
-  const user = USER_EXERCISE_MUSCLE_OVERRIDES[ex?.id] || {}
-  // A future dataset row may carry explicit arrays of its own; preserve those over generated
-  // defaults unless the owner has deliberately supplied a correction for the same field.
+  // A future dataset row may carry explicit arrays of its own; preserve those over the overlay.
   for (const key of ['primaries', 'secondaries']) {
-    if (Object.prototype.hasOwnProperty.call(ex, key) && !Object.prototype.hasOwnProperty.call(user, key)) out[key] = ex[key]
+    if (Object.prototype.hasOwnProperty.call(ex, key)) out[key] = ex[key]
   }
   if (Array.isArray(out.primaries)) out.primaries = [...out.primaries]
   if (Array.isArray(out.secondaries)) out.secondaries = [...out.secondaries]
@@ -49,13 +48,40 @@ export const smOf = ex => {
  * a muscle never listed twice. Same reading as the exercise's detail sheet.
  */
 export function muscleTagsOf(ex) {
-  const primary = [...new Set(ex?.primaries?.length ? ex.primaries : (ex?.tg ? [ex.tg] : []))]
-  const secondary = (ex?.secondaries?.length ? ex.secondaries : smOf(ex)).filter((m, i, all) => !primary.includes(m) && all.indexOf(m) === i)
+  const explicit = !!ex?.primaries?.length
+  const primary = [...new Set(explicit ? ex.primaries : (ex?.tg ? [ex.tg] : []))]
+  // With explicit primaries an empty secondaries list is a decision (a calf raise has none),
+  // not a gap to fill from the dataset's free-text list.
+  const secondary = (explicit ? (ex.secondaries || []) : smOf(ex)).filter((m, i, all) => !primary.includes(m) && all.indexOf(m) === i)
   return { primary, secondary }
 }
 
 export const EXIDX = {}
 CATALOGUE.forEach(e => { EXIDX[e.id] = e })
+
+// The user's own muscle corrections for built-in exercises live in synced state S.exMuscles
+// ({ id: { primaries, secondaries } }) and are pushed in here by the store, like the custom
+// catalogue below, so every EXIDX[id] lookup (volume, recovery, muscle map, stats) sees them.
+let muscleEdits = {}
+const editedRow = new Map()
+const withEdits = ex => editedRow.get(ex.id) || ex
+export function registerMuscleEdits(map) {
+  const next = map && typeof map === 'object' ? map : {}
+  if (next === muscleEdits) return
+  muscleEdits = next
+  editedRow.clear()
+  for (const ex of CATALOGUE) {
+    const edit = next[ex.id]
+    const primaries = Array.isArray(edit?.primaries) ? [...new Set(edit.primaries)] : []
+    if (primaries.length) {
+      const secondaries = [...new Set(Array.isArray(edit.secondaries) ? edit.secondaries : [])].filter(m => !primaries.includes(m))
+      editedRow.set(ex.id, { ...ex, primaries, secondaries, musclesEdited: true })
+    }
+    if (!customIds.includes(ex.id)) EXIDX[ex.id] = withEdits(ex)
+  }
+}
+/** The catalogue row as shipped, before any S.exMuscles correction. */
+export const catalogueRow = id => CATALOGUE.find(ex => ex.id === id)
 export const BODYPARTS = [...new Set(CATALOGUE.map(e => e.bp))].sort()
 
 // Equipment options present in a given list of exercises, most common first (issue #6).
@@ -74,13 +100,13 @@ export function registerCustom(list) {
   customIds.forEach(id => {
     delete EXIDX[id]
     const builtIn = CATALOGUE.find(ex => ex.id === id)
-    if (builtIn) EXIDX[id] = builtIn
+    if (builtIn) EXIDX[id] = withEdits(builtIn)
   })
   customIds = (list || []).map(e => e.id)
   ;(list || []).forEach(e => { EXIDX[e.id] = e })
 }
 // Full searchable catalogue — customs first so your own exercises are easy to find.
-export const allExercises = st => [...(st.customEx || []), ...CATALOGUE]
+export const allExercises = st => [...(st.customEx || []), ...CATALOGUE.map(withEdits)]
 
 function searchableText(value) {
   if (Array.isArray(value)) return value.map(searchableText).join(' ')

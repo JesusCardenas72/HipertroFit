@@ -99,14 +99,14 @@ function lifecycleWorkouts(now = BASE_NOW) {
 
 function allFatiguedWorkout(now = BASE_NOW) {
   const ids = [
-    '1018', '1012', '1167', '1013', '3011', '1413', '1399', '1016', '1005',
-    '1010', '1003', '1001', '1511', '1494', '1002', '1000', '1396',
+    '1018', '1012', '1167', '1013', '3011', '1413', '1399', '1016', '1005', '1011', '1314',
+    '1010', '1003', '1001', '1511', '1494', '1002', '1000',
   ]
-  return workout(
-    'all-fatigued',
-    now,
-    ids.map(id => entry(id, Array.from({ length: 12 }, () => set(true)))),
-  )
+  const sets = () => Array.from({ length: 12 }, () => set(true))
+  // No catalogue exercise trains the shins as a primary (its "toe raises" are heel raises), so
+  // they come from a deleted custom exercise's muscle snapshot.
+  const shins = { id: 'deleted-shin-raise', muscleSnapshot: { n: 'Tibialis raise', bp: 'lower legs', muscleWeights: { tibialis: 1 } }, sets: sets() }
+  return workout('all-fatigued', now, [...ids.map(id => entry(id, sets())), shins])
 }
 
 function allSubfullWorkout(now = BASE_NOW) {

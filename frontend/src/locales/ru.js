@@ -673,7 +673,14 @@ export default {
 
   // --- muscle groups ---
   'Primary muscle groups': 'Основные группы мышц',
-  'Additional muscle groups': 'Дополнительные мышечные группы',
+  'Secondary muscle groups': 'Вспомогательные группы мышц',
+  'Rear delts': 'Задние дельты',
+  'Edit muscle groups': 'Изменить группы мышц',
+  'Pick at least one primary muscle group': 'Выберите хотя бы одну основную группу мышц',
+  'Restore original muscles': 'Вернуть исходные мышцы',
+  'Original muscles restored': 'Исходные мышцы восстановлены',
+  'Original:': 'Исходно:',
+  'Volume, recovery and the muscle map will count this exercise with these muscles — past workouts included.': 'Объём, восстановление и карта мышц будут учитывать это упражнение с этими мышцами — и в прошлых тренировках.',
   'No explicit muscle group': 'Без явной мышечной группы',
 
   // "Connect to my server" (mobile app pairing)

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, smOf, matchExercise, exOr, normalizeStr } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, matchExercise, exOr, normalizeStr, muscleTagsOf, catalogueRow } from './lib/exercises.js'
 import { activeProfile, exAvailable, ALL_EQUIPMENT, newProfile } from './lib/equipment.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount, DAYN, DAYS, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { programActive, emptyProgram, sessionsPerRound, REST } from './lib/program.js'
@@ -22,7 +22,7 @@ import Icon from './components/Icon.jsx'
 import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, MultiSelectRow } from './components/ui.jsx'
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
 import BodyMap from './components/BodyMap.jsx'
-import { exerciseMuscleSnapshot, loadOfWorkouts, MUSCLES, MUSCLE_NAME, normalizeMuscleGroups, hasExplicitMuscleMetadata } from './lib/muscles.js'
+import { exerciseMuscleSnapshot, loadOfWorkouts, MUSCLE_CHOICES, muscleLabel, muscleChoiceOf } from './lib/muscles.js'
 import { parseImport, mergeImport } from './lib/import-csv.js'
 import { importHevyData, HevyApiError, HEVY_DEV_SETTINGS, mergeHevyRoutines } from './lib/import-hevy.js'
 import { addFolder, renameFolder, moveFolder, deleteFolder, FOLDER_NAME_MAX } from './lib/folders.js'
@@ -513,18 +513,21 @@ function OneRM({ ex }) {
   </>
 }
 
-function ExerciseDetail({ ex, close }) {
+function ExerciseDetail({ ex: shown, close }) {
   const st = useStore(s => s.S)
+  // Re-read from the index so a muscle correction saved from this sheet shows at once.
+  const ex = (!shown.custom && EXIDX[shown.id]) || shown
   const last = lastEntryFor(st, ex.id)
   const best = bestWeightFor(st, ex.id)
+  const muscles = muscleTagsOf(ex)
   return <>
     <h3 className="capitalize">{exerciseNameFor(ex)}</h3>
     <Media ex={ex} />
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
       <span className="tag acc">{t(ex.bp)}</span>
-      {(ex.primaries?.length ? ex.primaries : (ex.tg ? [ex.tg] : [])).map((s, i) => <span key={i} className="tag"><Icon name="target" />{t(s)}</span>)}
+      {!isCardio(ex) && muscles.primary.map(m => <span key={'p' + m} className="tag mus-p" title={t('Primary')}><Icon name="target" />{t(muscleLabel(m))}</span>)}
       <span className="tag"><Icon name="dumbbell" />{t(ex.eq)}</span>
-      {(ex.secondaries?.length ? ex.secondaries : smOf(ex)).slice(0, 3).map((s, i) => <span key={i} className="tag">{t(s)}</span>)}
+      {!isCardio(ex) && muscles.secondary.map(m => <span key={'s' + m} className="tag mus-s" title={t('Secondary')}>{t(muscleLabel(m))}</span>)}
     </div>
     {ex.desc && <div className="exnote">{ex.desc}</div>}
     {best > 0 && <div className="small row" style={{ marginBottom: 6, gap: 5 }}><Icon name="trophy" style={{ fontSize: 14, color: 'var(--yellow)' }} />{t('Best:')} <b className="accent">{fmtNum(best)} {st.unit}</b>{last ? ` · ${t('last')} ${fmtDate(last.d)}: ${last.sets.map(s => setLabel(ex.id, s, last.target)).join(', ')}` : ''}</div>}
@@ -532,7 +535,10 @@ function ExerciseDetail({ ex, close }) {
     {ex.custom ? <div className="row" style={{ gap: 8, marginTop: 8 }}>
       <Button icon="pencil" style={{ flex: 1 }} onClick={() => { close(); customExSheet(ex) }}>{t('Edit')}</Button>
       <Button variant="danger" icon="trash" style={{ flex: 1 }} onClick={() => deleteCustomEx(ex, close)}>{t('Delete')}</Button>
-    </div> : <Button icon="pencil" style={{ marginTop: 8 }} onClick={() => { close(); renameExSheet(ex) }}>{t('Rename this exercise')}</Button>}
+    </div> : <div className="row" style={{ gap: 8, marginTop: 8 }}>
+      <Button icon="pencil" style={{ flex: 1 }} onClick={() => { close(); renameExSheet(ex) }}>{t('Rename this exercise')}</Button>
+      {!isCardio(ex) && <Button icon="target" style={{ flex: 1 }} onClick={() => muscleEditSheet(ex)}>{t('Edit muscle groups')}</Button>}
+    </div>}
     {!isCardio(ex) && <OneRM ex={ex} />}
     {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{!INSTR_LANGS.includes(getLang()) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
   </>
@@ -588,18 +594,7 @@ function CustomExForm({ existing, prefill, onDone, close }) {
   const [desc, setDesc] = useState(existing ? (existing.desc || '') : '')
   const [steps, setSteps] = useState(existing ? stepsText(existing.st) : '')
   const [pic, setPic] = useState(() => ({ img: existing?.img || '', gif: existing?.gif || '', frame: existing?.frame || 0 }))
-  const [primaries, setPrimaries] = useState(() => {
-    if (existing && Array.isArray(existing.primaries) && existing.primaries.length) return [...existing.primaries]
-    const norm = hasExplicitMuscleMetadata(existing || {}) ? normalizeMuscleGroups(existing || {}) : []
-    return norm.length ? [norm[0]] : []
-  })
-  const [secondaries, setSecondaries] = useState(() => {
-    if (existing && Array.isArray(existing.primaries) && existing.primaries.length) return [...(existing.secondaries || [])]
-    const norm = hasExplicitMuscleMetadata(existing || {}) ? normalizeMuscleGroups(existing || {}) : []
-    return norm.slice(1)
-  })
-  const togglePrimary = value => setPrimaries(current => current.includes(value) ? current.filter(m => m !== value) : [...current, value])
-  const toggleSecondary = value => setSecondaries(current => current.includes(value) ? current.filter(m => m !== value) : [...current, value])
+  const [muscles, setMuscles] = useState(() => initialMuscles(existing))
   const pickPicture = async e => {
     const file = e.target.files && e.target.files[0]
     e.target.value = ''
@@ -607,7 +602,7 @@ function CustomExForm({ existing, prefill, onDone, close }) {
     try { setPic(await pictureFromFile(file)) }
     catch (err) { toast(err.message === 'too-large' ? t('That GIF is too big — keep it under {0} KB', Math.round(MAX_IMAGE_BYTES / 1024)) : t('That file isn’t an image')) }
   }
-  const draft = id => buildCustomExercise({ id, n, bp, eq, cls, primaries, secondaries, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame })
+  const draft = id => buildCustomExercise({ id, n, bp, eq, cls, primaries: muscles.primary, secondaries: muscles.secondary, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame })
   const autoCls = classifyExercise({ ...draft((existing || {}).id), cls: undefined })
   const save = () => {
     const name = n.trim()
@@ -640,17 +635,10 @@ function CustomExForm({ existing, prefill, onDone, close }) {
     </div>
     <SelectRow title={t('Equipment')} value={eq} options={eqOptions} onChange={setEq}
       search={{ placeholder: t('Search…'), label: t('Search…'), emptyLabel: t('No match'), match: (o, q) => normalizeStr(o.label + ' ' + o.value).includes(normalizeStr(q.trim())) }} />
-    {bp && bp !== 'cardio' && <>
-      <MultiSelectRow title={t('Primary muscle groups')} sheetTitle={t('Primary muscle groups')}
-        values={primaries}
-        options={MUSCLES.map(m => ({ value: m, label: t(MUSCLE_NAME[m]) }))}
-        onToggle={togglePrimary} noneLabel={t('No explicit muscle group')} doneLabel={t('Done')} />
-      <MultiSelectRow title={t('Additional muscle groups')} sheetTitle={t('Additional muscle groups')}
-        values={secondaries}
-        options={MUSCLES.filter(m => !primaries.includes(m)).map(m => ({ value: m, label: t(MUSCLE_NAME[m]) }))}
-        onToggle={toggleSecondary} noneLabel={t('No explicit muscle group')} doneLabel={t('Done')} />
-      <SelectRow title={t('Exercise type')} value={cls} options={clsOptions} onChange={setCls} />
-    </>}
+    {/* Shown before a body part is picked too: the muscles are as much a part of describing
+        the exercise as its name, and hiding them until a chip is tapped made them easy to miss. */}
+    {bp !== 'cardio' && <MusclePickers value={muscles} onChange={setMuscles} />}
+    {bp && bp !== 'cardio' && <SelectRow title={t('Exercise type')} value={cls} options={clsOptions} onChange={setCls} />}
     {bp === 'cardio' && <div className="small dim row" style={{ margin: '10px 0', gap: 5 }}><Icon name="figureRun" style={{ fontSize: 13 }} />{t('Cardio exercises log time + speed instead of weight × reps.')}</div>}
     <h4 className="sec">{t('Image')}</h4>
     <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPicture} />
@@ -709,9 +697,73 @@ function GifFramePicker({ src, frame, onPick }) {
 
 export const customExSheet = (existing, onDone, prefill) => ui().openSheet(close => <CustomExForm existing={existing} prefill={prefill} onDone={onDone} close={close} />)
 
+/* ---- muscle groups ----
+   The primary / secondary pickers shared by the custom-exercise form and the muscle editor of a
+   built-in exercise. `value` = { primary, secondary } of MUSCLE_CHOICES slugs; a muscle is never
+   in both lists, so picking it as primary takes it out of the secondaries. */
+function initialMuscles(ex) {
+  const { primary, secondary } = ex ? muscleTagsOf(ex) : { primary: [], secondary: [] }
+  const pick = list => [...new Set(list.map(muscleChoiceOf).filter(Boolean))]
+  const p = pick(primary)
+  return { primary: p, secondary: pick(secondary).filter(m => !p.includes(m)) }
+}
+
+function MusclePickers({ value, onChange }) {
+  const toggle = (list, m) => list.includes(m) ? list.filter(x => x !== m) : [...list, m]
+  const option = m => ({ value: m, label: t(muscleLabel(m)) })
+  return <>
+    <MultiSelectRow title={t('Primary muscle groups')} sheetTitle={t('Primary muscle groups')}
+      values={value.primary} options={MUSCLE_CHOICES.map(option)}
+      onToggle={m => onChange(v => {
+        const primary = toggle(v.primary, m)
+        return { primary, secondary: v.secondary.filter(x => !primary.includes(x)) }
+      })}
+      noneLabel={t('No explicit muscle group')} doneLabel={t('Done')} />
+    <MultiSelectRow title={t('Secondary muscle groups')} sheetTitle={t('Secondary muscle groups')}
+      values={value.secondary} options={MUSCLE_CHOICES.filter(m => !value.primary.includes(m)).map(option)}
+      onToggle={m => onChange(v => ({ ...v, secondary: toggle(v.secondary, m) }))}
+      noneLabel={t('No explicit muscle group')} doneLabel={t('Done')} />
+  </>
+}
+
+/* A built-in exercise's muscles, corrected by hand. The catalogue row stays as shipped; the
+   correction lives in S.exMuscles and lib/exercises.js applies it to every lookup, so volume,
+   recovery, the muscle map and stats all count the exercise the way you set it — history
+   included, since logged sets point at the exercise rather than copying its muscles. */
+function MuscleEditForm({ ex, close }) {
+  const original = catalogueRow(ex.id) || ex
+  const [muscles, setMuscles] = useState(() => initialMuscles(ex))
+  const edited = !!(S().exMuscles || {})[ex.id]
+  const write = value => update(s => {
+    s.exMuscles = { ...(s.exMuscles || {}) }
+    if (value) s.exMuscles[ex.id] = value
+    else delete s.exMuscles[ex.id]
+  })
+  const save = () => {
+    if (!muscles.primary.length) { toast(t('Pick at least one primary muscle group')); return }
+    write({ primaries: muscles.primary, secondaries: muscles.secondary })
+    close()
+    toast(t('Saved'))
+  }
+  const restore = () => { write(null); close(); toast(t('Original muscles restored')) }
+  const shipped = initialMuscles(original)
+  return <>
+    <h3>{t('Edit muscle groups')}</h3>
+    <div className="muted small" style={{ marginBottom: 12 }}>{t('Volume, recovery and the muscle map will count this exercise with these muscles — past workouts included.')}</div>
+    <MusclePickers value={muscles} onChange={setMuscles} />
+    <div className="small dim" style={{ margin: '10px 0 14px' }}>
+      {t('Original:')} {shipped.primary.map(m => t(muscleLabel(m))).join(', ')}
+      {shipped.secondary.length > 0 && <> · {shipped.secondary.map(m => t(muscleLabel(m))).join(', ')}</>}
+    </div>
+    <Button variant="primary" onClick={save}>{t('Save')}</Button>
+    {edited && <><div style={{ height: 8 }} /><Button icon="reset" onClick={restore}>{t('Restore original muscles')}</Button></>}
+  </>
+}
+export const muscleEditSheet = ex => ui().openSheet(close => <MuscleEditForm ex={ex} close={close} />)
+
 /* ---- manual rename ----
-   A built-in exercise cannot be edited (its id, muscles and animation come from the catalogue
-   and a dataset refresh owns them), but what it is *called* is yours: the catalogue name is
+   A built-in exercise's id and animation come from the catalogue (a dataset refresh owns
+   them; its muscles can be corrected, see MuscleEditForm), but what it is *called* is yours: the catalogue name is
    often a mouthful, a translation may not be the word your gym uses, and the English term in
    parentheses is noise once you know the exercise. So the name alone is overridable, stored
    apart from the catalogue in S.exNames and applied by exerciseNameFor everywhere at once.
@@ -830,7 +882,7 @@ function ExercisePicker({ onPick, close }) {
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name, muscles, equipment, instructions and image')}</div></div><Icon name="plus" className="chev" />
       </div>}
       {f.slice(0, shown).map(e => <div key={e.id} className="item" {...tappable(() => onPick(e))}>
-        <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
+        <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(muscleLabel(e.tg || e.bp))} · {t(e.eq)}</div></div>
         {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}<Icon name="plus" className="chev" />
       </div>)}
       {f.length === 0 && bp === '★' && <div className="empty">{t('Nothing chosen yet — add exercises and they’ll show up here.')}</div>}
@@ -1163,9 +1215,12 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
         const range = CLASS_REP_RANGE[kind]
         return <span className="tag acc">{t(CLASS_NAME[kind])} · {range.repsMin}–{range.reps}</span>
       })()}
-      <span className="tag">{t(ex.tg || ex.bp)}</span><span className="tag">{t(ex.eq)}</span>
-      {!cardio && (ex.secondaries?.length ? ex.secondaries : smOf(ex)).slice(0, 3)
-        .map((s, i) => <span key={i} className="tag dim">{t(s)}</span>)}
+      {cardio || !muscleTagsOf(ex).primary.length
+        ? <span className="tag">{t(ex.tg || ex.bp)}</span>
+        : muscleTagsOf(ex).primary.map(m => <span key={'p' + m} className="tag mus-p">{t(muscleLabel(m))}</span>)}
+      <span className="tag">{t(ex.eq)}</span>
+      {!cardio && muscleTagsOf(ex).secondary
+        .map(m => <span key={'s' + m} className="tag mus-s">{t(muscleLabel(m))}</span>)}
     </div>
     {ex.desc && <div className="exnote">{ex.desc}</div>}
     {/* A colour with no key is a riddle: say once, up front, what the marked fields mean. */}
@@ -1977,7 +2032,7 @@ function ExtraLog({ ex, close }) {
     <div className="row" style={{ marginBottom: 12, gap: 10 }}>
       <Thumb ex={ex} />
       <div className="grow"><div className="tt capitalize" style={{ fontWeight: 600 }}>{exerciseNameFor(ex)}</div>
-        <div className="ss capitalize">{t(ex.tg || ex.bp)} · {t(ex.eq)}</div></div>
+        <div className="ss capitalize">{t(muscleLabel(ex.tg || ex.bp))} · {t(ex.eq)}</div></div>
       <button className="chip nocap" onClick={() => { close(); logExtraSheet() }}>{t('Change')}</button>
     </div>
     <Row icon="calendar" title={t('Date')}>

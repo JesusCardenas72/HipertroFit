@@ -673,7 +673,14 @@ export default {
 
   // --- muscle groups ---
   'Primary muscle groups': '主要肌群',
-  'Additional muscle groups': '其他肌群',
+  'Secondary muscle groups': '次要肌群',
+  'Rear delts': '后三角肌',
+  'Edit muscle groups': '编辑肌群',
+  'Pick at least one primary muscle group': '请至少选择一个主要肌群',
+  'Restore original muscles': '恢复原始肌肉',
+  'Original muscles restored': '已恢复原始肌肉',
+  'Original:': '原始：',
+  'Volume, recovery and the muscle map will count this exercise with these muscles — past workouts included.': '训练量、恢复和肌肉图将按这些肌肉计算此动作——包括过去的训练。',
   'No explicit muscle group': '无明确肌群',
 
   // "Connect to my server" (mobile app pairing)

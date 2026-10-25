@@ -673,7 +673,14 @@ export default {
 
   // --- muscle groups ---
   'Primary muscle groups': '주요 근육 그룹',
-  'Additional muscle groups': '추가 근육군',
+  'Secondary muscle groups': '보조 근육군',
+  'Rear delts': '후면 삼각근',
+  'Edit muscle groups': '근육군 편집',
+  'Pick at least one primary muscle group': '주 근육군을 하나 이상 선택하세요',
+  'Restore original muscles': '원래 근육으로 복원',
+  'Original muscles restored': '원래 근육으로 복원됨',
+  'Original:': '원래:',
+  'Volume, recovery and the muscle map will count this exercise with these muscles — past workouts included.': '볼륨, 회복, 근육 지도가 이 운동을 이 근육들로 계산합니다 — 지난 운동 포함.',
   'No explicit muscle group': '명시적 근육군 없음',
 
   // "Connect to my server" (mobile app pairing)
