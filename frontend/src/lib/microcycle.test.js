@@ -105,6 +105,43 @@ describe('the sequence pointer', () => {
   it('is null without a sequence to walk', () => {
     expect(nextStepOf(state({ program: { seq: [], strategy: 'ppl' } }))).toBe(null)
   })
+
+  it('proposes the step skipped by a session trained out of turn', () => {
+    // Legs trained where Pull A was due fills the Legs step, so Pull A is still the next one.
+    const S = state({ workouts: [w('2026-01-02', 'pushA'), w('2026-01-03', 'legs')] })
+    expect(cyclePosition(S).step).toBe(2)          // still two sessions of the block
+    expect(nextStepOf(S)).toBe('pullA')
+    const T = state({ workouts: [...S.workouts, w('2026-01-04', 'pullA')] })
+    expect(nextStepOf(T)).toBe('pushB')            // and the block walks on from there
+  })
+
+  it('fills the first open step of a routine the block repeats', () => {
+    // Legs first fills the first Legs day (step 3), not the second (step 6).
+    const S = state({ workouts: [w('2026-01-02', 'legs')] })
+    expect(nextStepOf(S)).toBe('pushA')
+    const days = [['2026-01-03', 'pushA'], ['2026-01-04', 'pullA'], ['2026-01-05', 'pushB'], ['2026-01-06', 'pullB']]
+    const T = state({ workouts: [...S.workouts, ...days.map(([d, r]) => w(d, r))] })
+    expect(nextStepOf(T)).toBe('legs')             // the second Legs day is still open
+  })
+
+  it('lets a session with no open step of its own stand in for the one that was due', () => {
+    // A routine outside the sequence, or one trained more often than the block plans it,
+    // takes the step that was due — as before, so the block still closes on its count.
+    const outside = state({ workouts: [w('2026-01-02', 'pushA'), w('2026-01-03', 'arms')] })
+    expect(nextStepOf(outside)).toBe('legs')
+    const seq = ['push', 'pull', 'legs']
+    const twice = state({ program: { on: true, seq, anchor: '2026-01-01', cycleStart: '2026-01-01', strategy: 'custom' },
+      workouts: [w('2026-01-02', 'push'), w('2026-01-03', 'push')] })
+    expect(nextStepOf(twice)).toBe('legs')
+  })
+
+  it('opens the next block at its first step whatever order the last one took', () => {
+    const seq = ['push', 'pull', 'legs']
+    const S = state({ program: { on: true, seq, anchor: '2026-01-01', cycleStart: '2026-01-01', strategy: 'custom' },
+      workouts: [w('2026-01-02', 'push'), w('2026-01-03', 'legs'), w('2026-01-04', 'pull')] })
+    expect(cyclePosition(S)).toMatchObject({ cycle: 1, step: 0 })
+    expect(nextStepOf(S)).toBe('push')
+  })
 })
 
 describe('the block as trained', () => {
@@ -151,6 +188,17 @@ describe('the block as trained', () => {
     // A done slot reports what was actually trained, not what the sequence planned.
     expect(strip[1].routineId).toBe('freestyle')
     expect(strip[2].routineId).toBe('legs')
+  })
+
+  it('keeps a step skipped out of turn ahead in the strip, as the next one', () => {
+    const T = state({ workouts: [w('2026-01-02', 'pushA'), w('2026-01-03', 'legs')] })
+    const strip = cycleStrip(T)
+    expect(strip.map(s => s.state)).toEqual(['done', 'done', 'next', 'todo', 'todo', 'todo'])
+    // Done slots in the order trained; the open steps after them in sequence order, the
+    // first Legs day gone because it was trained.
+    expect(strip.map(s => s.routineId)).toEqual(['pushA', 'legs', 'pullA', 'pushB', 'pullB', 'legs'])
+    expect(strip.map(s => s.i)).toEqual([0, 1, 2, 3, 4, 5])
+    expect(strip[1].workout.d).toBe('2026-01-03')
   })
 })
 

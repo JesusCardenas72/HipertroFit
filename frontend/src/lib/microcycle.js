@@ -11,7 +11,8 @@
 // that happens is the next step of the sequence. That is why the routine to propose comes
 // from a *positional* pointer (`nextStepOf`) and not from projecting the sequence onto
 // dates: a sequence like Push A, Pull A, Legs, Push B, Pull B, Legs repeats a routine, and
-// only the position tells the two Legs days apart.
+// only the position tells the two Legs days apart. A step trained out of turn fills its own
+// position, so Legs done where Pull A was due leaves Pull A as the next session.
 //
 // See lib/program.js for the calendar projection (which days you intend to train) and
 // lib/volume.js for what the block's volume adds up to.
@@ -148,7 +149,8 @@ export const trainingSteps = program =>
  * the same (see cycleWorkouts).
  *
  * Training a routine out of turn is a different thing — that *is* one of the planned
- * sessions, just not the one the pointer proposed — so it keeps consuming its slot. And
+ * sessions, just not the one the pointer proposed — so it keeps consuming a slot (its own
+ * step, see blockFill). And
  * with no sequence to be outside of (no program, or an all-freestyle log) every session is
  * the plan, or the block would never advance at all.
  */
@@ -163,15 +165,41 @@ export const isPlannedSession = (S, w) =>
 export const isExtra = w => !!w && w.extra === true
 
 /**
- * The routine id the next session should be, by position in the sequence.
+ * The current block replayed session by session: its planned sessions oldest→newest, and the
+ * positions of the block (0…len−1) still open after them, in sequence order.
+ *
+ * Each session fills the first open position whose step is the routine it trained, so one
+ * trained out of turn takes its own step and leaves the one it jumped over open. A session
+ * with no open step of its own — a routine outside the sequence, or one trained more often
+ * than the block plans it — stands in for the step that was due, the first open one. Either
+ * way it fills exactly one position, so the block still closes on its count.
+ */
+function blockFill(S) {
+  const len = microcycleLen(S)
+  const steps = trainingSteps(S && S.program)
+  const done = cycleWorkouts(S).filter(w => isPlannedSession(S, w))
+  const open = Array.from({ length: len }, (_, i) => i)
+  for (const w of done) {
+    const own = steps.length ? open.findIndex(i => steps[i % steps.length] === w.routineId) : -1
+    open.splice(own >= 0 ? own : 0, 1)
+  }
+  return { steps, done, open }
+}
+
+/**
+ * The routine id the next session should be: the step at the first open position of the
+ * block.
  *
  * Positional on purpose: with Push A, Pull A, Legs, Push B, Pull B, Legs the routine alone
- * cannot say which Legs day is due. null when there is no sequence to walk.
+ * cannot say which Legs day is due. Open rather than counted, so a step trained out of turn
+ * is not proposed again while the one it skipped falls out of the block. null when there is
+ * no sequence to walk.
  */
 export function nextStepOf(S) {
   const steps = trainingSteps(S && S.program)
   if (!steps.length) return null
-  return steps[cyclePosition(S).step % steps.length]
+  const { open } = blockFill(S)
+  return steps[(open.length ? open[0] : 0) % steps.length]
 }
 
 /**
@@ -198,21 +226,18 @@ export function cycleWorkouts(S) {
  * The current block as a strip of `len` slots for the UI: what was trained in each slot so
  * far, what the sequence says is coming, and where "next" sits. A done slot reports the
  * workout that actually happened, which may not be what the sequence planned — the strip
- * shows the block as trained, not as intended.
+ * shows the block as trained, not as intended. The done slots come first in the order they
+ * were trained, then the steps still open in sequence order (blockFill), so "next" always sits
+ * at the session count and a step skipped out of turn is still ahead.
  */
 export function cycleStrip(S) {
-  const { len, step } = cyclePosition(S)
-  const done = cycleWorkouts(S).filter(w => isPlannedSession(S, w))
-  const steps = trainingSteps(S && S.program)
-  const out = []
-  for (let i = 0; i < len; i++) {
-    const workout = i < step ? done[i] : null
-    out.push({
-      i,
-      state: workout ? 'done' : i === step ? 'next' : 'todo',
-      routineId: workout ? workout.routineId || null : (steps.length ? steps[i % steps.length] : null),
-      workout,
-    })
-  }
+  const { steps, done, open } = blockFill(S)
+  const out = done.map((workout, i) => ({ i, state: 'done', routineId: workout.routineId || null, workout }))
+  open.forEach((pos, k) => out.push({
+    i: out.length,
+    state: k === 0 ? 'next' : 'todo',
+    routineId: steps.length ? steps[pos % steps.length] : null,
+    workout: null,
+  }))
   return out
 }
