@@ -558,6 +558,9 @@ h4.sec{
   font-weight:500;text-transform:capitalize;
 }
 .tag.acc{background:var(--acc-soft);color:var(--acc)}
+/* an exercise's muscles: the ones it is for in red, the ones that help in amber */
+.tag.mus-p{background:color-mix(in srgb,var(--red) 18%,transparent);color:var(--red)}
+.tag.mus-s{background:color-mix(in srgb,var(--orange) 16%,transparent);color:var(--orange)}
 
 /* ---------------------------------------------------------------- chips -- */
 .chips{
@@ -781,12 +784,13 @@ h4.sec{
 .giftoggle.inline:active{transform:scale(.94)}
 .giftoggle.inline .icn{font-size:13px}
 .giftoggle.inline.plain{background:var(--surface-2);color:var(--label-2)}
-/* the position line above the card stays a single row on a phone: the chips keep their
-   size and only the "Between exercises" label gives way, truncating with an ellipsis */
-.wpos{flex-wrap:nowrap;min-width:0}
+/* the position line above the card: when its chips do not fit one row on a phone they wrap to a
+   second instead of running off the edge; the "Between exercises" label still truncates if
+   even a row of its own is too narrow for it */
+.wpos{flex-wrap:wrap;min-width:0;row-gap:6px}
 .wpos>*{white-space:nowrap;flex-shrink:0}
 .wpos>.giftoggle.inline{min-width:0}
-.wpos>[data-testid="rest-ex"]{flex-shrink:1;overflow:hidden}
+.wpos>[data-testid="rest-ex"]{flex-shrink:1;overflow:hidden;max-width:100%}
 .wpos>[data-testid="rest-ex"] .icn{flex-shrink:0}
 .wpos>[data-testid="rest-ex"]>span{overflow:hidden;text-overflow:ellipsis}
 /* superset: both exercises are on screen together, so the animations have to give way —
@@ -1569,6 +1573,8 @@ h4.sec{
   font-weight:600;letter-spacing:-.02em;text-transform:capitalize;line-height:1.2;color:inherit;background:none;border:0;cursor:pointer}
 .exhead-chev{flex:none;font-size:.8em;color:var(--label-2)}
 .exhead-drum{gap:10px}
+/* the exercise's tools, on one line under its name */
+.extools{gap:2px;flex-wrap:nowrap;margin:-2px 0 8px}
 /* in the drum the animation waits behind a thumbnail beside the name; tap it for the full one */
 .exthumb{position:relative;flex:none;width:44px;height:44px;padding:0;border-radius:11px;overflow:hidden;background:#fff;
   box-shadow:inset 0 0 0 var(--hair) var(--sep);transition:box-shadow var(--fast)}
@@ -1982,6 +1988,9 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
   box-shadow:inset 0 0 0 1.5px var(--acc);
   background:color-mix(in srgb,var(--acc) 6%,var(--surface));
 }
+/* a drop's line is not a card of its own: it only covers the delete track while it is pulled */
+.setswipe>.st-row.st-drop,.setswipe>.st-row.st-drop.done{padding:2px 8px;margin-bottom:6px;border-radius:14px;background:none;box-shadow:none}
+.setswipe.dragging>.st-row.st-drop{background:var(--surface)}
 .st-row.done .st-cell{background:color-mix(in srgb,var(--surface-2) 60%,transparent)}
 .st-row.warm .st-n{color:var(--orange)}
 .st-n{font-size:15px;font-weight:600;color:var(--label-2);height:40px;display:flex;align-items:center;justify-content:center}
@@ -2036,3 +2045,76 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 }
 .st-addex svg{width:16px;height:16px}
 .st-addex:active{transform:scale(.98)}
+/* a set taken to failure: its number in red */
+.st-n.fail,.setrow .n.fail,.dh-kind.fail{color:var(--red)}
+.dh-kind.st-badge{background:none;border:0;padding:0}
+/* a drop hangs off its set: the same columns, its badge in the number's place, the cut riding on
+   its weight where last time's number rides on a set's */
+.st-dropswipe{margin-top:4px}
+.st-badge{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.st-row.st-drop .st-n{gap:1px;font-size:12px;font-weight:700;color:var(--purple)}
+.st-row.st-drop .st-n svg{width:11px;height:11px;color:var(--label-3)}
+.st-row.st-drop .st-n{background:none}
+.st-drop .st-cell.cut{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--purple) 70%,transparent)}
+.st-drop .st-cell.cut .num{color:var(--purple)}
+.st-drop .st-cell.cut .st-prev{color:var(--purple)}
+.st-row.st-drop.done .st-cell .num{color:var(--label-3)}
+.st-row.st-drop .chk.st-ck{background:none;box-shadow:inset 0 0 0 1.5px var(--label-4);border-radius:99px;width:30px;height:30px;justify-self:center}
+.st-row.st-drop .chk.st-ck.on{background:var(--acc);box-shadow:none}
+.subn.st-badge{text-align:left;padding:0}
+/* a drop's or burst's own bin, at the end of its line: red, on the colour of what it removes */
+.st-row.st-sub.c1{grid-template-columns:30px minmax(0,1.3fr) 42px 32px}
+.st-row.st-sub.c2{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) 42px 32px}
+.st-row.st-sub.c3{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 42px 32px}
+.st-del{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--red)}
+.st-del svg{width:16px;height:16px}
+.st-del.drop{background:color-mix(in srgb,var(--purple) 24%,var(--surface))}
+.st-del.burst{background:color-mix(in srgb,var(--blue) 24%,var(--surface))}
+.st-del:active{transform:scale(.92)}
+/* a rest-pause burst: the drop's line in blue — R-P badge, its reps ringed, the pause on top */
+.st-row.st-burst .st-n{color:var(--blue);font-size:11px;gap:0;white-space:nowrap}
+.st-burst .st-cell.cut{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--blue) 70%,transparent)}
+.st-burst .st-cell.cut .num{color:var(--blue)}
+.st-burst .st-cell.rest{background:none}
+.st-burst .st-cell.rest .st-prev{color:var(--blue)}
+.st-ro{display:flex;align-items:center;justify-content:center;height:42px;font-size:15px;font-weight:600;color:var(--label-4)}
+.st-n{touch-action:manipulation}
+
+/* the set sheet: a sheet you can see the table through, three wheels under a kind bar */
+.sheet:has(.setsheet){
+  background:color-mix(in srgb,var(--bg-el) 50%,transparent);
+  -webkit-backdrop-filter:blur(10px) saturate(1.4);backdrop-filter:blur(10px) saturate(1.4);
+}
+:root[data-theme="light"] .sheet:has(.setsheet){background:color-mix(in srgb,var(--bg) 50%,transparent)}
+.ss-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.ss-title{flex:1;min-width:0}
+.ss-head h3{margin-bottom:2px}
+.ss-sub{font-size:13px;color:var(--label-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ss-done{flex:none;height:36px;padding:0 18px;border-radius:99px;background:var(--acc);color:var(--on-acc);font-size:15px;font-weight:600}
+.ss-done:active{transform:scale(.97)}
+.ss-kind{margin-bottom:16px}
+.ss-wheels{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.ss-wheels.n2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ss-wheels.n1{grid-template-columns:minmax(0,1fr)}
+.ss-hd{text-align:center;font-size:12px;font-weight:500;color:var(--label-3);text-transform:uppercase;letter-spacing:.045em;margin-bottom:6px}
+.wheel{position:relative;height:200px}
+.wheel-band{position:absolute;left:0;right:0;top:80px;height:40px;border-radius:12px;background:var(--surface-2);pointer-events:none}
+.wheel-scroll{
+  position:relative;height:100%;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;
+  padding:80px 0;scrollbar-width:none;touch-action:pan-y;
+  -webkit-mask-image:linear-gradient(transparent,#000 35%,#000 65%,transparent);
+  mask-image:linear-gradient(transparent,#000 35%,#000 65%,transparent);
+}
+.wheel-scroll::-webkit-scrollbar{display:none}
+.wheel-it{height:40px;line-height:40px;text-align:center;scroll-snap-align:center;font-size:18px;color:var(--label-3);cursor:pointer}
+.wheel-it.on{font-size:22px;font-weight:600;color:var(--label)}
+.ss-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;font-size:13px;color:var(--label-3)}
+.ss-del{color:var(--red);font-size:15px;font-weight:500;flex:none}
+.ss-del:disabled{opacity:.4}
+/* in the drum's narrower hero the hanging lines tighten up so their fields keep their room */
+.dh-int .setswipe>.st-row.st-sub{padding:2px 0;gap:5px}
+.dh-int .st-row.st-sub.c1{grid-template-columns:28px minmax(0,1fr) 32px 30px}
+.dh-int .st-row.st-sub.c2{grid-template-columns:28px minmax(0,1.3fr) minmax(0,1fr) 32px 30px}
+.dh-int .st-row.st-sub.c3{grid-template-columns:28px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 32px 30px}
+.dh-int .st-row.st-drop .chk.st-ck{width:28px;height:28px}
+.dh-int .st-del{width:30px;height:30px}

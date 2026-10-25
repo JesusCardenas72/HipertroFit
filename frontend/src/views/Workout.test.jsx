@@ -161,7 +161,8 @@ async function toggleSetOf(entryIdx, setIdx) {
 }
 
 async function pressProgression(index = 0) {
-  const button = container.querySelectorAll('.progline')[index]
+  // The rule's settings open from the table's Target card (the tools' chart is the progress curve).
+  const button = container.querySelectorAll('.st-card.aim')[index]
   expect(button).toBeTruthy()
   await act(async () => { button.dispatchEvent(new dom.Event('click', { bubbles: true })) })
   return button
@@ -670,7 +671,7 @@ describe('Workout discard timer lifecycle', () => {
 })
 
 describe('progression guidance', () => {
-  it('labels the visible outcome with the policy that calculated it', async () => {
+  it('no longer spells the rule out on the card: it is behind the Target card', async () => {
     await mount([exercise('plain-bench', [false, false, false], {
       plan: {
         policy: 'linear',
@@ -678,10 +679,11 @@ describe('progression guidance', () => {
         weight: 62.5,
         why: ['Every rep last time — {0} {1} more.', 2.5, 'kg'],
       },
-    })])
+    })], 0, { setView: 'table' })
 
-    expect(container.querySelector('.progline')?.textContent)
-      .toContain('Linear progression · Every rep last time — 2.5 kg more.')
+    expect(container.querySelector('.progline')).toBe(null)
+    await pressProgression()
+    expect(mocks.exConfigSheet).toHaveBeenCalledOnce()
   })
 
   it('is a keyboard-accessible button that opens settings for the pressed grouped entry', async () => {
@@ -693,7 +695,7 @@ describe('progression guidance', () => {
     const second = exercise('plain-bench', [false], {
       sg: 'group', plan, target: { mode: 'reps', reps: 8, weight: 80, bodyweight: false },
     })
-    await mount([first, second])
+    await mount([first, second], 0, { setView: 'table' })
     const firstBefore = JSON.stringify(mocks.S.active.entries[0])
 
     const button = await pressProgression(1)
@@ -718,7 +720,7 @@ describe('progression guidance', () => {
         why: ['Every rep last time — {0} {1} more.', 2.5, 'kg'],
       },
     })
-    await mount([entry])
+    await mount([entry], 0, { setView: 'table' })
     const before = JSON.stringify(mocks.S.active.entries[0])
 
     await pressProgression()
@@ -733,7 +735,7 @@ describe('progression guidance', () => {
         why: ['Every rep last time — {0} {1} more.', 2.5, 'kg'],
       },
     })
-    await mount([entry])
+    await mount([entry], 0, { setView: 'table' })
     mocks.S.workouts = [{
       d: '2026-08-27',
       entries: [{
@@ -758,8 +760,7 @@ describe('progression guidance', () => {
     // Double progression is semi-automatic: the top of the range asks instead of adding.
     expect(saved.sets[1]).toEqual({ w: 60, r: 5, done: false })
     expect(saved.plan.kind).toBe('decide')
-    expect(container.querySelector('.progline')?.textContent)
-      .toContain('Double progression · Top of the rep range in every set — time to progress: more weight or another set.')
+    expect(mocks.S.active.entries[0].plan.policy).toBe('double')
     expect(container.querySelector('.dpask')).toBeTruthy()
 
     const persisted = JSON.parse(JSON.stringify(mocks.S))
@@ -767,8 +768,7 @@ describe('progression guidance', () => {
     mocks.S = persisted
     installDom()
     await act(async () => { root.render(React.createElement(Workout)) })
-    expect(container.querySelector('.progline')?.textContent)
-      .toContain('Double progression · Top of the rep range in every set — time to progress: more weight or another set.')
+    expect(mocks.S.active.entries[0].plan.policy).toBe('double')
 
     // The reminder reopens the window: a locked centred sheet asking the question.
     mocks.openSheet.mockClear()
@@ -792,8 +792,6 @@ describe('progression guidance', () => {
     expect(decided.sets[0]).toEqual({ w: 60, r: 5, done: true })
     expect(decided.sets[1]).toEqual({ w: 62.5, r: 3, done: false })
     expect(container.querySelector('.dpask')).toBe(null)
-    expect(container.querySelector('.progline')?.textContent)
-      .toContain('Top of the rep range in every set — 2.5 kg more, back to 3 reps.')
   })
 })
 

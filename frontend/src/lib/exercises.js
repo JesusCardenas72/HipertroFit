@@ -43,6 +43,17 @@ export const smOf = ex => {
   return [...new Set([...base, ...(SECONDARY_ADDITIONS[ex?.id] || [])])]
 }
 
+/**
+ * The muscles an exercise works, split into the ones it is for and the ones that help: the
+ * catalogue's primaries (or its target muscle) and its secondaries (or the overlay above),
+ * a muscle never listed twice. Same reading as the exercise's detail sheet.
+ */
+export function muscleTagsOf(ex) {
+  const primary = [...new Set(ex?.primaries?.length ? ex.primaries : (ex?.tg ? [ex.tg] : []))]
+  const secondary = (ex?.secondaries?.length ? ex.secondaries : smOf(ex)).filter((m, i, all) => !primary.includes(m) && all.indexOf(m) === i)
+  return { primary, secondary }
+}
+
 export const EXIDX = {}
 CATALOGUE.forEach(e => { EXIDX[e.id] = e })
 export const BODYPARTS = [...new Set(CATALOGUE.map(e => e.bp))].sort()

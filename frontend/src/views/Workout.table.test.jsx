@@ -48,7 +48,7 @@ function renderWorkout({ plan = null, rows = null, effort = 'none', setView = 't
   act(() => root.render(<MemoryRouter><Workout /></MemoryRouter>))
 }
 
-const rowsEl = () => [...container.querySelectorAll('.settable .setswipe > .st-row')]
+const rowsEl = () => [...container.querySelectorAll('.settable .setswipe > .st-row:not(.st-drop)')]
 const header = () => [...container.querySelector('.settable .st-hd').children].map(n => n.textContent)
 const activeSets = () => useStore.getState().S.active.entries[0].sets
 const click = node => act(() => node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })))
@@ -158,6 +158,44 @@ describe('the set table', () => {
     expect(useUI.getState().sheets.length).toBeGreaterThan(0)
   })
 
+  it('folds the session line away from the title and brings it back, in the table too', () => {
+    renderWorkout()
+    const top = () => container.querySelector('[data-testid="workout-top"]')
+    expect(container.querySelector('[data-testid="workout-position"]')).not.toBeNull()
+    expect(top().getAttribute('aria-expanded')).toBe('true')
+    click(top())
+    expect(container.querySelector('[data-testid="workout-position"]')).toBeNull()
+    expect(top().getAttribute('aria-expanded')).toBe('false')
+    click(top())
+    expect(container.querySelector('[data-testid="workout-position"]')).not.toBeNull()
+  })
+
+  it('puts the exercise’s tools on one line under its name, unpair included, with no superset banner', () => {
+    renderWorkout()
+    act(() => useStore.getState().update(s => {
+      s.active.entries[0].sg = 'g'
+      s.active.entries.push({ id: 'b', sg: 'g', target: { sets: 1, reps: 10 }, sets: [{ w: 20, r: 10, done: false }] })
+    }))
+    const head = container.querySelector('.exhead-tg')
+    click(head)
+    const tools = container.querySelector('[data-testid="ex-tools"]')
+    expect(head.parentElement.nextElementSibling).toBe(tools)
+    expect([...tools.querySelectorAll('button')].map(b => b.getAttribute('aria-label')))
+      .toEqual(['Note', 'Details', 'Exercise progress', 'Swap exercise', 'Unpair', 'Remove exercise'])
+    expect(container.textContent).not.toContain('back-to-back')
+    click(tools.querySelector('[aria-label="Unpair"]'))
+    expect(useStore.getState().S.active.entries.some(e => e.sg)).toBe(false)
+  })
+
+  it('lists the exercise’s primary muscles and then its secondary ones, each in its own colour', () => {
+    renderWorkout()
+    act(() => useStore.getState().update(s => { s.active.entries[0].id = '0749' }))
+    click(container.querySelector('.exhead-tg'))
+    const tags = cls => [...container.querySelectorAll('.tag.' + cls)].map(n => n.textContent)
+    expect(tags('mus-p')).toEqual(['glutes'])
+    expect(tags('mus-s')).toEqual(['hamstrings', 'lower back'])
+  })
+
   it('is the third stop of the header toggle: list → table → drum', () => {
     renderWorkout({ setView: 'list' })
     click(container.querySelector('[data-testid="set-view"]'))
@@ -166,6 +204,184 @@ describe('the set table', () => {
     click(container.querySelector('[data-testid="set-view"]'))
     expect(useStore.getState().S.setView).toBe('drum')
     expect(container.querySelector('.settable')).toBeNull()
+  })
+})
+
+describe('the set sheet', () => {
+  let sheetRoot, sheetEl
+  // The sheet lives in the modal layer (Modals.jsx), which this test does not mount: draw the
+  // one that opened on its own.
+  const openSheet = () => {
+    const sheet = useUI.getState().sheets.at(-1)
+    sheetEl = document.createElement('div')
+    document.body.appendChild(sheetEl)
+    sheetRoot = createRoot(sheetEl)
+    act(() => sheetRoot.render(<MemoryRouter>{sheet.render(() => useUI.getState().closeSheet(sheet.id))}</MemoryRouter>))
+  }
+  const doubleTap = node => { click(node); click(node) }
+  const tab = label => [...sheetEl.querySelectorAll('.ss-kind button')].find(b => b.textContent === label)
+  afterEach(() => {
+    if (sheetRoot) act(() => sheetRoot.unmount())
+    if (sheetEl) sheetEl.remove()
+    sheetRoot = null
+    sheetEl = null
+  })
+
+  it('opens on a double tap of the set’s number, and a single tap still opens the tools', () => {
+    renderWorkout()
+    click(rowsEl()[1].querySelector('.st-n'))
+    expect(container.querySelector('.st-tools')).not.toBeNull()
+    expect(useUI.getState().sheets).toHaveLength(0)
+    renderWorkout()
+    doubleTap(rowsEl()[1].querySelector('.st-n'))
+    expect(useUI.getState().sheets).toHaveLength(1)
+    // the pair leaves the tools as they were
+    expect(container.querySelector('.st-tools')).toBeNull()
+    openSheet()
+    expect(sheetEl.querySelector('h3').textContent).toBe('Set 2')
+    expect([...sheetEl.querySelectorAll('.ss-kind button')].map(b => b.textContent)).toEqual(['Normal', 'Warmup', 'Failure', 'Drop'])
+    expect([...sheetEl.querySelectorAll('.ss-hd')].map(n => n.textContent)).toEqual(['Weight (kg)', 'Reps'])
+  })
+
+  it('turns a set into a warm-up, which logs no effort', () => {
+    renderWorkout({ effort: 'rir', rows: [{ w: 60, r: 10, rir: 2, done: false }, { w: 60, r: 10, done: false }] })
+    doubleTap(rowsEl()[0].querySelector('.st-n'))
+    openSheet()
+    expect(sheetEl.querySelectorAll('.wheel')).toHaveLength(3)
+    click(tab('Warmup'))
+    expect(activeSets()[0]).toEqual({ w: 60, r: 10, done: false, phase: 'warmup', warmup: true })
+    expect(sheetEl.querySelectorAll('.wheel')).toHaveLength(2)
+  })
+
+  it('marks a set to failure, logging RIR 0', () => {
+    renderWorkout({ effort: 'rir' })
+    doubleTap(rowsEl()[0].querySelector('.st-n'))
+    openSheet()
+    click(tab('Failure'))
+    expect(activeSets()[0]).toMatchObject({ fail: true, rir: 0 })
+    expect(rowsEl()[0].querySelector('.st-n').classList.contains('fail')).toBe(true)
+  })
+
+  it('hangs a drop 25 % lighter off the set, and rests only after the drop', () => {
+    renderWorkout()
+    doubleTap(rowsEl()[0].querySelector('.st-n'))
+    openSheet()
+    click(tab('Drop'))
+    expect(activeSets()[0].drops).toEqual([{ w: 45, r: 10 }])
+    const drop = container.querySelector('.st-drop')
+    expect(drop.querySelector('.st-prev').textContent).toBe('−25 %')
+    // the set itself: ticked, but no rest yet — the drop comes with none in between
+    click(rowsEl()[0].querySelector('.st-ck'))
+    expect(activeSets()[0].done).toBe(true)
+    expect(useUI.getState().timer).toBeNull()
+    click(container.querySelector('.st-drop .st-ck'))
+    expect(activeSets()[0].drops[0].done).toBe(true)
+    expect(useUI.getState().timer).not.toBeNull()
+    // a double tap on the drop's badge opens its set
+    doubleTap(container.querySelector('.st-drop .st-n'))
+    expect(useUI.getState().sheets).toHaveLength(2)
+  })
+
+  it('ticking the drop first completes its set too', () => {
+    renderWorkout({ rows: [{ w: 60, r: 10, done: false, type: 'dropset', drops: [{ w: 45, r: 8 }] }, { w: 60, r: 10, done: false }] })
+    click(container.querySelector('.st-drop .st-ck'))
+    expect(activeSets()[0].done).toBe(true)
+    expect(useUI.getState().timer).not.toBeNull()
+  })
+
+  it('swipes a drop away on its own, leaving its set', () => {
+    renderWorkout({ rows: [{ w: 60, r: 10, done: false, type: 'dropset', drops: [{ w: 45, r: 8 }] }, { w: 60, r: 10, done: false }] })
+    const surface = container.querySelector('[data-testid="workout-swipe-surface"]')
+    const pointer = (type, target, x) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: 300 })
+      event.pointerId = 7
+      event.pointerType = 'touch'
+      act(() => target.dispatchEvent(event))
+    }
+    pointer('pointerdown', container.querySelector('.st-drop .st-n'), 100)
+    pointer('pointermove', surface, 300)
+    pointer('pointerup', surface, 300)
+    expect(activeSets()).toHaveLength(2)
+    expect(activeSets()[0].drops).toEqual([])
+    expect(container.querySelector('.st-drop')).toBeNull()
+    // and the set below it still swipes away as before
+    pointer('pointerdown', rowsEl()[1].querySelector('.st-n'), 100)
+    pointer('pointermove', surface, 300)
+    pointer('pointerup', surface, 300)
+    expect(activeSets()).toHaveLength(1)
+  })
+
+  it('hangs a rest-pause burst off its set like a drop, and swipes it away with its reps', () => {
+    renderWorkout({ rows: [{ w: 60, r: 12, done: false, type: 'restpause', clusters: [{ r: 4, restSec: 15 }] }, { w: 60, r: 10, done: false }] })
+    const burst = container.querySelector('.st-burst')
+    expect(burst.querySelector('.st-n').textContent).toBe('R-P')
+    expect(burst.querySelector('.st-prev').textContent).toBe('15 s')
+    expect(burst.querySelector('.cut input').value).toBe('4')
+    const surface = container.querySelector('[data-testid="workout-swipe-surface"]')
+    const pointer = (type, target, x) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: 300 })
+      event.pointerId = 9
+      event.pointerType = 'touch'
+      act(() => target.dispatchEvent(event))
+    }
+    pointer('pointerdown', burst.querySelector('.st-n'), 100)
+    pointer('pointermove', surface, 300)
+    pointer('pointerup', surface, 300)
+    expect(activeSets()).toHaveLength(2)
+    expect(activeSets()[0]).toMatchObject({ r: 8, clusters: [] })
+  })
+
+  it('removes a drop or a burst with the bin at the end of its line', () => {
+    renderWorkout({ rows: [
+      { w: 60, r: 12, done: false, type: 'restpause', clusters: [{ r: 4, restSec: 15 }] },
+      { w: 60, r: 10, done: false, type: 'dropset', drops: [{ w: 45, r: 10 }] },
+    ] })
+    click(container.querySelector('.st-del.burst'))
+    expect(activeSets()[0]).toMatchObject({ r: 8, clusters: [] })
+    click(container.querySelector('.st-del.drop'))
+    expect(activeSets()[1].drops).toEqual([])
+    expect(activeSets()).toHaveLength(2)
+  })
+
+  it('deletes the set from the sheet', () => {
+    renderWorkout()
+    doubleTap(rowsEl()[2].querySelector('.st-n'))
+    openSheet()
+    click(sheetEl.querySelector('.ss-del'))
+    expect(activeSets()).toHaveLength(2)
+  })
+})
+
+describe('the table’s set tools in the list and the drum', () => {
+  const rows = [
+    { w: 60, r: 10, done: false, type: 'dropset', drops: [{ w: 45, r: 10 }] },
+    { w: 60, r: 12, done: false, type: 'restpause', clusters: [{ r: 4, restSec: 15 }] },
+  ]
+  const twice = node => { click(node); click(node) }
+
+  it('the list opens the set sheet on a double tap of the number, and hangs drops and bursts off their sets', () => {
+    renderWorkout({ setView: 'list', rows })
+    twice(container.querySelector('.setrow .n'))
+    expect(useUI.getState().sheets).toHaveLength(1)
+    expect(container.querySelector('.st-drop .st-badge.drop').textContent).toBe('D')
+    expect(container.querySelector('.st-burst .st-badge').textContent).toBe('R-P')
+    // the drop's own tick, then its bin
+    click(container.querySelector('.st-drop .st-ck'))
+    expect(activeSets()[0].drops[0].done).toBe(true)
+    click(container.querySelector('.st-del.drop'))
+    expect(activeSets()[0].drops).toEqual([])
+    click(container.querySelector('.st-del.burst'))
+    expect(activeSets()[1]).toMatchObject({ r: 8, clusters: [] })
+  })
+
+  it('the drum opens the set sheet on a double tap of its label, and shows the drop the same way', () => {
+    renderWorkout({ setView: 'drum', rows })
+    twice(container.querySelector('.dh-kind'))
+    expect(useUI.getState().sheets).toHaveLength(1)
+    const drop = container.querySelector('.dh-int .st-drop')
+    expect(drop.querySelector('.st-prev').textContent).toBe('−25 %')
+    click(drop.querySelector('.st-del.drop'))
+    expect(activeSets()[0].drops).toEqual([])
   })
 })
 

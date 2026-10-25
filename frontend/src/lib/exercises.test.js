@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { matchExercise, normalizeStr } from './exercises.js'
+import { matchExercise, normalizeStr, muscleTagsOf } from './exercises.js'
 import { _setLangState } from './i18n-core.js'
 
 describe('normalizeStr', () => {
@@ -117,5 +117,15 @@ describe('matchExercise', () => {
     _setLangState('en', null, null, null)
     expect(matchExercise(benchPress, 'supino')).toBe(false)
     expect(matchExercise(benchPress, 'bench')).toBe(true)
+  })
+})
+
+describe('muscleTagsOf', () => {
+  it('splits primaries from secondaries, with no muscle twice', () => {
+    expect(muscleTagsOf({ tg: 'glutes', sm: ['hamstrings', 'glutes', 'quads', 'quads'] }))
+      .toEqual({ primary: ['glutes'], secondary: ['hamstrings', 'quads'] })
+    expect(muscleTagsOf({ primaries: ['pectorals'], secondaries: ['triceps', 'front deltoids'], tg: 'chest', sm: ['x'] }))
+      .toEqual({ primary: ['pectorals'], secondary: ['triceps', 'front deltoids'] })
+    expect(muscleTagsOf(null)).toEqual({ primary: [], secondary: [] })
   })
 })

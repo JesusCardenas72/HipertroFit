@@ -775,6 +775,9 @@ export default {
   'No exercises with an estimated 1RM yet.': 'Aún no hay ejercicios con 1RM estimado.',
   'Tap a muscle to see its exercises.': 'Toca un músculo para ver sus ejercicios.',
   'Unpair': 'Desvincular',
+  'Make superset': 'Hacer superserie',
+  'Primary': 'Primario',
+  'Secondary': 'Secundario',
 
   // --- equipment profiles ---
   'Showing all equipment': 'Mostrando todo el equipo',
@@ -1202,6 +1205,11 @@ export default {
   'Set': 'Serie',
   'Use the target': 'Usar el objetivo',
   'Warmup': 'Calent.',
+  'Normal': 'Normal',
+  'Failure': 'Fallo',
+  'last {0}': 'anterior {0}',
+  'Saved when you tick the set': 'Se guarda al marcar la serie',
+  'Delete set': 'Borrar serie',
   '{0} of {1} sets': '{0} de {1} series',
   // Self-update of the Android app (components/AppUpdate.jsx)
   'New version {0}': 'Nueva versión {0}',
