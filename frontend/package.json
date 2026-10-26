@@ -1,7 +1,7 @@
 {
   "name": "opengym-frontend",
   "private": true,
-  "version": "3.0.5",
+  "version": "3.0.6",
   "updateUrl": "https://jesuscardenas72.github.io/HipertroFit/version.json",
   "type": "module",
   "scripts": {
