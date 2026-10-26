@@ -1,6 +1,23 @@
 apply plugin: 'com.android.application'
 
+// Clave de firma propia (fuera del repo, ver scripts/publicar.mjs). Si existe, firma los
+// builds debug con ella para que el APK sea el mismo instale quien lo compile.
+def firmaDir = new File(System.getenv('HIPERTROFIT_FIRMA') ?: "${System.getProperty('user.home')}/.hipertrofit")
+def firmaProps = new File(firmaDir, 'firma.properties')
+def firma = new Properties()
+if (firmaProps.exists()) firmaProps.withInputStream { firma.load(it) }
+
 android {
+    signingConfigs {
+        if (firmaProps.exists()) {
+            hipertrofit {
+                storeFile new File(firmaDir, firma.storeFile)
+                storePassword firma.storePassword
+                keyAlias firma.keyAlias
+                keyPassword firma.keyPassword
+            }
+        }
+    }
     namespace "ch.duartesantos.opengym"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
@@ -17,6 +34,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            if (firmaProps.exists()) signingConfig signingConfigs.hipertrofit
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

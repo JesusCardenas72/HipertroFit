@@ -12,9 +12,10 @@
 //   - frontend/android/app/build.gradle    → versionName (igual) y versionCode (+1)
 // Android solo acepta como actualización un versionCode mayor.
 //
-// El APK se firma con la clave de depuración de este equipo (~/.android/debug.keystore), la
-// misma con la que se instaló el que hay en el móvil: Android rechaza una actualización
-// firmada con otra clave. Si cambias de equipo, copia ese archivo o tendrás que desinstalar.
+// El APK se firma con la clave propia del proyecto, guardada fuera del repo en
+// ~/.hipertrofit/ (hipertrofit.keystore + firma.properties; otra carpeta con HIPERTROFIT_FIRMA).
+// Android rechaza una actualización firmada con otra clave, así que esa carpeta tiene que ser
+// la misma en todos los equipos desde los que se publique: cópiala, y guarda una copia aparte.
 //
 // La rama `gh-pages` solo contiene la última versión: se reescribe entera en cada publicación.
 import { execFileSync, execSync } from 'node:child_process'
@@ -59,6 +60,14 @@ try {
 if (publicada && Number(publicada.versionCode) >= versionCode) {
   fallar(`Ya está publicado el versionCode ${publicada.versionCode} (${publicada.versionName}). ` +
     `Sube versionCode en android/app/build.gradle (y la versión) antes de publicar.`)
+}
+
+// Sin la clave propia, Gradle firmaría con la de depuración del equipo y el móvil rechazaría
+// la actualización.
+const firmaDir = process.env.HIPERTROFIT_FIRMA || path.join(os.homedir(), '.hipertrofit')
+if (!fs.existsSync(path.join(firmaDir, 'firma.properties'))) {
+  fallar(`No encuentro la clave de firma en ${firmaDir} (firma.properties + hipertrofit.keystore). ` +
+    'Cópiala desde el equipo donde se creó; ver el comentario al principio de este script.')
 }
 
 // 2 — Lo que se publica tiene que ser lo que está guardado en git.
