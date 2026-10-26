@@ -1247,6 +1247,7 @@ export default {
   'Remove from favourites': 'Quitar de favoritos',
   'Favourite': 'Favorito',
   'Favourites': 'Favoritos',
+  'Trained': 'Entrenados',
   'Movement pattern': 'Patrón de movimiento',
   'Horizontal push': 'Empuje horizontal',
   'Incline push': 'Empuje inclinado',

@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore.js'
 import { EXDB, BODYPARTS, allExercises, equipmentOf, matchExercise } from '../lib/exercises.js'
 import { activeProfile, exAvailable } from '../lib/equipment.js'
 import { muscleLabel } from '../lib/muscles.js'
-import { bestWeightFor } from '../lib/history.js'
+import { bestWeightFor, workSetCounts } from '../lib/history.js'
 import { isFavorite, favoritesFirst } from '../lib/favorites.js'
 import { fmtNum } from '../lib/format.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
@@ -23,10 +23,13 @@ export default function Library() {
   const bpStrip = useRef(null), eqStrip = useRef(null)
   const profile = activeProfile(S)
   const favCount = (S.favEx || []).length
-  // '♥' is the favourites filter; it falls back to everything once the last heart is removed.
-  const bpOn = bp === '♥' && !favCount ? '' : bp
+  const trainedCounts = workSetCounts(S)
+  const trainedCount = Object.keys(trainedCounts).length
+  // '♥' is the favourites filter; '★' is the trained-in-history filter.
+  // Both fall back to everything when their set is empty.
+  const bpOn = (bp === '♥' && !favCount) || (bp === '★' && !trainedCount) ? '' : bp
   const base = favoritesFirst(S, allExercises(S).filter(e =>
-    (bpOn === '♥' ? isFavorite(S, e.id) : (!bpOn || e.bp === bpOn)) && matchExercise(e, q)))
+    (bpOn === '♥' ? isFavorite(S, e.id) : bpOn === '★' ? !!trainedCounts[e.id] : (!bpOn || e.bp === bpOn)) && matchExercise(e, q)))
   const eqFiltered = (profile && !showAll) ? base.filter(e => exAvailable(S, e)) : base
   const eqOpts = equipmentOf(eqFiltered)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
@@ -47,6 +50,7 @@ export default function Library() {
       </button>
     </div>}
     <div className="chips" ref={bpStrip} style={{ marginBottom: eqOpts.length > 1 ? 8 : 12 }}>
+      {trainedCount > 0 && <button className={'chip' + (bpOn === '★' ? ' on' : '')} onClick={() => { setBp('★'); setEq(''); setShown(40) }}><Icon name="clock" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Trained')} ({trainedCount})</button>}
       {favCount > 0 && <button className={'chip' + (bpOn === '♥' ? ' on' : '')} onClick={() => { setBp('♥'); setEq(''); setShown(40) }}><Icon name="heartFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Favourites')} ({favCount})</button>}
       <button className={'chip nocap' + (!bpOn ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(40) }}>{t('All')}</button>
       {BODYPARTS.map(b => <button key={b} className={'chip' + (bpOn === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(40) }}>{t(b)}</button>)}
