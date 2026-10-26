@@ -1256,6 +1256,7 @@ export default {
   'Favourite': 'รายการโปรด',
   'Favourites': 'รายการโปรด',
   'Movement pattern': 'รูปแบบการเคลื่อนไหว',
+  'Original': 'ค่าเดิม',
   'Horizontal push': 'ดันแนวนอน',
   'Incline push': 'ดันแนวเฉียง',
   'Vertical push': 'ดันแนวตั้ง',

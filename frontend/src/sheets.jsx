@@ -39,7 +39,7 @@ import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
 import { isWarmupRow } from './lib/workout-model.js'
 import { isFavorite, toggleFavorite, favoritesFirst } from './lib/favorites.js'
-import { PATTERNS } from './lib/movement-patterns.js'
+import { PATTERNS, patternOf } from './lib/movement-patterns.js'
 import { nextUnfinishedUnit, unitEntryIdx } from './lib/supersetFlow.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
 import { useSheetKeyboard, useRevealActiveChip, tappable } from './lib/use-sheet-keyboard.js'
@@ -547,9 +547,32 @@ function ExerciseDetail({ ex: shown, close }) {
       <Button icon="pencil" style={{ flex: 1 }} onClick={() => { close(); renameExSheet(ex) }}>{t('Rename this exercise')}</Button>
       {!isCardio(ex) && <Button icon="target" style={{ flex: 1 }} onClick={() => muscleEditSheet(ex)}>{t('Edit muscle groups')}</Button>}
     </div>}
+    {!isCardio(ex) && <PatternRow ex={ex} />}
     {!isCardio(ex) && <OneRM ex={ex} />}
     {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{!INSTR_LANGS.includes(getLang()) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
   </>
+}
+/* The routine slot an exercise fills (lib/movement-patterns.js), changeable from its detail sheet.
+   A custom exercise stores it on its own record; a built-in one keeps the catalogue row as shipped
+   and records the correction in S.exPatterns ('' = none), which lib/exercises.js overlays onto
+   every lookup. Picking the catalogue's own pattern again drops the correction. */
+function PatternRow({ ex }) {
+  const original = ex.custom ? null : patternOf(catalogueRow(ex.id))
+  const set = key => update(s => {
+    if (ex.custom) {
+      const row = (s.customEx || []).find(x => x.id === ex.id)
+      if (!row) return
+      if (key) row.pattern = key
+      else delete row.pattern
+      return
+    }
+    s.exPatterns = { ...(s.exPatterns || {}) }
+    if (key === (original || '')) delete s.exPatterns[ex.id]
+    else s.exPatterns[ex.id] = key
+  })
+  const mark = key => !ex.custom && key === (original || '') ? t('Original') : undefined
+  return <SelectRow icon="figureStrength" title={t('Movement pattern')} value={patternOf(ex) || ''} onChange={set}
+    options={[{ value: '', label: t('None'), subtitle: mark('') }, ...PATTERNS.map(p => ({ value: p.key, label: t(p.name), subtitle: mark(p.key) }))]} />
 }
 export const exerciseDetailSheet = ex => ui().openSheet(close => <ExerciseDetail ex={ex} close={close} />)
 

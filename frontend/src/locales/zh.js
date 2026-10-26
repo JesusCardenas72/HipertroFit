@@ -1243,6 +1243,7 @@ export default {
   'Favourite': '收藏',
   'Favourites': '收藏',
   'Movement pattern': '动作模式',
+  'Original': '原始',
   'Horizontal push': '水平推',
   'Incline push': '上斜推',
   'Vertical push': '垂直推',

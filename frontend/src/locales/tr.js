@@ -1243,6 +1243,7 @@ export default {
   'Favourite': 'Favori',
   'Favourites': 'Favoriler',
   'Movement pattern': 'Hareket kalıbı',
+  'Original': 'Orijinal',
   'Horizontal push': 'Yatay itiş',
   'Incline push': 'Eğimli itiş',
   'Vertical push': 'Dikey itiş',

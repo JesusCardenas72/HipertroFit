@@ -1243,6 +1243,7 @@ export default {
   'Favourite': 'Favori',
   'Favourites': 'Favoris',
   'Movement pattern': 'Schéma de mouvement',
+  'Original': 'Original',
   'Horizontal push': 'Poussée horizontale',
   'Incline push': 'Poussée inclinée',
   'Vertical push': 'Poussée verticale',

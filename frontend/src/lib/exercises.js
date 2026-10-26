@@ -1,5 +1,6 @@
 import { EXDB } from './exercises-data.js'
 import { exerciseMuscleMetadataFor } from './exercise-muscles.js'
+import { isPattern } from './movement-patterns.js'
 import { t, getVersion, exerciseNameSearchText } from './i18n-core.js'
 
 export { EXDB }
@@ -62,25 +63,45 @@ CATALOGUE.forEach(e => { EXIDX[e.id] = e })
 // The user's own muscle corrections for built-in exercises live in synced state S.exMuscles
 // ({ id: { primaries, secondaries } }) and are pushed in here by the store, like the custom
 // catalogue below, so every EXIDX[id] lookup (volume, recovery, muscle map, stats) sees them.
+// Movement-pattern corrections ride the same overlay: S.exPatterns ({ id: patternKey | '' }),
+// where '' means "fills no slot" and an absent id keeps the catalogue's pattern.
 let muscleEdits = {}
+let patternEdits = {}
 const editedRow = new Map()
 const withEdits = ex => editedRow.get(ex.id) || ex
+function rebuildEdits() {
+  editedRow.clear()
+  for (const ex of CATALOGUE) {
+    let row = ex
+    const edit = muscleEdits[ex.id]
+    const primaries = Array.isArray(edit?.primaries) ? [...new Set(edit.primaries)] : []
+    if (primaries.length) {
+      const secondaries = [...new Set(Array.isArray(edit.secondaries) ? edit.secondaries : [])].filter(m => !primaries.includes(m))
+      row = { ...row, primaries, secondaries, musclesEdited: true }
+    }
+    const pattern = patternEdits[ex.id]
+    if (pattern === '' || isPattern(pattern)) {
+      row = { ...row, patternEdited: true }
+      if (pattern) row.pattern = pattern
+      else delete row.pattern
+    }
+    if (row !== ex) editedRow.set(ex.id, row)
+    if (!customIds.includes(ex.id)) EXIDX[ex.id] = withEdits(ex)
+  }
+}
 export function registerMuscleEdits(map) {
   const next = map && typeof map === 'object' ? map : {}
   if (next === muscleEdits) return
   muscleEdits = next
-  editedRow.clear()
-  for (const ex of CATALOGUE) {
-    const edit = next[ex.id]
-    const primaries = Array.isArray(edit?.primaries) ? [...new Set(edit.primaries)] : []
-    if (primaries.length) {
-      const secondaries = [...new Set(Array.isArray(edit.secondaries) ? edit.secondaries : [])].filter(m => !primaries.includes(m))
-      editedRow.set(ex.id, { ...ex, primaries, secondaries, musclesEdited: true })
-    }
-    if (!customIds.includes(ex.id)) EXIDX[ex.id] = withEdits(ex)
-  }
+  rebuildEdits()
 }
-/** The catalogue row as shipped, before any S.exMuscles correction. */
+export function registerPatternEdits(map) {
+  const next = map && typeof map === 'object' ? map : {}
+  if (next === patternEdits) return
+  patternEdits = next
+  rebuildEdits()
+}
+/** The catalogue row as shipped, before any S.exMuscles / S.exPatterns correction. */
 export const catalogueRow = id => CATALOGUE.find(ex => ex.id === id)
 export const BODYPARTS = [...new Set(CATALOGUE.map(e => e.bp))].sort()
 

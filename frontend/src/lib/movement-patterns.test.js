@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { CATALOGUE, EXDB, EXIDX, allExercises, registerCustom, registerMuscleEdits } from './exercises.js'
+import { CATALOGUE, EXDB, EXIDX, allExercises, catalogueRow, registerCustom, registerMuscleEdits, registerPatternEdits } from './exercises.js'
 import { EXERCISE_MUSCLES } from './exercise-muscles.js'
 import { PATTERNS, exercisesOfPattern, isPattern, patternName, patternOf } from './movement-patterns.js'
 
 const pat = id => patternOf(EXIDX[id])
 
-afterEach(() => { registerMuscleEdits({}); registerCustom([]) })
+afterEach(() => { registerMuscleEdits({}); registerPatternEdits({}); registerCustom([]) })
 
 describe('movement patterns of the catalogue', () => {
   it('stores only known patterns, and only on reviewed exercises', () => {
@@ -68,6 +68,32 @@ describe('movement patterns of the catalogue', () => {
   it('survives a muscle correction of the exercise', () => {
     registerMuscleEdits({ '0025': { primaries: ['chest', 'triceps'], secondaries: [] } })
     expect(pat('0025')).toBe('horizontal_push')
+  })
+})
+
+describe('pattern corrections of built-in exercises', () => {
+  it('overrides the catalogue pattern in every lookup, and restores it when dropped', () => {
+    registerPatternEdits({ '0025': 'incline_push' })
+    expect(pat('0025')).toBe('incline_push')
+    expect(patternOf(allExercises({}).find(ex => ex.id === '0025'))).toBe('incline_push')
+    expect(patternOf(catalogueRow('0025'))).toBe('horizontal_push')
+    registerPatternEdits({})
+    expect(pat('0025')).toBe('horizontal_push')
+  })
+
+  it('reads an empty correction as "fills no slot" and ignores an unknown pattern', () => {
+    registerPatternEdits({ '0025': '', '0126': 'bogus' })
+    expect(pat('0025')).toBe(null)
+    expect(pat('0126')).toBe(null)
+  })
+
+  it('keeps a muscle correction and a pattern correction of the same exercise together', () => {
+    registerMuscleEdits({ '0025': { primaries: ['triceps'], secondaries: [] } })
+    registerPatternEdits({ '0025': 'elbow_extension' })
+    expect(EXIDX['0025'].primaries).toEqual(['triceps'])
+    expect(pat('0025')).toBe('elbow_extension')
+    registerMuscleEdits({})
+    expect(pat('0025')).toBe('elbow_extension')
   })
 })
 

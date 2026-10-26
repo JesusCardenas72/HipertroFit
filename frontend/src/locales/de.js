@@ -1260,6 +1260,7 @@ export default {
   'Favourite': 'Favorit',
   'Favourites': 'Favoriten',
   'Movement pattern': 'Bewegungsmuster',
+  'Original': 'Original',
   'Horizontal push': 'Horizontales Drücken',
   'Incline push': 'Schrägbankdrücken',
   'Vertical push': 'Vertikales Drücken',

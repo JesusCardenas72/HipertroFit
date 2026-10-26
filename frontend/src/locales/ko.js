@@ -1243,6 +1243,7 @@ export default {
   'Favourite': '즐겨찾기',
   'Favourites': '즐겨찾기',
   'Movement pattern': '움직임 패턴',
+  'Original': '원래 값',
   'Horizontal push': '수평 밀기',
   'Incline push': '인클라인 밀기',
   'Vertical push': '수직 밀기',

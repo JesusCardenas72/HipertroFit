@@ -1249,6 +1249,7 @@ export default {
   'Favourites': 'Favoritos',
   'Trained': 'Entrenados',
   'Movement pattern': 'Patrón de movimiento',
+  'Original': 'Original',
   'Horizontal push': 'Empuje horizontal',
   'Incline push': 'Empuje inclinado',
   'Vertical push': 'Empuje vertical',

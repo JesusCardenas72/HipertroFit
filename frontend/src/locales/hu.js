@@ -1248,6 +1248,7 @@ export default {
   'Favourite': 'Kedvenc',
   'Favourites': 'Kedvencek',
   'Movement pattern': 'Mozgásminta',
+  'Original': 'Eredeti',
   'Horizontal push': 'Vízszintes nyomás',
   'Incline push': 'Ferde nyomás',
   'Vertical push': 'Függőleges nyomás',

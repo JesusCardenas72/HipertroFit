@@ -1243,6 +1243,7 @@ export default {
   'Favourite': 'Избранное',
   'Favourites': 'Избранное',
   'Movement pattern': 'Двигательный паттерн',
+  'Original': 'Исходный',
   'Horizontal push': 'Горизонтальный жим',
   'Incline push': 'Жим под углом',
   'Vertical push': 'Вертикальный жим',

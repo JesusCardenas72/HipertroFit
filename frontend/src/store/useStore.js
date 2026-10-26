@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { api, setRemoteAuth } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
-import { registerCustom, registerMuscleEdits } from '../lib/exercises.js'
+import { registerCustom, registerMuscleEdits, registerPatternEdits } from '../lib/exercises.js'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from '../lib/muscles.js'
 import { setVolumeSplit } from '../lib/volume.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
@@ -51,7 +51,7 @@ export const DEF = {
   // Naming: how a translated catalogue name is shown ('bilingual' = "press de banca (bench
   // press)", 'local' = translation only), plus per-exercise manual names keyed by exercise id.
   // Both are read by lib/i18n-core.js's exerciseNameFor — see lib/exercise-name.js.
-  exNameStyle: 'bilingual', exNames: {}, exMuscles: {},
+  exNameStyle: 'bilingual', exNames: {}, exMuscles: {}, exPatterns: {},
   // Favourite exercises (ids), marked with a heart: listed first wherever exercises are picked.
   // See lib/favorites.js.
   favEx: [],
@@ -108,6 +108,7 @@ export const useStore = create((set, get) => {
     S._ts = Date.now()
     registerCustom(S.customEx)
     registerMuscleEdits(S.exMuscles)
+    registerPatternEdits(S.exPatterns)
     setSecondaryWeight(S.secondaryVolume)
     setVolumeSplit(S.volumeSplit)
     localStorage.setItem(KEY, JSON.stringify(S))
@@ -148,7 +149,7 @@ export const useStore = create((set, get) => {
   }
 
   return {
-    S: (() => { const s = loadState(); registerCustom(s.customEx); registerMuscleEdits(s.exMuscles); setSecondaryWeight(s.secondaryVolume); setVolumeSplit(s.volumeSplit); return s })(),
+    S: (() => { const s = loadState(); registerCustom(s.customEx); registerMuscleEdits(s.exMuscles); registerPatternEdits(s.exPatterns); setSecondaryWeight(s.secondaryVolume); setVolumeSplit(s.volumeSplit); return s })(),
     user: (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })(),
     ready: false,
     needsMobileOnboarding: false,   // mobile build only — set true by boot() on a genuine first launch

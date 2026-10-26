@@ -1243,6 +1243,7 @@ export default {
   'Favourite': 'पसंदीदा',
   'Favourites': 'पसंदीदा',
   'Movement pattern': 'मूवमेंट पैटर्न',
+  'Original': 'मूल',
   'Horizontal push': 'क्षैतिज पुश',
   'Incline push': 'इनक्लाइन पुश',
   'Vertical push': 'ऊर्ध्वाधर पुश',
