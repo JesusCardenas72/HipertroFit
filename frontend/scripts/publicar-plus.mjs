@@ -14,10 +14,13 @@ import { execFileSync, execSync, spawnSync } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 
 const FRONT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const ROOT = path.resolve(FRONT, '..')
-const OBSIDIAN_SYNC = 'D:/Obsidian/obsidian-sync/skills/obsidian-sync/scripts/sync_to_obsidian.py'
+// La ruta cambia de un equipo a otro: se puede fijar con la variable OBSIDIAN_SYNC.
+const OBSIDIAN_SYNC = process.env.OBSIDIAN_SYNC ||
+  'D:/Obsidian/obsidian-sync/skills/obsidian-sync/scripts/sync_to_obsidian.py'
 
 const git = (args, cwd = ROOT) =>
   execFileSync('git', args, { cwd, encoding: 'utf-8' }).trim()
@@ -41,7 +44,7 @@ if (cambios.length > 0) {
   step('Commit')
   execFileSync('git', ['add', '-A'], { cwd: ROOT, stdio: 'inherit' })
   execFileSync('git', ['commit', '-m', msg,
-    '--trailer', 'Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>'],
+    '--trailer', 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'],
     { cwd: ROOT, stdio: 'inherit' })
 } else {
   console.log('ℹ  Sin cambios pendientes; se salta el commit.')
@@ -53,8 +56,9 @@ execFileSync('git', ['push'], { cwd: ROOT, stdio: 'inherit' })
 
 // ── 3. Obsidian ──────────────────────────────────────────────────────────────
 step('Sincronizando con Obsidian')
-const obs = spawnSync('python', [OBSIDIAN_SYNC], { cwd: ROOT, stdio: 'inherit' })
-if (obs.status !== 0) {
+if (!fs.existsSync(OBSIDIAN_SYNC)) {
+  console.warn(`⚠  No existe ${OBSIDIAN_SYNC}; se salta Obsidian (fija la ruta con OBSIDIAN_SYNC).`)
+} else if (spawnSync('python', [OBSIDIAN_SYNC], { cwd: ROOT, stdio: 'inherit' }).status !== 0) {
   console.warn('⚠  La sincronización con Obsidian falló (se continúa con la publicación).')
 }
 

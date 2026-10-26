@@ -1,0 +1,3 @@
+# cap sync rewrites these with LF on every build; keep the checkout LF so the tree stays clean.
+frontend/android/capacitor.settings.gradle text eol=lf
+frontend/android/app/capacitor.build.gradle text eol=lf
