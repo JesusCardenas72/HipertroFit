@@ -25,33 +25,23 @@
 <style>
   /* Launch screen (components/Splash.jsx decides when it goes). Styled here, not in index.css,
      because it has to render before the bundle — and its CSS — has loaded. It lives outside
-     #root so mounting React doesn't replace it and restart the zoom. */
+     #root so mounting React doesn't replace it. */
   .splash{
     position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
     overflow:hidden;background:#000;color:#fff;transition:opacity .35s ease;
     font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,system-ui,sans-serif;
   }
   :root[data-theme="light"] .splash{background:#f2f2f7;color:#000}
-  .splash-in{
-    display:flex;flex-direction:column;align-items:center;gap:18px;
-    animation:splash-zoom 3s ease-in forwards;
-  }
-  @keyframes splash-zoom{from{transform:scale(1)}to{transform:scale(var(--splash-scale,3))}}
+  /* The logo holds still in the launch background until the splash goes. */
+  .splash-in{display:flex;flex-direction:column;align-items:center;gap:18px}
   .splash img{width:min(38vw,168px);height:auto}
   .splash-name{font-size:32px;font-weight:700;letter-spacing:-.02em}
   .splash.out{opacity:0;pointer-events:none}
-  @media (prefers-reduced-motion:reduce){.splash{transition:none}.splash-in{animation:none}}
+  @media (prefers-reduced-motion:reduce){.splash{transition:none}}
 </style>
 </head>
 <body>
 <div id="splash" class="splash" aria-hidden="true"><div class="splash-in"><img src="logo.svg" alt=""><div class="splash-name">HipertroFit</div></div></div>
-<script>
-  /* The zoom ends exactly when the logo spans the full viewport width: the logo is
-     min(38vw,168px) wide (see .splash img), so the final scale is that ratio. Inline and
-     before the bundle so it is set on the very first frame of the animation. */
-  document.documentElement.style.setProperty('--splash-scale',
-    String(innerWidth / Math.min(innerWidth * 0.38, 168)));
-</script>
 <div id="root"></div>
 <script type="module" src="/src/main.jsx"></script>
 </body>
