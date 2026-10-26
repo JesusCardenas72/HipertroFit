@@ -403,6 +403,7 @@ export default function RoutineEdit() {
     if (!e) return
     exConfigSheet(exOr(e.id), e, cfg => edit(x => { x[i] = { id: x[i].id, sg: x[i].sg, ...cfg } }), () => edit(x => { x.splice(i, 1); cleanupSg(x) }), r)
   }
+  const removeExercise = i => edit(x => { x.splice(i, 1); cleanupSg(x) })
   const addExercise = () => exercisePicker(ex => addExerciseToRoutine(ex, r, cfg => edit(x => { x.push({ id: ex.id, ...cfg }) })))
   // Same choosing and configuring as adding one (its config from another routine, or seeded for
   // its class), but it lands in this row's place and superset. One pick, then back to the plan.
@@ -511,6 +512,7 @@ export default function RoutineEdit() {
             <div style={{ display: 'flex', gap: 2 }}>
               {i > 0 && <button className={'iconbtn' + (linkedPrev ? ' on-ss' : '')} title={t('Superset with exercise above')} style={{ width: 28, height: 28, borderRadius: 8, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); toggleLink(i) }}><Icon name="link" /></button>}
               <button className="iconbtn" aria-label={t('Swap exercise')} title={t('Swap exercise')} style={{ width: 28, height: 28, borderRadius: 8, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); swapExercise(i) }}><Icon name="shuffle" /></button>
+              <button className="iconbtn" aria-label={t('Remove from routine')} title={t('Remove from routine')} style={{ width: 28, height: 28, borderRadius: 8, fontSize: 15, color: 'var(--red)' }} onClick={ev => { ev.stopPropagation(); removeExercise(i) }}><Icon name="xmark" /></button>
             </div>
             <div style={{ display: 'flex', gap: 2 }}>
               <button className="iconbtn" aria-label={t('Move up')} title={t('Move up')} disabled={unitIndex.get(i) === 0} style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, -1) }}><Icon name="chevronUp" /></button>
