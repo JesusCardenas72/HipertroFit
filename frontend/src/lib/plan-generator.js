@@ -1,9 +1,10 @@
 // The plan generator: a split (lib/split-templates.js) turned into real routines and a program.
 //
 // Each day is a list of movement-pattern slots. For every slot the user sees every exercise of
-// that pattern in three groups, in this order: their favourites, the ones their equipment profile
-// allows, then the rest (candidatesFor). Each slot comes filled with the best of those (autoPick)
-// so a plan is complete before anything is touched; the user swaps what they want.
+// that pattern in three groups, in this order: their favourites (hearted, or already trained —
+// most completed work sets first), the ones their equipment profile allows, then the rest
+// (candidatesFor). Each slot comes filled with the best of those (autoPick) so a plan is complete
+// before anything is touched; the user swaps what they want.
 //
 // Sets per slot start from the level and are then moved one at a time until every muscle group's
 // planned volume for one microcycle sits in its band (balanceSets) — the same groups, credits and
@@ -18,7 +19,7 @@ import { allExercises, EXIDX } from './exercises.js'
 import { isPattern, patternOf } from './movement-patterns.js'
 import { classifyExercise, routineExerciseConfig } from './exercise-class.js'
 import { seedConfig } from './exercise-defaults.js'
-import { modeOf, cleanupSg } from './history.js'
+import { modeOf, cleanupSg, workSetCounts } from './history.js'
 import { isFavorite } from './favorites.js'
 import { ownsEquipment } from './equipment.js'
 import { plannedVolume, setCredit, VOLUME_GROUPS, targetOf } from './volume.js'
@@ -99,20 +100,27 @@ export function slotScore(ex, role, prefer) {
 
 /**
  * Every exercise of a slot's pattern, in the three groups the user picks from: `favorites`
- * (whatever the equipment), `owned` (what the profile allows; everything when there is no
- * profile) and `rest`. Each group best first.
+ * (the ones they hearted plus the ones they already trained, most completed work sets first),
+ * `owned` (what the profile allows; everything when there is no profile) and `rest`. Each
+ * group best first. `setCounts` is workSetCounts(S), passed in when building the whole draft
+ * so the history is read once.
  */
-export function candidatesFor(S, slot, profile) {
+export function candidatesFor(S, slot, profile, setCounts = workSetCounts(S)) {
   const all = allExercises(S).filter(ex => patternOf(ex) === slot.pattern)
     .map(ex => ({ ex, s: slotScore(ex, slot.role, slot.prefer) }))
     .sort((a, b) => b.s - a.s || String(a.ex.n).localeCompare(String(b.ex.n)))
     .map(x => x.ex)
   const favorites = [], owned = [], rest = []
   for (const ex of all) {
-    if (isFavorite(S, ex.id)) favorites.push(ex)
+    // What you have already trained is a favourite by default, even without a heart: it has
+    // history, so the progression starts with data. An explicit heart still wins a tie.
+    if (isFavorite(S, ex.id) || setCounts[ex.id] > 0) favorites.push(ex)
     else if (ownsEquipment(profile, ex) !== false) owned.push(ex)
     else rest.push(ex)
   }
+  // `all` is already in slot-score order and sort is stable, so ties keep that order.
+  favorites.sort((a, b) => (setCounts[b.id] || 0) - (setCounts[a.id] || 0)
+    || (isFavorite(S, b.id) ? 1 : 0) - (isFavorite(S, a.id) ? 1 : 0))
   return { favorites, owned, rest }
 }
 
@@ -150,6 +158,7 @@ export function buildDraft(S, { split, level, variants, profile = null, picks = 
   const lvl = LEVELS[level] || LEVELS.intermediate
   const v = hasVariants(split, variants)
   const used = new Set()
+  const setCounts = workSetCounts(S)
   const days = daysOf(split, v).map(d => {
     const inDay = new Set()
     // A day the user rearranged (lib/plan-layout.js) keeps its own slots; otherwise the
@@ -158,7 +167,7 @@ export function buildDraft(S, { split, level, variants, profile = null, picks = 
     const defs = own || d.slots.slice(0, lvl.slots).map((sl, i) => ({ ...sl, id: d.key + ':' + i }))
     const slots = defs.map(({ id: key, sg, ...sl }) => {
       const picked = picks[key] && EXIDX[picks[key]] ? picks[key] : null
-      const id = picked || autoPick(candidatesFor(S, sl, profile), profile, inDay, used)
+      const id = picked || autoPick(candidatesFor(S, sl, profile, setCounts), profile, inDay, used)
       if (id) { inDay.add(id); used.add(id) }
       const pinned = sets[key] != null
       return { key, ...sl, ...(sg ? { sg } : {}), id, picked: !!picked, pinned, sets: pinned ? sets[key] : lvl.sets[sl.role] }

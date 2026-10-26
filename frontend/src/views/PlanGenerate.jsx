@@ -13,7 +13,7 @@ import { useRoutineReorder } from './RoutineEdit.jsx'
 import { isFavorite, toggleFavorite } from '../lib/favorites.js'
 import { ownsEquipment, newProfile } from '../lib/equipment.js'
 import { programActive } from '../lib/program.js'
-import { modeOf, supersetUnits } from '../lib/history.js'
+import { modeOf, supersetUnits, workSetCounts } from '../lib/history.js'
 import { DAYS, uid } from '../lib/format.js'
 import { VOLUME_GROUPS, targetOf } from '../lib/volume.js'
 import { SPLITS, SPLIT_KEYS, hasVariants } from '../lib/split-templates.js'
@@ -400,6 +400,8 @@ function Picker({ slot, profile, dayName, onPick, close }) {
   // the finger; they re-sort the next time it is opened.
   const [groups] = useState(() => candidatesFor(useStore.getState().S, slot, profile))
   const [q, setQ] = useState('')
+  // What the rows were grouped by: the count explains why a trained exercise is in Favourites.
+  const setCounts = useMemo(() => workSetCounts(S), [S.workouts])
   const total = groups.favorites.length + groups.owned.length + groups.rest.length
   const rows = list => (q.trim() ? list.filter(e => matchExercise(e, q)) : list).map(e => {
     const fav = isFavorite(S, e.id)
@@ -409,6 +411,7 @@ function Picker({ slot, profile, dayName, onPick, close }) {
         {e.n && !exerciseNameFor(e).toLowerCase().includes(e.n.toLowerCase()) && <div className="en">{e.n}</div>}
         <div className="pg-meta">
           <span className="pg-tag">{t(e.eq)}</span><span className="pg-tag">{t(CLASS_NAME[clsKey(e)])}</span>
+          {setCounts[e.id] > 0 && <span className="pg-tag">{t('{0} sets', setCounts[e.id])}</span>}
           {ownsEquipment(profile, e) === false && <span className="pg-tag warn">{t('not in your equipment')}</span>}
           {e.id === slot.id && <span className="pg-tag pick">{t('current')}</span>}
         </div>

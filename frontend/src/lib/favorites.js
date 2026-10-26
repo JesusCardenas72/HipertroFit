@@ -2,7 +2,9 @@
 //
 // An explicit choice, unlike the picker's "Chosen" filter, which is derived from what the
 // routines and the log already use. Pickers list favourites first, and a generated routine's
-// slots offer them before anything else (docs/design/generador-de-rutinas.md).
+// slots offer them before anything else (docs/design/generador-de-rutinas.md). The plan
+// generator widens this by default: exercises with completed work sets in history join the
+// favourites group, most sets first (lib/plan-generator.js candidatesFor).
 
 /** Whether exercise `id` is a favourite. */
 export const isFavorite = (S, id) => Array.isArray(S && S.favEx) && S.favEx.includes(id)

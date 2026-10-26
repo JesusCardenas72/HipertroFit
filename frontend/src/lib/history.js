@@ -645,6 +645,21 @@ export function workSetsDone(w) {
   )
 }
 
+/**
+ * Completed work sets per exercise id across the whole workout history: `{ [id]: n }`.
+ * Warm-ups and sets left unchecked do not count, so this is what the user actually did — the
+ * plan generator uses it to offer the exercises they train most first.
+ */
+export function workSetCounts(S) {
+  const counts = {}
+  for (const w of (S && S.workouts) || []) for (const e of w.entries || []) {
+    if (!e.id) continue
+    const n = (e.sets || []).filter(s => s.done === true && !isWarmupRow(s)).length
+    if (n) counts[e.id] = (counts[e.id] || 0) + n
+  }
+  return counts
+}
+
 const METRIC_MODES = ['reps', 'time', 'cardio']
 const completedRowsForMode = (entry, mode) => workRowsForMode(entry, mode).filter(s => s.done === true && !isWarmupRow(s))
 

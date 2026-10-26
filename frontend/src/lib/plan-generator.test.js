@@ -43,6 +43,30 @@ describe('the exercises a slot offers', () => {
     expect(g.rest.some(e => e.eq === 'barbell')).toBe(true)
   })
 
+  it('treats what you have already trained as favourites, most work sets first', () => {
+    const S = S0({ workouts: [{ d: '2026-10-01', entries: [
+      { id: '0025', sets: [
+        { w: 60, r: 8, done: true },
+        { w: 60, r: 8, done: false },
+        { w: 30, r: 8, done: true, phase: 'warmup' },
+      ] },
+      { id: '0289', sets: [
+        { w: 20, r: 10, done: true },
+        { w: 20, r: 10, done: true },
+        { w: 20, r: 10, done: true },
+      ] },
+    ] }] })
+    const g = candidatesFor(S, slot, null)
+    expect(g.favorites.map(e => e.id)).toEqual(['0289', '0025'])   // 3 work sets vs 1; warm-ups and unchecked rows left out
+    expect(g.owned.some(e => e.id === '0289')).toBe(false)
+    expect(autoPick(g, null)).toBe('0289')
+  })
+
+  it('keeps an exercise you hearted in the favourites group even with no history', () => {
+    const S = S0({ favEx: ['0251'] })
+    expect(candidatesFor(S, slot, null).favorites.map(e => e.id)).toContain('0251')
+  })
+
   it('treats everything as owned without an equipment profile', () => {
     expect(candidatesFor(S0(), slot, null).rest).toEqual([])
   })

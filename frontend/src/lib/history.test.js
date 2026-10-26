@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, freestyleConfig, exLine, workoutVolume, bestWeightFor, bestWeightForEntry, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, cascadeWeight, insertWarmupRow, removeRowAt, workSetsDone, pairAdjacent, unpairSuperset, supersetUnits, applyIntensifierPlan, pinnedNoteFor, exNoteFor, sessionSetCount } from './history.js'
+import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, freestyleConfig, exLine, workoutVolume, bestWeightFor, bestWeightForEntry, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, cascadeWeight, insertWarmupRow, removeRowAt, workSetsDone, workSetCounts, pairAdjacent, unpairSuperset, supersetUnits, applyIntensifierPlan, pinnedNoteFor, exNoteFor, sessionSetCount } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -843,6 +843,18 @@ describe('warm-up rows identified by phase alone', () => {
 
   it('workSetsDone does not count a phase-only warm-up', () => {
     expect(workSetsDone({ entries: [{ sets: [imported, work] }] })).toBe(1)
+  })
+
+  it('workSetCounts adds completed work sets per exercise and leaves the rest out', () => {
+    const S = { workouts: [
+      { entries: [
+        { id: 'a', sets: [work, imported, { w: 100, r: 5, done: false }] },
+        { id: 'b', sets: [work, work] },
+      ] },
+      { entries: [{ id: 'a', sets: [work, work] }] },
+    ] }
+    expect(workSetCounts(S)).toEqual({ a: 3, b: 2 })
+    expect(workSetCounts({})).toEqual({})
   })
 
   it('cascadeWeight keeps phase-only warm-ups in their own lane', () => {

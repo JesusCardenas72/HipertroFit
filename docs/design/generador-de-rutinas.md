@@ -21,7 +21,7 @@ Buena parte de lo que pide el encargo ya existe. Lo que falta es poco y está bi
 | Secuencia de sesiones | `S.program.seq`, `nextStepOf` (puntero posicional que ya tolera sesiones fuera de orden, §3.3), `ProgramSheet` (subir/bajar) | Arrastrar para reordenar |
 | Volumen 10–20 series | `VOLUME_TARGET`, `targetOf`, `plannedVolume`, `VolumeGroupBars` (`lib/volume.js`) | Objetivo inicial según el nivel y rampa entre microciclos |
 | Material del usuario | `S.equipProfiles`, `activeEquipId`, `exAvailable` (`lib/equipment.js`) | Consulta que no dependa del interruptor `equipFilterOn` |
-| Favoritos | — (el selector tiene "Elegidos", que son los ejercicios *usados* alguna vez) | `S.favEx` y un botón para marcarlos |
+| Favoritos | — (el selector tiene "Elegidos", que son los ejercicios *usados* alguna vez) | `S.favEx`, un botón para marcarlos y los ejercicios ya entrenados como favoritos por defecto |
 | Patrón de movimiento | Las ~80 "familias de movimiento" de `scripts/audit-exercise-muscles.mjs`, que hoy solo sirven para deducir músculos y luego se descartan | Guardar `pattern` en el JSON |
 | Compuesto / aislamiento | `classifyExercise` → compound / machine / isolation, con su rango de reps | — |
 | Progresión de carga | Doble progresión (`lib/progression.js`), descargas (`lib/mesocycle.js`) | Usar el RIR registrado (fase 2) |
@@ -126,6 +126,10 @@ los perfiles antiguos lo reciben vacío sin necesidad de migración.
 - No hay que confundirlo con "Elegidos" del `ExercisePicker`, que se calcula por uso
   (`usageMap`) y ya lleva el icono `starFill`. Los favoritos llevan **otro icono** (corazón), y el
   uso queda como criterio de desempate dentro de cada grupo (§4.1).
+- En el generador de planes los favoritos tienen además un valor por defecto: un ejercicio con
+  series de trabajo completadas en el histórico (`S.workouts`) entra en el grupo aunque no tenga
+  corazón, ordenado por número de series de más a menos (`workSetCounts`, §4.1). El corazón
+  explícito garantiza que aparezca y gana los empates.
 
 ### 2.3 Material (`user_equipment`)
 
@@ -326,6 +330,7 @@ Todo vive en `lib/plan-generator.js`, sin React, con `plan-generator.test.js` al
 // slot: { pattern, role, prefer? } · ctx: { profile, draft, dayKey }
 export function candidatesFor(S, slot, ctx) {
   const usage = usageCounts(S)                       // veces en rutinas y entrenamientos (como usageMap)
+  const trained = workSetCounts(S)                   // series de trabajo completadas en el histórico
   const fav = new Set(S.favEx || [])
   const pool = allExercises(S).filter(ex =>
     patternOf(ex) === slot.pattern &&
@@ -337,11 +342,14 @@ export function candidatesFor(S, slot, ctx) {
     const owns = ownsEquipment(ctx.profile, ex)      // true / false / null (sin perfil)
     const row = { ex, owns, score: scoreFor(S, ex, slot, ctx, usage),
                   elsewhere: usedElsewhere(ctx.draft, ctx.dayKey, ex.id) }   // "ya en Push B"
-    if (fav.has(ex.id)) groups.favorites.push(row)   // favorito aunque no haya material (se marca)
+    if (fav.has(ex.id) || trained[ex.id] > 0) groups.favorites.push(row)   // favorito o ya entrenado
     else if (owns !== false) groups.owned.push(row)  // sin perfil, todo cuenta como disponible
     else groups.rest.push(row)
   }
   for (const g of Object.values(groups)) g.sort((a, b) => b.score - a.score || nameCmp(a.ex, b.ex))
+  groups.favorites.sort((a, b) =>
+    (trained[b.ex.id] || 0) - (trained[a.ex.id] || 0) ||       // más series hechas primero
+    Number(fav.has(b.ex.id)) - Number(fav.has(a.ex.id)))       // el corazón gana los empates
   return groups
 }
 ```
