@@ -11,7 +11,7 @@ import { t, exerciseNameFor } from '../lib/i18n.js'
 import { dateLocale } from '../lib/i18n-core.js'
 import { api } from '../lib/api.js'
 import { insertionAfterEntry, insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, unitEntryIdx } from '../lib/supersetFlow.js'
-import { restBetweenExercisesSec, restExLabel, settingChoice, REST_EX_PRESETS } from '../lib/rest-between.js'
+import { exerciseRestChoice, restBetweenExercisesSec, restExLabel, settingChoice, REST_EX_PRESETS } from '../lib/rest-between.js'
 import Media, { Thumb } from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, swapActiveWorkoutExercise } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
@@ -289,6 +289,11 @@ function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1,
         style={entry.note ? { color: 'var(--acc)' } : undefined}
         onClick={() => exerciseNoteSheet(entryIdx)}><Icon name="pencil" /></button>
       <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
+      {/* The break after this exercise, before the next one — for this workout only. */}
+      {!S.active.backfill && <button type="button" className="iconbtn" data-testid="ex-rest"
+        aria-label={t('Rest after this exercise')} title={t('Rest after this exercise')}
+        style={entry.restExSec != null ? { color: 'var(--acc)' } : undefined}
+        onClick={() => exerciseRestSheet(entryIdx)}><Icon name="timer" /></button>}
       {/* How this exercise has gone so far: its progress curve, as on Stats. */}
       <button type="button" className="iconbtn" aria-label={t('Exercise progress')} title={t('Exercise progress')}
         onClick={() => exerciseProgressSheet(entry.id)}><Icon name="chartLine" /></button>
@@ -438,6 +443,33 @@ function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1,
 const DOUBLE_TAP_MS = 350
 
 // Two taps on the same thing (`key`) within DOUBLE_TAP_MS: true on the second.
+// The break after one exercise of the running workout: 'workout' follows the workout's own
+// choice (and through it Settings), anything else overrides it for this exercise only.
+function exerciseRestSheet(entryIdx) {
+  const { S, update } = useStore.getState()
+  const A = S.active
+  const entry = A?.entries[entryIdx]
+  if (!entry) return
+  const workoutChoice = A.restExSec === 'sets' || typeof A.restExSec === 'number' ? A.restExSec : settingChoice(S.restExSec)
+  const own = entry.restExSec === 'sets' || typeof entry.restExSec === 'number' ? entry.restExSec : null
+  useUI.getState().openSheet(close => <SelectSheet
+    title={t('Rest after {0}', exerciseNameFor(exOr(entry.id)))}
+    value={own ?? 'workout'}
+    options={[
+      { value: 'workout', label: t('This workout setting'), subtitle: restExLabel(workoutChoice, t) },
+      { value: 'sets', label: restExLabel('sets', t) },
+      { value: 0, label: restExLabel(0, t) },
+      ...REST_EX_PRESETS.map(v => ({ value: v, label: restExLabel(v, t) })),
+    ]}
+    onChange={v => update(s => {
+      const e = s.active?.entries[entryIdx]
+      if (!e) return
+      if (v === 'workout') delete e.restExSec
+      else e.restExSec = v
+    })}
+    close={close} />)
+}
+
 function useDoubleTap() {
   const last = useRef({ key: null, at: 0 })
   return key => {
@@ -1423,8 +1455,9 @@ function ActiveWorkout() {
       // Resolved once here so every branch below times the same break.
       const restSec = restSecFor(fresh.entries, freshUnit || [idx], S.restSec)
       // Once the exercise (or superset) is finished, the break before the next one can have its
-      // own length — the workout's choice, else Settings, else the rest above. See rest-between.js.
-      const exRestSec = restBetweenExercisesSec(restSec, fresh.restExSec, S.restExSec)
+      // own length — the exercise's own choice, else the workout's, else Settings, else the rest
+      // above. See rest-between.js.
+      const exRestSec = restBetweenExercisesSec(restSec, fresh.restExSec, S.restExSec, exerciseRestChoice(fresh.entries, freshUnit || [idx]))
       const unitRestSec = freshUnitDone ? exRestSec : restSec
       // Which break this is. The closing set never also starts a between-sets rest: the
       // between-exercises one replaces it, so the two times cannot add up.
@@ -1511,7 +1544,6 @@ function ActiveWorkout() {
   // This session's rest between exercises: 'app' follows Settings, anything else overrides it
   // for this workout only (S.active.restExSec).
   const workoutRestEx = A.restExSec === 'sets' || typeof A.restExSec === 'number' ? A.restExSec : null
-  const restExChoice = workoutRestEx ?? settingChoice(S.restExSec)
   const openRestExPicker = () => useUI.getState().openSheet(close => <SelectSheet
     title={t('Rest between exercises (this workout)')}
     value={workoutRestEx ?? 'app'}
@@ -1744,7 +1776,7 @@ function ActiveWorkout() {
             Nothing to adjust on a past workout (no timers) or with a single exercise. */}
         {!A.backfill && units.length > 1 && <button className="giftoggle inline" data-testid="rest-ex"
           style={{ marginLeft: 'auto' }} onClick={openRestExPicker}>
-          <Icon name="timer" /><span>{t('Between exercises · {0}', restExChoice === 'sets' ? t('like sets') : restExLabel(restExChoice, t))}</span>
+          <Icon name="timer" /><span>{t('Between exercises')}</span>
         </button>}
       </div>}
       </>}

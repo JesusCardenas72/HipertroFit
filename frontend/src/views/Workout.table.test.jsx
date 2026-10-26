@@ -181,7 +181,7 @@ describe('the set table', () => {
     const tools = container.querySelector('[data-testid="ex-tools"]')
     expect(head.parentElement.nextElementSibling).toBe(tools)
     expect([...tools.querySelectorAll('button')].map(b => b.getAttribute('aria-label')))
-      .toEqual(['Note', 'Details', 'Exercise progress', 'Swap exercise', 'Unpair', 'Remove exercise'])
+      .toEqual(['Note', 'Details', 'Rest after this exercise', 'Exercise progress', 'Swap exercise', 'Unpair', 'Remove exercise'])
     expect(container.textContent).not.toContain('back-to-back')
     click(tools.querySelector('[aria-label="Unpair"]'))
     expect(useStore.getState().S.active.entries.some(e => e.sg)).toBe(false)

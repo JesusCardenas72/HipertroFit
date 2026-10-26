@@ -437,6 +437,15 @@ describe('Workout set completion flow', () => {
       expect(mocks.startRest).toHaveBeenCalledWith(45, expect.any(Number), expect.any(String))
     })
 
+    it('lets a single exercise override the workout and Settings', async () => {
+      await mount([
+        exercise('current', [false], { asked: true, restExSec: 300 }),
+        exercise('next', [false]),
+      ], 0, { restExSec: 180, active: { restExSec: 45 } })
+      await toggleSet(0)
+      expect(mocks.startRest).toHaveBeenCalledWith(300, expect.any(Number), expect.any(String))
+    })
+
     it('goes back to the between-sets rest when the workout chooses it over a Settings time', async () => {
       await mount([
         exercise('current', [false], { asked: true }),
@@ -467,13 +476,9 @@ describe('Workout set completion flow', () => {
       expect(mocks.startRest).toHaveBeenCalledWith(90, expect.any(Number), expect.any(String))
     })
 
-    it('shows the chip with the current choice, and only when there is a next exercise', async () => {
+    it('shows the chip without the time, and only when there is a next exercise', async () => {
       await mount([exercise('a', [false]), exercise('b', [false])], 0, { restExSec: 120 })
-      expect(container.querySelector('[data-testid="rest-ex"]').textContent).toContain('120s')
-
-      await unmount()
-      await mount([exercise('a', [false]), exercise('b', [false])], 0, { restExSec: 120, active: { restExSec: 'sets' } })
-      expect(container.querySelector('[data-testid="rest-ex"]').textContent).toContain('like sets')
+      expect(container.querySelector('[data-testid="rest-ex"]').textContent).toBe('Between exercises')
 
       await unmount()
       await mount([exercise('only', [false])])
