@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, matchExercise, exOr, normalizeStr, muscleTagsOf, catalogueRow } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, matchExercise, exOr, normalizeStr, muscleTagsOf, catalogueRow, imgSrc, gifSrc } from './lib/exercises.js'
 import { activeProfile, exAvailable, ALL_EQUIPMENT, newProfile } from './lib/equipment.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount, DAYN, DAYS, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { programActive, emptyProgram, sessionsPerRound, REST } from './lib/program.js'
@@ -32,8 +32,8 @@ import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLIC
 import { normalizeRepRange } from './lib/rep-range.js'
 import { ladderOf, snapLoad, ADJUSTABLE_DUMBBELLS } from './lib/load-scale.js'
 import { routineExerciseConfig, classifyExercise, CLASS_NAME, CLASS_REP_RANGE, EXERCISE_CLASSES } from './lib/exercise-class.js'
-import { buildCustomExercise, stepsText, NAME_MAX, DESC_MAX, MAX_IMAGE_BYTES } from './lib/custom-exercise.js'
-import { pictureFromFile, gifFromDataUrl, frameCanvas, frameToJpeg } from './lib/image-file.js'
+import { buildCustomExercise, stepsText, copyName, NAME_MAX, DESC_MAX, MAX_IMAGE_BYTES } from './lib/custom-exercise.js'
+import { pictureFromFile, pictureFromUrl, pictureFromClipboard, imageFromTransfer, gifFromDataUrl, frameCanvas, frameToJpeg } from './lib/image-file.js'
 import { previousRoutineConfig, seedConfig, changedGlobals, applyGlobals, isGlobalField, GLOBAL_LABEL } from './lib/exercise-defaults.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
@@ -547,6 +547,7 @@ function ExerciseDetail({ ex: shown, close }) {
       <Button icon="pencil" style={{ flex: 1 }} onClick={() => { close(); renameExSheet(ex) }}>{t('Rename this exercise')}</Button>
       {!isCardio(ex) && <Button icon="target" style={{ flex: 1 }} onClick={() => muscleEditSheet(ex)}>{t('Edit muscle groups')}</Button>}
     </div>}
+    <Button icon="copy" style={{ marginTop: 8 }} onClick={() => { close(); copyExSheet(ex, copy => exerciseDetailSheet(copy)) }}>{t('Create a copy')}</Button>
     {!isCardio(ex) && <PatternRow ex={ex} />}
     {!isCardio(ex) && <OneRM ex={ex} />}
     {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{!INSTR_LANGS.includes(getLang()) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
@@ -614,25 +615,70 @@ export const addToRoutineSheet = ex => ui().openSheet(close => <AddToRoutine ex=
 // (name, body part, equipment, muscles, class, instructions, picture) can be set here, and it
 // then behaves like any built-in one (planning, logging, PRs, stats). Only name and body part
 // are required. The record itself is built by buildCustomExercise (lib/custom-exercise.js).
-function CustomExForm({ existing, prefill, onDone, close }) {
+// `copyOf` starts a new exercise from another one (built-in or custom): every field, the
+// instructions in the current language and the picture are filled in from it, under a name
+// that is still free, and the copy is saved as a separate custom exercise.
+function CustomExForm({ existing, copyOf, prefill, onDone, close }) {
   const nameRef = useRef(null)
   const fileRef = useRef(null)
   const onNameFocus = useSheetKeyboard(nameRef)
-  const [n, setN] = useState(existing ? existing.n : (prefill || ''))
-  const [bp, setBp] = useState(existing ? existing.bp : '')
-  const [eq, setEq] = useState(existing && existing.eq && existing.eq !== 'custom' ? existing.eq : '')
-  const [cls, setCls] = useState(existing && existing.cls ? existing.cls : '')
-  const [pattern, setPattern] = useState(existing && existing.pattern ? existing.pattern : '')
-  const [desc, setDesc] = useState(existing ? (existing.desc || '') : '')
-  const [steps, setSteps] = useState(existing ? stepsText(existing.st) : '')
-  const [pic, setPic] = useState(() => ({ img: existing?.img || '', gif: existing?.gif || '', frame: existing?.frame || 0 }))
-  const [muscles, setMuscles] = useState(() => initialMuscles(existing))
-  const pickPicture = async e => {
+  const src = existing || copyOf
+  const [n, setN] = useState(() => existing ? existing.n
+    : copyOf ? copyName(exerciseNameFor(copyOf), allExercises(S()).flatMap(e => [e.n, exerciseNameFor(e)]), t('copy'))
+    : (prefill || ''))
+  const [bp, setBp] = useState(src ? src.bp : '')
+  const [eq, setEq] = useState(src && src.eq && src.eq !== 'custom' ? src.eq : '')
+  // A built-in's class may come from an override keyed by its id, which the copy will not have.
+  const [cls, setCls] = useState(() => copyOf && !copyOf.custom ? classifyExercise(copyOf) : (src && src.cls) || '')
+  const [pattern, setPattern] = useState(src ? patternOf(src) || '' : '')
+  const [desc, setDesc] = useState(src ? (src.desc || '') : '')
+  const [steps, setSteps] = useState(existing ? stepsText(existing.st) : copyOf ? stepsText(instrFor(copyOf)) : '')
+  const [pic, setPic] = useState(() => src && src.custom ? { img: src.img || '', gif: src.gif || '', frame: src.frame || 0 } : { img: '', gif: '', frame: 0 })
+  const [picBusy, setPicBusy] = useState(false)
+  const [muscles, setMuscles] = useState(() => initialMuscles(src))
+  const takePicture = async load => {
+    setPicBusy(true)
+    try { setPic(await load()) }
+    catch (err) { toast(pictureError(err)) }
+    finally { setPicBusy(false) }
+  }
+  const pickPicture = e => {
     const file = e.target.files && e.target.files[0]
     e.target.value = ''
-    if (!file) return
-    try { setPic(await pictureFromFile(file)) }
-    catch (err) { toast(err.message === 'too-large' ? t('That GIF is too big — keep it under {0} KB', Math.round(MAX_IMAGE_BYTES / 1024)) : t('That file isn’t an image')) }
+    if (file) takePicture(() => pictureFromFile(file))
+  }
+  // A built-in's media is a file next to the app, not inline: download it so the copy owns it.
+  // The animation first, its still when the GIF is over the size cap or cannot be read.
+  useEffect(() => {
+    if (!copyOf || copyOf.custom || (!copyOf.img && !copyOf.gif)) return
+    takePicture(async () => {
+      if (copyOf.gif) try { return await pictureFromUrl(gifSrc(copyOf)) } catch { /* fall back to the still */ }
+      try { return await pictureFromUrl(imgSrc(copyOf)) } catch { throw new Error('copy') }
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // An image copied in the browser can be pasted straight in (Ctrl+V / long-press → Paste)
+  // or dropped on the image section; text pastes into the fields are left alone.
+  useEffect(() => {
+    const onPaste = e => {
+      const file = imageFromTransfer(e.clipboardData)
+      if (!file) return
+      e.preventDefault()
+      takePicture(() => pictureFromFile(file))
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const onDrop = e => {
+    e.preventDefault()
+    const file = imageFromTransfer(e.dataTransfer)
+    const url = (e.dataTransfer.getData('text/uri-list') || '').split(/\r?\n/).find(l => l && !l.startsWith('#'))
+    if (file) takePicture(() => pictureFromFile(file))
+    else if (url) takePicture(() => pictureFromUrl(url.trim()))
+  }
+  const searchWeb = () => {
+    const q = n.trim()
+    if (!q) { toast(t('Give it a name')); return }
+    window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(q), '_blank', 'noopener')
   }
   const draft = id => buildCustomExercise({ id, n, bp, eq, cls, pattern, primaries: muscles.primary, secondaries: muscles.secondary, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame })
   const autoCls = classifyExercise({ ...draft((existing || {}).id), cls: undefined })
@@ -642,6 +688,7 @@ function CustomExForm({ existing, prefill, onDone, close }) {
     if (!bp) { toast(t('Pick a body part')); return }
     const dup = allExercises(S()).find(e => e.n.toLowerCase() === name.toLowerCase() && e.id !== (existing || {}).id)
     if (dup) { toast(t('“{0}” already exists', dup.n)); return }
+    if (picBusy) { toast(t('Loading image…')); return }
     const id = existing ? existing.id : 'c' + uid()
     const record = draft(id)
     update(s => {
@@ -659,7 +706,7 @@ function CustomExForm({ existing, prefill, onDone, close }) {
   const clsOptions = [{ value: '', label: t('Automatic · {0}', t(CLASS_NAME[autoCls])) },
     ...EXERCISE_CLASSES.map(c => ({ value: c, label: t(CLASS_NAME[c]), subtitle: t('{0}–{1} reps', CLASS_REP_RANGE[c].repsMin, CLASS_REP_RANGE[c].reps) }))]
   return <>
-    <h3>{existing ? t('Edit custom exercise') : t('Create your own exercise')}</h3>
+    <h3>{existing ? t('Edit custom exercise') : copyOf ? t('Copy of “{0}”', exerciseNameFor(copyOf)) : t('Create your own exercise')}</h3>
     <div className="muted small" style={{ marginBottom: 12 }}>{t('Only the name and body part are required — fill in the rest to describe it as fully as a built-in exercise.')}</div>
     <input ref={nameRef} className="input" maxLength={NAME_MAX} placeholder={t('Exercise name')} value={n} onFocus={onNameFocus} onChange={e => setN(e.target.value)} />
     <div className="chips" style={{ margin: '12px 0' }}>
@@ -675,15 +722,22 @@ function CustomExForm({ existing, prefill, onDone, close }) {
       options={[{ value: '', label: t('None') }, ...PATTERNS.map(p => ({ value: p.key, label: t(p.name) }))]} />}
     {bp === 'cardio' && <div className="small dim row" style={{ margin: '10px 0', gap: 5 }}><Icon name="figureRun" style={{ fontSize: 13 }} />{t('Cardio exercises log time + speed instead of weight × reps.')}</div>}
     <h4 className="sec">{t('Image')}</h4>
+    <div onDragOver={e => e.preventDefault()} onDrop={onDrop}>
     <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPicture} />
-    {pic.img ? <>
+    {picBusy ? <div className="small dim" style={{ marginBottom: 12 }}>{t('Loading image…')}</div> : pic.img ? <>
       <Media ex={{ id: 'preview', n, img: pic.img, gif: pic.gif }} compact />
       {pic.gif && <GifFramePicker src={pic.gif} frame={pic.frame} onPick={(frame, img) => setPic(p => ({ ...p, frame, img }))} />}
       <div className="row" style={{ gap: 8, marginBottom: 12 }}>
         <Button icon="pencil" style={{ flex: 1 }} onClick={openFile}>{t('Change image')}</Button>
         <Button variant="danger" icon="trash" style={{ flex: 1 }} onClick={() => setPic({ img: '', gif: '', frame: 0 })}>{t('Remove image')}</Button>
       </div>
-    </> : <Button icon="plus" style={{ marginBottom: 12 }} onClick={openFile}>{t('Add an image')}</Button>}
+    </> : <Button icon="plus" style={{ marginBottom: 8 }} onClick={openFile}>{t('Add an image')}</Button>}
+    <div className="row" style={{ gap: 8, marginBottom: 6 }}>
+      <Button icon="globe" style={{ flex: 1 }} onClick={searchWeb}>{t('Search the web')}</Button>
+      <Button icon="clipboard" style={{ flex: 1 }} disabled={picBusy} onClick={() => takePicture(pictureFromClipboard)}>{t('Paste image')}</Button>
+    </div>
+    <div className="small dim" style={{ marginBottom: 12 }}>{t('Find a picture in your browser, copy it (right-click or long-press → Copy image) and come back to paste it — Ctrl+V or dropping it here works too.')}</div>
+    </div>
     <h4 className="sec">{t('How to')}</h4>
     <textarea className="input" rows={4} placeholder={t('Instructions (optional) — one step per line')}
       value={steps} onChange={e => setSteps(e.target.value)} style={{ marginBottom: 10 }} />
@@ -730,6 +784,19 @@ function GifFramePicker({ src, frame, onPick }) {
 }
 
 export const customExSheet = (existing, onDone, prefill) => ui().openSheet(close => <CustomExForm existing={existing} prefill={prefill} onDone={onDone} close={close} />)
+export const copyExSheet = (ex, onDone) => ui().openSheet(close => <CustomExForm copyOf={ex} onDone={onDone} close={close} />)
+
+function pictureError(err) {
+  switch (err && err.message) {
+    case 'too-large': return t('That GIF is too big — keep it under {0} KB', Math.round(MAX_IMAGE_BYTES / 1024))
+    case 'copy': return t('Couldn’t copy its picture — add one below')
+    case 'fetch': return t('Couldn’t download that image — copy the image itself (Copy image), not its address')
+    case 'no-image': return t('There’s no image on the clipboard — copy one first (Copy image)')
+    case 'denied': return t('The browser didn’t allow reading the clipboard — press Ctrl+V here instead')
+    case 'unsupported': return t('Can’t read the clipboard here — press Ctrl+V or long-press and Paste')
+    default: return t('That file isn’t an image')
+  }
+}
 
 /* ---- muscle groups ----
    The primary / secondary pickers shared by the custom-exercise form and the muscle editor of a

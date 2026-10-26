@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildCustomExercise, parseSteps, stepsText, dataUrlBytes, MAX_IMAGE_BYTES, STEPS_MAX } from './custom-exercise.js'
+import { buildCustomExercise, parseSteps, stepsText, dataUrlBytes, copyName, MAX_IMAGE_BYTES, STEPS_MAX, NAME_MAX } from './custom-exercise.js'
 import { classifyExercise, repRangeFor } from './exercise-class.js'
 import { imgSrc, gifSrc } from './exercises.js'
 
@@ -80,5 +80,18 @@ describe('media sources', () => {
     expect(gifSrc({ gif: GIF })).toBe(GIF)
     expect(imgSrc({ img: '0001-x.jpg' })).toBe('img/0001-x.jpg')
     expect(gifSrc({ gif: '0001-x.gif' })).toBe('gif/0001-x.gif')
+  })
+})
+
+describe('copyName', () => {
+  it('appends the copy label, numbering it past names already taken (any case)', () => {
+    expect(copyName('Press banca', ['Press banca'], 'copia')).toBe('Press banca (copia)')
+    expect(copyName('Press banca', ['press banca (COPIA)'], 'copia')).toBe('Press banca (copia 2)')
+    expect(copyName(' Press banca ', ['Press banca (copia)', 'Press banca (copia 2)'], 'copia')).toBe('Press banca (copia 3)')
+  })
+  it('shortens a long base so the name still fits NAME_MAX', () => {
+    const n = copyName('x'.repeat(NAME_MAX), [], 'copy')
+    expect(n).toHaveLength(NAME_MAX)
+    expect(n.endsWith(' (copy)')).toBe(true)
   })
 })

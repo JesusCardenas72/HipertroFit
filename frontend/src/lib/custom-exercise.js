@@ -78,3 +78,18 @@ export function buildCustomExercise(f) {
     custom: true,
   }
 }
+
+/**
+ * A name for a copy of `name` that no exercise in `taken` uses yet (case-insensitive):
+ * "Name (copy)", then "Name (copy 2)", "Name (copy 3)"… `label` is the translated "copy".
+ * The base is shortened when needed so the result still fits NAME_MAX.
+ */
+export function copyName(name, taken, label = 'copy') {
+  const used = new Set((taken || []).map(x => String(x).trim().toLowerCase()))
+  const base = String(name || '').trim()
+  for (let i = 1; ; i++) {
+    const suffix = ' (' + label + (i > 1 ? ' ' + i : '') + ')'
+    const n = base.slice(0, NAME_MAX - suffix.length).trim() + suffix
+    if (!used.has(n.toLowerCase())) return n
+  }
+}

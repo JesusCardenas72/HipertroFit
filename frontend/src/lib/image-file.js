@@ -71,3 +71,52 @@ export async function pictureFromFile(file) {
   try { el = await loadImage(src) } catch { throw new Error('not-image') }
   return { img: toJpeg(el, el.naturalWidth, el.naturalHeight), gif: '', frame: 0 }
 }
+
+/**
+ * The same picture from an image URL — a built-in exercise's media when it is copied, or an
+ * image address pasted from the web. Throws like pictureFromFile, or 'fetch' when it cannot be
+ * downloaded (offline, or a site that does not allow other pages to read its images).
+ */
+export async function pictureFromUrl(url) {
+  let res
+  try { res = await fetch(url) } catch { throw new Error('fetch') }
+  if (!res.ok) throw new Error('fetch')
+  return pictureFromFile(await res.blob())
+}
+
+const isImageUrl = text => /^(https?:\/\/\S+|data:image\/[a-z]+;base64,\S+)$/i.test(text)
+
+/** The first image file in a paste or drop event's DataTransfer, or null. */
+export function imageFromTransfer(dt) {
+  if (!dt) return null
+  for (const item of dt.items || []) {
+    if (item.kind === 'file' && /^image\//.test(item.type)) return item.getAsFile()
+  }
+  return [...(dt.files || [])].find(f => /^image\//.test(f.type)) || null
+}
+
+/**
+ * The picture on the system clipboard, for a "Paste image" button: an image copied in the
+ * browser ("Copy image") or, failing that, a copied image address. Throws 'unsupported' (no
+ * clipboard access here — Ctrl+V / long-press paste still reaches imageFromTransfer),
+ * 'denied', 'no-image', or what pictureFromFile / pictureFromUrl throw.
+ */
+export async function pictureFromClipboard() {
+  const cb = typeof navigator !== 'undefined' ? navigator.clipboard : null
+  if (!cb || (!cb.read && !cb.readText)) throw new Error('unsupported')
+  let text = ''
+  try {
+    if (cb.read) {
+      for (const item of await cb.read()) {
+        const type = item.types.find(x => /^image\//.test(x))
+        if (type) return pictureFromFile(await item.getType(type))
+        if (!text && item.types.includes('text/plain')) text = await (await item.getType('text/plain')).text()
+      }
+    } else text = await cb.readText()
+  } catch (err) {
+    throw new Error(err && err.name === 'NotAllowedError' ? 'denied' : 'unsupported')
+  }
+  text = text.trim()
+  if (isImageUrl(text)) return pictureFromUrl(text)
+  throw new Error('no-image')
+}

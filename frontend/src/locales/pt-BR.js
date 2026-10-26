@@ -915,6 +915,7 @@ export const PT_BR_OVERRIDES = {
   'Here: the ranges follow the app’s double progression (compound 5–12, machine 8–10, isolation 10–20) and the app suggests the deload when the mesocycle closes.': 'Aqui: as faixas seguem a dupla progressão do app (composto 5–12, máquina 8–10, isolamento 10–20) e o app sugere o deload ao fechar o mesociclo.',
   'Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.': 'Toque e segure um lugar e arraste para mudar a ordem; solte sobre outro para fazer um bi-set. Segure mais para levar o bi-set inteiro.',
   'It goes at the end of the day; drag it wherever you want it.': 'Ele vai para o fim do dia; arraste para onde quiser.',
+  'Loading image…': 'Carregando imagem…',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,
