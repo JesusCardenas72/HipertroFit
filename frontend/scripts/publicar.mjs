@@ -16,6 +16,9 @@
 // ~/.hipertrofit/ (hipertrofit.keystore + firma.properties; otra carpeta con HIPERTROFIT_FIRMA).
 // Android rechaza una actualización firmada con otra clave, así que esa carpeta tiene que ser
 // la misma en todos los equipos desde los que se publique: cópiala, y guarda una copia aparte.
+// La clave NO se cambia nunca: antes de subir nada se comprueba que el APK lleva exactamente el
+// certificado de CERTIFICADO, y si no, no se publica (el móvil daría «Conflicto con un paquete
+// ya instalado» y solo se arreglaría desinstalando, que borra los datos).
 //
 // La rama `gh-pages` solo contiene la última versión: se reescribe entera en cada publicación.
 import { execFileSync, execSync } from 'node:child_process'
@@ -32,6 +35,9 @@ const RAMA = 'gh-pages'
 const APK = 'HipertroFit.apk'
 const LIMITE_MB = 95 // GitHub rechaza archivos de más de 100 MB
 const WIN = process.platform === 'win32'
+// SHA-256 del certificado de ~/.hipertrofit/hipertrofit.keystore (CN=HipertroFit), el que llevan
+// todas las versiones desde la 3.0.4. No tocar.
+const CERTIFICADO = '9a2a3ec0e21396d239f486369126524eb90559547a083a3fffeaec0d31aa949a'
 
 const git = (args, cwd = FRONT) => execFileSync('git', args, { cwd, encoding: 'utf-8' }).trim()
 const fallar = mensaje => {
@@ -103,6 +109,27 @@ run(`"${path.join(ANDROID, WIN ? 'gradlew.bat' : 'gradlew')}" assembleDebug -Pan
 
 const salida = path.join(ANDROID, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
 if (!fs.existsSync(salida)) fallar('No se ha generado android/app/build/outputs/apk/debug/app-debug.apk.')
+
+// La firma tiene que ser la de siempre (ver CERTIFICADO), con apksigner del SDK.
+const sdk = env.ANDROID_HOME || env.ANDROID_SDK_ROOT || ''
+const herramientas = path.join(sdk, 'build-tools')
+const ultima = fs.existsSync(herramientas)
+  ? fs.readdirSync(herramientas).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).pop()
+  : null
+if (!ultima) fallar(`No encuentro build-tools del SDK de Android en ${herramientas} para comprobar la firma del APK.`)
+let certificados
+try {
+  // .bat en Windows: execSync, que lo lanza a través de cmd.
+  certificados = execSync(`"${path.join(herramientas, ultima, WIN ? 'apksigner.bat' : 'apksigner')}" verify --print-certs "${salida}"`,
+    { env, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] })
+} catch (e) {
+  fallar('apksigner no ha podido verificar la firma del APK.')
+}
+const firmas = [...certificados.matchAll(/certificate SHA-256 digest: ([0-9a-f]{64})/gi)].map(m => m[1].toLowerCase())
+if (firmas.length !== 1 || firmas[0] !== CERTIFICADO) {
+  fallar(`El APK está firmado con otra clave (${firmas.join(', ') || 'ninguna'}), no con la de HipertroFit ` +
+    `(${CERTIFICADO}). El móvil lo rechazaría como «Conflicto con un paquete ya instalado». No se ha subido nada.`)
+}
 const datos = fs.readFileSync(salida)
 const mb = datos.length / 1024 / 1024
 if (mb > LIMITE_MB) fallar(`El APK pesa ${mb.toFixed(1)} MB y el alojamiento admite 100 MB como máximo.`)
