@@ -520,6 +520,8 @@ export default {
   'plan {0} · max {1}': 'prog. {0} · máx. {1}',
   'Executed {0} of {1} planned sets': 'Ejecutadas {0} de {1} series programadas',
   'planned, to do': 'programado pendiente',
+  'How to read this': 'Cómo leer esto',
+  'The full bar is the optimal maximum; the plan should stay below it.': 'La barra completa es el máximo óptimo; lo programado debería quedar por debajo.',
   'up to the optimal max': 'hasta el máximo óptimo',
   'The plan goes past the optimal maximum in some groups — it should stay below it.': 'La programación supera el máximo óptimo en algún grupo: debería quedar por debajo.',
   'Full body': 'Full body',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, freestyleConfig, exLine, workoutVolume, bestWeightFor, bestWeightForEntry, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, cascadeWeight, insertWarmupRow, removeRowAt, workSetsDone, workSetCounts, pairAdjacent, unpairSuperset, supersetUnits, applyIntensifierPlan, pinnedNoteFor, exNoteFor, sessionSetCount } from './history.js'
+import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, freestyleConfig, exLine, workoutVolume, bestWeightFor, bestWeightForEntry, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, cascadeWeight, insertWarmupRow, removeRowAt, workSetsDone, workSetCounts, pairAdjacent, unpairSuperset, supersetUnits, applyIntensifierPlan, pinnedNoteFor, exNoteFor, sessionSetCount, upcomingDays } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -906,5 +906,28 @@ describe('insertWarmupRow on adjustable dumbbells', () => {
     const L = { from: 4, step: 1.5 }
     expect(insertWarmupRow([{ w: 16, r: 8 }], 'reps', { reps: 8 }, L)[0].w).toBe(7)
     expect(insertWarmupRow([{ w: 5.5, r: 8 }], 'reps', { reps: 8 }, L)[0].w).toBe(4)
+  })
+})
+
+describe('upcomingDays', () => {
+  const S = {
+    routines: [{ id: 'push', name: 'Push', ex: [] }, { id: 'legs', name: 'Legs', ex: [] }],
+    week: { 1: 'push', 3: 'legs' }, dayPlan: { '2026-10-28': 'rest' }, program: null,
+    workouts: [
+      { d: '2026-10-26', routineId: 'push', entries: [] },
+      { d: '2026-10-26', extra: true, entries: [] },
+    ],
+  }
+  it('projects n days from a start date with the routine each one schedules', () => {
+    // 2026-10-26 is a Monday.
+    const days = upcomingDays(S, 7, '2026-10-26')
+    expect(days.map(d => d.iso)).toEqual(['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01'])
+    expect(days[0]).toMatchObject({ wd: 1, dn: 26 })
+    expect(days.map(d => d.r && d.r.id)).toEqual(['push', null, null, null, null, null, null]) // Wed overridden to rest
+  })
+  it('marks the session logged that day, ignoring loose extra work', () => {
+    const [mon, tue] = upcomingDays(S, 2, '2026-10-26')
+    expect(mon.done.routineId).toBe('push')
+    expect(tue.done).toBeNull()
   })
 })

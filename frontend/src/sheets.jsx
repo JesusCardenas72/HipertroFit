@@ -10,7 +10,7 @@ import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
 import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber } from './lib/mesocycle.js'
 import { DeloadBadge } from './components/Deload.jsx'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, stepEffort, capEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, upcomingDays, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, stepEffort, capEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
 import { seedTargets } from './lib/set-reference.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, exerciseNameFor, exerciseNameOverrideFor, catalogueNameFor, getLang, INSTR_LANGS } from './lib/i18n.js'
@@ -1782,14 +1782,8 @@ function ProgramSheet({ close }) {
   const labelFor = step => step === REST ? t('Rest day') : (routine(step) ? routine(step).name : t('Deleted routine'))
 
   // Next 14 days as the app will actually schedule them — program, per-day overrides and the
-  // weekly plan all folded in by effectiveRoutineId — so the strip is the real projection.
-  const preview = []
-  const base = new Date(todayISO() + 'T12:00:00')
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(base); d.setDate(base.getDate() + i)
-    const iso = isoOf(d)
-    preview.push({ iso, wd: d.getDay(), dn: d.getDate(), r: routine(effectiveRoutineId(st, iso)) })
-  }
+  // weekly plan all folded in — so the strip is the real projection.
+  const preview = upcomingDays(st, 14)
 
   return <>
     <h3>{t('Programming')}</h3>

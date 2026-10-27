@@ -1,13 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import { t } from '../lib/i18n.js'
-import { todayISO } from '../lib/format.js'
-import { effectiveRoutine, nextSessionRoutine } from '../lib/history.js'
-import { cyclePosition, cycleStrip, strategyOf, isExtra, STRATEGIES } from '../lib/microcycle.js'
+import { todayISO, DAYS } from '../lib/format.js'
+import { effectiveRoutine, nextSessionRoutine, upcomingDays } from '../lib/history.js'
+import { cyclePosition, strategyOf, isExtra, STRATEGIES } from '../lib/microcycle.js'
 import { mesoState, acceptDeload, postponeDeload, isDeloadWorkout, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
 import { DeloadBadge, DeloadStatus } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { dayOverrideSheet, startFlow, loadStarterPlan, programSheet } from '../sheets.jsx'
+import { dayOverrideSheet, startFlow, loadStarterPlan } from '../sheets.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
 import Icon from './Icon.jsx'
@@ -17,16 +17,17 @@ const STRATEGY_NAME = Object.fromEntries(STRATEGIES.map(s => [s.key, s.name]))
 
 // The microcycle as the home screen's unit of time, in place of the calendar week.
 //
-// The strip is one slot per session of the block, not one per weekday: sessions are what
-// close a microcycle (lib/microcycle.js), and rest days float. A done slot shows what was
-// actually trained; the slot marked "next" is what the sequence pointer proposes, whatever
-// day you get to it.
+// The strip is the coming week as the calendar will schedule it — the same projection as the
+// Programming sheet's "Next 14 days", cut to seven: weekday, date and the routine (or rest) of
+// each day. Where the block stands in sessions is the "Session n of m" line under it, since
+// sessions, not days, are what close a microcycle (lib/microcycle.js). Tapping a day opens its
+// reschedule sheet.
 export default function MicrocycleCard() {
   const S = useStore(s => s.S)
   const nav = useNavigate()
   const today = todayISO()
   const pos = cyclePosition(S)
-  const strip = cycleStrip(S)
+  const days = upcomingDays(S, 7, today)
   const meso = mesoState(S)
   const routineOf = id => S.routines.find(r => r.id === id) || null
   // What today offers: the day's own plan when there is one (an override, or a training day
@@ -63,27 +64,25 @@ export default function MicrocycleCard() {
       </div>
     </div>
 
-    <div className="week">
-      {strip.map(slot => {
-        const r = routineOf(slot.routineId)
-        const label = slot.state === 'done' && slot.workout ? (slot.workout.name || t('Workout done')) : (r ? r.name : t('Rest day'))
-        // A slot is a deload when it was trained as one, or — not trained yet — when this
+    <div className="prog-prev week7">
+      {days.map(d => {
+        // A day reads as a deload when it was trained as one, or — not trained yet — when this
         // microcycle is the deload.
-        const dl = slot.workout ? isDeloadWorkout(slot.workout) : meso.deload
-        return <div key={slot.i} className={'wday' + (slot.state === 'next' ? ' today' : '') + (dl ? ' deload' : '')}
-          title={dl ? label + ' · ' + t('Deload') : label} {...tappable(slot.state === 'todo' || slot.state === 'next' ? programSheet : undefined)}>
-          <div className="lbl">{slot.i + 1}</div>
-          <div className="num"><Icon name={r ? glyphOf(r.emoji) : slot.state === 'done' ? 'checkCircle' : 'moon'} /></div>
-          {/* A deload slot says so with the deload arrow under it, not with a colour alone. */}
-          {dl ? <div className="wday-dl" aria-label={t('Deload')}><Icon name="arrowDown" /></div>
-            : <div className={'dot' + (slot.state === 'done' ? ' done' : slot.state === 'next' ? ' plan' : '')} />}
-        </div>
+        const dl = d.done ? isDeloadWorkout(d.done) : meso.deload && !!d.r
+        const label = d.done ? (d.done.name || t('Workout done')) : d.r ? d.r.name : t('Rest day')
+        return <button key={d.iso} className={'prog-day' + (d.iso === today ? ' today' : '') + (dl ? ' deload' : '')}
+          title={dl ? label + ' · ' + t('Deload') : label} onClick={() => dayOverrideSheet(d.iso)}>
+          <span className="wd">{t(DAYS[d.wd])}</span>
+          <span className="dn">{d.dn}</span>
+          <span className="lrow-i sm" style={d.done ? { background: 'var(--surface-3)', color: 'var(--green)' } : d.r ? null : { background: 'var(--surface-3)' }}>
+            <Icon name={d.done ? 'checkCircle' : d.r ? glyphOf(d.r.emoji) : 'moon'} />
+          </span>
+        </button>
       })}
     </div>
-    {strip.some(slot => (slot.workout ? isDeloadWorkout(slot.workout) : meso.deload)) &&
-      <div className="small row" style={{ justifyContent: 'center', gap: 4, color: 'var(--deload)', fontWeight: 600 }}>
-        <Icon name="arrowDown" />{t('Deload session')}
-      </div>}
+    {meso.deload && <div className="small row" style={{ justifyContent: 'center', gap: 4, color: 'var(--deload)', fontWeight: 600, marginTop: 4 }}>
+      <Icon name="arrowDown" />{t('Deload session')}
+    </div>}
     <div className="muted small" style={{ textAlign: 'center', marginTop: 2 }}>
       {t('Session {0} of {1}', Math.min(pos.step + 1, pos.len), pos.len)}
       {meso.deload ? <b style={{ color: 'var(--deload)' }}> · {t('Deload')}</b> : ''}

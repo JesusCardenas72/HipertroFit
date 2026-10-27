@@ -3,7 +3,7 @@ import { todayISO, isoOf, weekKey, fmtNum } from './format.js'
 import { isCardio, isBodyweightEq } from './exercises.js'
 import { phaseForSet, modeForSet, modeForEntry, isWarmupRow, normalizeMode, extraVolumeOf, nextDropWeight, splitBurstReps } from './workout-model.js'
 import { programStep, REST } from './program.js'
-import { nextStepOf } from './microcycle.js'
+import { nextStepOf, isExtra } from './microcycle.js'
 import { snapLoad } from './load-scale.js'
 const objectOf = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {}
 // Completed-state-independent work rows whose authoritative mode matches the requested mode.
@@ -307,6 +307,22 @@ export function nextSessionRoutine(S) {
 export function effectiveRoutine(S, iso) {
   const id = effectiveRoutineId(S, iso)
   return id ? S.routines.find(r => r.id === id) || null : null
+}
+/**
+ * The next `n` days as the app will schedule them, starting at `from` (today): program, per-day
+ * overrides and the weekly plan all folded in by effectiveRoutine, so a strip drawn from it is
+ * the real projection. `done` is the session logged that day, if any (loose extra work is not).
+ */
+export function upcomingDays(S, n, from = todayISO()) {
+  const base = new Date(from + 'T12:00:00')
+  const days = []
+  for (let i = 0; i < n; i++) {
+    const d = new Date(base); d.setDate(base.getDate() + i)
+    const iso = isoOf(d)
+    const done = (S.workouts || []).filter(w => w.d === iso && !isExtra(w)).at(-1) || null
+    days.push({ iso, wd: d.getDay(), dn: d.getDate(), r: effectiveRoutine(S, iso), done })
+  }
+  return days
 }
 /**
  * Build the rows a planned exercise starts a session with: its work sets, preceded by however

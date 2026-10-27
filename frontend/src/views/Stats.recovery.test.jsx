@@ -249,15 +249,20 @@ describe('Stats muscle recovery view runtime', () => {
     await mountStats()
     // Five completed sessions, all inside the same 6-session microcycle.
     expect(container.textContent).toContain('Microcycle #1 · Session 6 of 6')
+    expect(container.textContent).toContain('Effective sets')
+    // How to read the bars folds behind the info button.
+    expect(container.textContent).not.toContain('Target 10–20 effective sets per muscle group each microcycle')
+    await click(container.querySelector('.vol-info'))
     expect(container.textContent).toContain('Target 10–20 effective sets per muscle group each microcycle')
     expect(container.textContent).toContain('in range 10–20')
 
     // The band is per microcycle only — the day windows go back to the relative balance map.
     await click(balanceRangeButton('30d'))
-    expect(container.textContent).not.toContain('Target 10–20 effective sets per muscle group each microcycle')
+    expect(container.textContent).not.toContain('Effective sets')
+    expect(container.querySelector('.vol-info')).toBeNull()
 
     await click(balanceRangeButton('Micro'))
-    expect(container.textContent).toContain('Target 10–20 effective sets per muscle group each microcycle')
+    expect(container.textContent).toContain('Effective sets')
   })
 
   it('updates the rendered Fatigue map and Balance window on the real 60-second interval', async () => {
