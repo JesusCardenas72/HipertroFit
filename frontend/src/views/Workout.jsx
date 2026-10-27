@@ -874,7 +874,13 @@ function ActiveWorkout() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
-  const { startRest: liveRest, endExercise: liveEndExercise, stopRest, stopWork, work } = useUI()
+  // Each piece picked on its own: the rest countdown rewrites the UI store every second, and
+  // subscribing to all of it redrew the whole session that often.
+  const liveRest = useUI(s => s.startRest)
+  const liveEndExercise = useUI(s => s.endExercise)
+  const stopRest = useUI(s => s.stopRest)
+  const stopWork = useUI(s => s.stopWork)
+  const work = useUI(s => s.work)
   const A = S.active
   // A past workout has no rest to time — the sets were done days ago. The work timer for
   // timed sets stays, since counting a hold is how its duration gets entered.

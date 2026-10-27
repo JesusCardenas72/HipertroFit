@@ -57,30 +57,41 @@ function Shell() {
   const navigate = useNavigate()
   const loc = useLocation()
   const navType = useNavigationType()
-  const { S, user, ready } = useStore()
+  // Only the fields the shell reads: subscribing to the whole store redrew the shell and every
+  // overlay under it (tab bar, timer, sheets) on each logged set. Screens subscribe themselves.
+  const user = useStore(s => s.user)
+  const ready = useStore(s => s.ready)
+  const theme = useStore(s => s.S.theme)
+  const accent = useStore(s => s.S.accent)
+  const lang = useStore(s => s.S.lang)
+  const activeId = useStore(s => s.S.active?.id)
+  const active = useStore(s => !!s.S.active)
+  const keepAwake = useStore(s => s.S.keepAwake)
+  const exNameStyle = useStore(s => s.S.exNameStyle)
+  const exNames = useStore(s => s.S.exNames)
   const isGuest = useStore(s => s.isGuest())
   const needsMobileOnboarding = useStore(s => s.needsMobileOnboarding)
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
-  useEffect(() => { applyPrefs(S.theme, S.accent) }, [S.theme, S.accent])
+  useEffect(() => { applyPrefs(theme, accent) }, [theme, accent])
   // 'system' needs to react live if the OS theme flips while the app is open, not just on
   // the next mount — a fixed 'dark'/'light' choice never re-fires this since matchMedia
   // isn't consulted for those.
   useEffect(() => {
-    if (S.theme !== 'system' || !window.matchMedia) return
+    if (theme !== 'system' || !window.matchMedia) return
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyPrefs(S.theme, S.accent)
+    const onChange = () => applyPrefs(theme, accent)
     mql.addEventListener('change', onChange)
     return () => mql.removeEventListener('change', onChange)
-  }, [S.theme, S.accent])
-  useEffect(() => { setLang(S.lang || 'en') }, [S.lang])
+  }, [theme, accent])
+  useEffect(() => { setLang(lang || 'en') }, [lang])
   // A reload in the middle of a rest (the phone reclaiming the app in the background) picks the
   // countdown back up once the workout it belongs to is loaded — see resumeRest in useUI.
-  useEffect(() => { if (S.active?.id) useUI.getState().resumeRest() }, [S.active?.id])
+  useEffect(() => { if (activeId) useUI.getState().resumeRest() }, [activeId])
   // Naming preferences are plain state, so unlike the language they need no pack load — but they
   // change what every screen calls an exercise, so they go through the same notify/useLang path.
-  useEffect(() => { setExerciseNameOptions(S.exNameStyle, S.exNames) }, [S.exNameStyle, S.exNames])
-  useEffect(() => { document.documentElement.lang = S.lang || 'en' }, [langV, S.lang])
+  useEffect(() => { setExerciseNameOptions(exNameStyle, exNames) }, [exNameStyle, exNames])
+  useEffect(() => { document.documentElement.lang = lang || 'en' }, [langV, lang])
   // Forward navigation starts at the top; going back lands where you left off.
   // The position is recorded from scroll events rather than read at route
   // change, because by then a shorter page may already have clamped it.
@@ -103,7 +114,7 @@ function Shell() {
     return () => window.cancelAnimationFrame(frame)
   }, [loc.pathname, navType])
   // bound to the workout, not to the route — checking Stats mid-session keeps the screen on
-  useWakeLock(!!S.active && S.keepAwake !== false)
+  useWakeLock(active && keepAwake !== false)
 
   const authed = user || isGuest
   if (!ready && !authed) return (

@@ -104,14 +104,34 @@ export const useStore = create((set, get) => {
     saveTm = setTimeout(() => { saveTm = null; nativeSave(get().S); syncReminder(get().S) }, 800)
   }
 
+  // The JSON of every top-level key of the state last written, so the next write re-serialises
+  // only what changed. A key that comes out byte-identical keeps its previous object, which is
+  // what lets memoised readers, React selectors and the registerX overlays below skip work —
+  // logging a set no longer rebuilds the catalogue overlays or re-serialises years of history.
+  let saved = { S: null, json: {} }
+  let customRegistered = null
+  const jsonOf = (S, k) => saved.S === S && k in saved.json ? saved.json[k] : JSON.stringify(S[k])
+
   const persist = (S, push = true) => {
+    const prev = get()?.S
     S._ts = Date.now()
-    registerCustom(S.customEx)
+    const json = {}
+    let out = ''
+    for (const k of Object.keys(S)) {
+      const j = k === '_ts' || !prev || S[k] !== prev[k] ? JSON.stringify(S[k]) : jsonOf(prev, k)
+      if (j === undefined) continue
+      if (prev && S[k] !== prev[k] && prev[k] !== undefined && j === jsonOf(prev, k)) S[k] = prev[k]
+      json[k] = j
+      out += (out ? ',' : '{') + JSON.stringify(k) + ':' + j
+    }
+    out = out ? out + '}' : '{}'
+    if (S.customEx !== customRegistered) { registerCustom(S.customEx); customRegistered = S.customEx }
     registerMuscleEdits(S.exMuscles)
     registerPatternEdits(S.exPatterns)
     setSecondaryWeight(S.secondaryVolume)
     setVolumeSplit(S.volumeSplit)
-    localStorage.setItem(KEY, JSON.stringify(S))
+    localStorage.setItem(KEY, out)
+    saved = { S, json }
     set({ S })
     if (MOBILE) nativePersist()
     if (push && get().user) {
@@ -155,9 +175,26 @@ export const useStore = create((set, get) => {
     needsMobileOnboarding: false,   // mobile build only — set true by boot() on a genuine first launch
 
     // Mutate a draft of S via producer fn, then persist + schedule sync.
+    // The draft clones a key the first time the producer reaches for it; a key it never reads
+    // or writes is carried over as is, unserialised.
     update(mut, push = true) {
-      const S = clone(get().S)
-      mut(S)
+      const prev = get().S
+      const draft = {}
+      for (const k of Object.keys(prev)) {
+        const j = jsonOf(prev, k)
+        if (j === undefined) continue
+        const own = v => Object.defineProperty(draft, k, { value: v, writable: true, enumerable: true, configurable: true })
+        Object.defineProperty(draft, k, {
+          enumerable: true, configurable: true,
+          get() { const v = JSON.parse(j); own(v); return v },
+          set(v) { own(v) },
+        })
+      }
+      mut(draft)
+      const S = {}
+      for (const k of Object.keys(draft)) {
+        S[k] = Object.getOwnPropertyDescriptor(draft, k).get ? prev[k] : draft[k]
+      }
       persist(S, push)
     },
     replaceState(S, push = false) { persist(clone(S), push) },

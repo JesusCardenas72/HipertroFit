@@ -3,7 +3,7 @@ import { useUI } from '../store/useUI.js'
 
 // One bottom sheet (or centered dialog) with swipe-to-dismiss.
 function Sheet({ sheet }) {
-  const { closeSheet } = useUI()
+  const closeSheet = useUI(s => s.closeSheet)
   const ref = useRef(null)
   // startY null = no gesture. axis stays null until the finger has travelled far enough to
   // tell a vertical pull from a sideways scroll; 'x' hands the gesture to whatever scrolls

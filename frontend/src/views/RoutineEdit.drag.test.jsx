@@ -395,10 +395,12 @@ describe('routine long-press reorder', () => {
     let item = rows()[0].querySelector('.item')
     lift(rows()[0], layout.centers[0])
     pointer(item, 'pointermove', { y: layout.centers[2] })
-    act(() => useStore.getState().update(s => {
-      const current = s.routines[0]
-      s.routines[0] = { ...current, ex: clone(current.ex) }
-    }))
+    // update() keeps the objects of a byte-identical value, so the new identity is set directly.
+    act(() => {
+      const S = useStore.getState().S
+      const current = S.routines[0]
+      useStore.setState({ S: { ...S, routines: [{ ...current, ex: clone(current.ex) }, ...S.routines.slice(1)] } })
+    })
     pointer(item, 'pointerup', { y: layout.centers[2] })
     expect(exercises().map(e => e.id)).toEqual(['a', 'b', 'c'])
     expect(host.querySelector('.is-dragging')).toBeNull()
@@ -407,10 +409,11 @@ describe('routine long-press reorder', () => {
     layout = mount([configured('a'), configured('b')])
     item = rows()[0].querySelector('.item')
     pointer(item, 'pointerdown', { y: layout.centers[0] })
-    act(() => useStore.getState().update(s => {
-      const current = s.routines[0]
-      s.routines[0] = { ...current, ex: clone(current.ex) }
-    }))
+    act(() => {
+      const S = useStore.getState().S
+      const current = S.routines[0]
+      useStore.setState({ S: { ...S, routines: [{ ...current, ex: clone(current.ex) }, ...S.routines.slice(1)] } })
+    })
     act(() => vi.advanceTimersByTime(ROUTINE_LONG_PRESS_MS))
     expect(host.querySelector('.is-dragging')).toBeNull()
   })
