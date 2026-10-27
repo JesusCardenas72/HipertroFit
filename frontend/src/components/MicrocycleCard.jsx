@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { t } from '../lib/i18n.js'
-import { todayISO, DAYS } from '../lib/format.js'
+import { todayISO, mondayOf, DAYS } from '../lib/format.js'
 import { effectiveRoutine, nextSessionRoutine, upcomingDays } from '../lib/history.js'
 import { cyclePosition, strategyOf, isExtra, STRATEGIES } from '../lib/microcycle.js'
 import { mesoState, acceptDeload, postponeDeload, isDeloadWorkout, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
@@ -17,9 +17,9 @@ const STRATEGY_NAME = Object.fromEntries(STRATEGIES.map(s => [s.key, s.name]))
 
 // The microcycle as the home screen's unit of time, in place of the calendar week.
 //
-// The strip is the coming week as the calendar will schedule it — the same projection as the
-// Programming sheet's "Next 14 days", cut to seven: weekday, date and the routine (or rest) of
-// each day. Where the block stands in sessions is the "Session n of m" line under it, since
+// The strip is the current week, Monday to Sunday, as the calendar schedules it — the same
+// projection as the Programming sheet's "Next 14 days", cut to this week: weekday, date and the
+// routine (or rest) of each day; a day already gone by without a session shows faded. Where the block stands in sessions is the "Session n of m" line under it, since
 // sessions, not days, are what close a microcycle (lib/microcycle.js). Tapping a day opens its
 // reschedule sheet.
 export default function MicrocycleCard() {
@@ -27,7 +27,7 @@ export default function MicrocycleCard() {
   const nav = useNavigate()
   const today = todayISO()
   const pos = cyclePosition(S)
-  const days = upcomingDays(S, 7, today)
+  const days = upcomingDays(S, 7, mondayOf(today))
   const meso = mesoState(S)
   const routineOf = id => S.routines.find(r => r.id === id) || null
   // What today offers: the day's own plan when there is one (an override, or a training day
@@ -70,7 +70,9 @@ export default function MicrocycleCard() {
         // microcycle is the deload.
         const dl = d.done ? isDeloadWorkout(d.done) : meso.deload && !!d.r
         const label = d.done ? (d.done.name || t('Workout done')) : d.r ? d.r.name : t('Rest day')
-        return <button key={d.iso} className={'prog-day' + (d.iso === today ? ' today' : '') + (dl ? ' deload' : '')}
+        // A day already gone by without a session is history, not a plan: shown faded.
+        const past = d.iso < today && !d.done
+        return <button key={d.iso} className={'prog-day' + (d.iso === today ? ' today' : '') + (past ? ' past' : '') + (dl ? ' deload' : '')}
           title={dl ? label + ' · ' + t('Deload') : label} onClick={() => dayOverrideSheet(d.iso)}>
           <span className="wd">{t(DAYS[d.wd])}</span>
           <span className="dn">{d.dn}</span>

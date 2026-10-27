@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, freestyleConfig, exLine, workoutVolume, bestWeightFor, bestWeightForEntry, effortOf, stepEffort, capEffort, isBw, isPerSide, sideReps, repStep, cascadeWeight, insertWarmupRow, removeRowAt, workSetsDone, workSetCounts, pairAdjacent, unpairSuperset, supersetUnits, applyIntensifierPlan, pinnedNoteFor, exNoteFor, sessionSetCount, upcomingDays } from './history.js'
 import { EXDB } from './exercises.js'
+import { mondayOf } from './format.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
 const CARDIO = EXDB.find(e => e.bp === 'cardio').id
@@ -929,5 +930,14 @@ describe('upcomingDays', () => {
     const [mon, tue] = upcomingDays(S, 2, '2026-10-26')
     expect(mon.done.routineId).toBe('push')
     expect(tue.done).toBeNull()
+  })
+})
+
+describe('mondayOf', () => {
+  it('returns the Monday of the week, Sunday included', () => {
+    expect(mondayOf('2026-10-27')).toBe('2026-10-26') // Tuesday
+    expect(mondayOf('2026-10-26')).toBe('2026-10-26') // Monday itself
+    expect(mondayOf('2026-11-01')).toBe('2026-10-26') // Sunday closes the week
+    expect(mondayOf('2027-01-01')).toBe('2026-12-28') // across a year boundary
   })
 })

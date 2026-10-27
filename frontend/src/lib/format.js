@@ -43,6 +43,13 @@ export function weekKey(d) {
   return dt.getFullYear() + '-' + week
 }
 
+/** The Monday of the week an ISO date falls in, as an ISO date (weeks run Monday to Sunday). */
+export function mondayOf(iso) {
+  const dt = new Date(iso + 'T12:00:00')
+  dt.setDate(dt.getDate() - (dt.getDay() + 6) % 7)
+  return isoOf(dt)
+}
+
 export const localTZ = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' } catch { return 'UTC' } }
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7)

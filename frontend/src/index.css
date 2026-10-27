@@ -1231,6 +1231,7 @@ h4.sec{
 .prog-prev.week7{overflow:visible;gap:4px;padding-bottom:0}
 .prog-prev.week7 .prog-day{flex:1 1 0;min-width:0;padding:7px 2px 6px}
 .prog-day.deload .wd,.prog-day.deload .dn{color:var(--deload)}
+.prog-day.past{opacity:.45}
 .prog-day.deload.today{box-shadow:inset 0 0 0 1.5px var(--deload)}
 
 /* --- stat tiles --- */
