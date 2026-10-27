@@ -1,5 +1,5 @@
 // Work done outside a session: a few sets of something at home, at the park, between meetings.
-// It is logged straight into history — exercise, sets, reps, weight — without ever opening the
+// It is logged straight into history — exercise, and each set's weight, reps and effort — without ever opening the
 // workout screen, and filed as a workout flagged `extra`.
 //
 // What the flag means everywhere else:
@@ -13,15 +13,18 @@
 // Everything logged loose on one day lands in that day's single extra workout, so history
 // shows one row per day instead of one per exercise.
 
-import { modeOf, workoutVolume } from './history.js'
+import { modeOf, workoutVolume, EFFORT } from './history.js'
 import { insertChronological, backfillStart } from './backfill.js'
 
 const int = (v, min) => Math.max(min, Math.round(Number(v) || 0))
 const num = v => Math.max(0, Math.round((Number(v) || 0) * 100) / 100)
 
 /**
- * The history entry for `sets` identical sets of one exercise. `cfg` is the exercise's config
- * (mode, bodyweight, side); `values` is what the form holds. `snapshot` is the muscle snapshot
+ * The history entry for `sets` sets of one exercise. `cfg` is the exercise's config (mode,
+ * bodyweight, side); `values` is what the form holds. `values.rows`, when given, carries each
+ * set's own numbers ({ w, r, sec, rir|rpe }) — sets of one exercise are rarely identical, and
+ * the effort of each is what decides whether it counts as an effective set (lib/volume.js).
+ * A set without a row of its own takes the shared values. `snapshot` is the muscle snapshot
  * of a custom exercise, kept so its volume survives the exercise being deleted.
  */
 export function buildExtraEntry(exId, cfg, values, snapshot) {
@@ -30,13 +33,29 @@ export function buildExtraEntry(exId, cfg, values, snapshot) {
   const row = mode === 'cardio' ? { min: int(values.min, 1), speed: num(values.speed) }
     : mode === 'time' ? { sec: int(values.sec, 1), w: num(values.weight) }
       : { w: num(values.weight), r: int(values.reps, 1) }
+  const own = i => {
+    const o = Array.isArray(values.rows) ? values.rows[i] : null
+    if (!o || mode === 'cardio') return { ...row, done: true }
+    const s = mode === 'time'
+      ? { sec: int(o.sec ?? row.sec, 1), w: num(o.w ?? row.w) }
+      : { w: num(o.w ?? row.w), r: int(o.r ?? row.r, 1) }
+    // One scale per set, as in a session; an empty effort is "not rated", never 0.
+    for (const k of ['rir', 'rpe']) {
+      if (o[k] == null || o[k] === '' || !isFinite(Number(o[k]))) continue
+      s[k] = Math.min(EFFORT[k].max, num(o[k]))
+      break
+    }
+    return { ...s, done: true }
+  }
+  const sets = Array.from({ length: n }, (_, i) => own(i))
+  const first = sets[0]
   const target = { mode, sets: n }
   if (mode === 'cardio') { target.min = row.min; target.speed = row.speed }
-  else if (mode === 'time') { target.sec = row.sec; target.weight = row.w }
-  else { target.reps = row.r; target.weight = row.w }
+  else if (mode === 'time') { target.sec = first.sec; target.weight = first.w }
+  else { target.reps = first.r; target.weight = first.w }
   if (cfg && cfg.bodyweight != null) target.bodyweight = !!cfg.bodyweight
   if (cfg && cfg.side) target.side = true
-  const entry = { id: exId, sets: Array.from({ length: n }, () => ({ ...row, done: true })), topW: null, target }
+  const entry = { id: exId, sets, topW: null, target }
   if (snapshot && typeof snapshot === 'object' && Object.keys(snapshot).length) entry.muscleSnapshot = { ...snapshot }
   return entry
 }

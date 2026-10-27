@@ -3,6 +3,7 @@ import { t } from '../lib/i18n.js'
 import { loadOfWorkouts, MUSCLE_NAME } from '../lib/muscles.js'
 import { cycleWorkouts, cyclePosition } from '../lib/microcycle.js'
 import { cycleVolume } from '../lib/volume.js'
+import { microNumber } from '../lib/mesocycle.js'
 import BodyMap, { BodyMapLegend } from './BodyMap.jsx'
 import VolumeGroupBars from './VolumeGroupBars.jsx'
 import Icon from './Icon.jsx'
@@ -23,7 +24,7 @@ export default function MuscleVolumeCard({ S }) {
     <div className="row between" style={{ marginBottom: 8 }}>
       <h2 style={{ margin: 0 }}>{t('Volume')}</h2>
       <div className="row" style={{ gap: 10, flexWrap: 'nowrap' }}>
-        <span className="small muted">{t('Micro')} #{pos.cycle + 1}</span>
+        <span className="small muted">{t('Micro')} #{microNumber(S, pos.cycle)}</span>
         {/* Sets done outside a session go in from here — this card is where they show up. */}
         <button className="iconbtn" onClick={logExtraSheet} aria-label={t('Log extra work')} title={t('Log extra work')}><Icon name="plus" /></button>
       </div>

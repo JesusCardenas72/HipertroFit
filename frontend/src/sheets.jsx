@@ -8,9 +8,9 @@ import { programActive, emptyProgram, sessionsPerRound, REST } from './lib/progr
 import { STRATEGIES, microcycleLen, strategyOf, cyclePosition } from './lib/microcycle.js'
 import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
-import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT } from './lib/mesocycle.js'
+import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber } from './lib/mesocycle.js'
 import { DeloadBadge } from './components/Deload.jsx'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, stepEffort, capEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
 import { seedTargets } from './lib/set-reference.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, exerciseNameFor, exerciseNameOverrideFor, catalogueNameFor, getLang, INSTR_LANGS } from './lib/i18n.js'
@@ -19,7 +19,7 @@ import { starterRoutines } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
-import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, MultiSelectRow } from './components/ui.jsx'
+import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, MultiSelectRow, NumberField } from './components/ui.jsx'
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
 import BodyMap from './components/BodyMap.jsx'
 import { exerciseMuscleSnapshot, loadOfWorkouts, MUSCLE_CHOICES, muscleLabel, muscleChoiceOf } from './lib/muscles.js'
@@ -1846,7 +1846,7 @@ function ProgramSheet({ close }) {
           : <span className="v" style={{ fontWeight: 600 }}>{len}</span>}
       </Row>
       <Row title={t('Microcycle')} subtitle={t('Session {0} of {1}', pos.step + 1, pos.len)}>
-        <span className="v" style={{ fontWeight: 600 }}>#{pos.cycle + 1}</span>
+        <span className="v" style={{ fontWeight: 600 }}>#{microNumber(st, pos.cycle)}</span>
       </Row>
     </div>
 
@@ -2104,8 +2104,9 @@ function beginBackfill({ iso, time, durationMin, routineId, replaceId }) {
 }
 /* ============================ log extra work ============================ */
 // Sets done outside any session, written straight into history: pick the exercise, say how
-// many sets of how many reps at what weight, done. No workout screen, no timers, and it works
-// with a session running. See lib/extra-log.js for what an `extra` workout does and does not
+// many sets, then each set's weight, reps and effort — the effort is what decides whether a
+// set counts as an effective one toward the microcycle (lib/volume.js). No workout screen, no
+// timers, and it works with a session running. See lib/extra-log.js for what an `extra` workout does and does not
 // count toward.
 function ExtraLog({ ex, close }) {
   const st = useStore(s => s.S)
@@ -2125,10 +2126,37 @@ function ExtraLog({ ex, close }) {
   const set = (k, min = 0) => x => setV(o => ({ ...o, [k]: Math.max(min, x) }))
   const whole = (k, min = 1) => x => setV(o => ({ ...o, [k]: Math.max(min, Math.round(x)) }))
   const weightLabel = isBw({ ...cfg, id: ex.id }) ? t('Added weight') : t('Weight ({0})', st.unit)
+  // One row per set. The effort column is the profile's scale, RIR unless it logs RPE.
+  const kind = effortOf(st) === 'rpe' ? 'rpe' : 'rir'
+  const timed = mode === 'time'
+  const [rows, setRows] = useState(() => [{ w: v.weight, r: v.reps, sec: v.sec, [kind]: last?.[kind] ?? null }])
+  // More sets copy the last row — the usual case is the same again — fewer drop from the end.
+  const setCount = x => {
+    const n = Math.max(1, Math.round(x))
+    setV(o => ({ ...o, sets: n }))
+    setRows(rs => rs.length >= n ? rs.slice(0, n) : [...rs, ...Array.from({ length: n - rs.length }, () => ({ ...rs.at(-1) }))])
+  }
+  const field = (i, f, x) => setRows(rs => rs.map((r, j) => (j === i ? { ...r, [f]: x } : r)))
+  const cols = [
+    { f: 'w', hd: isBw({ ...cfg, id: ex.id }) ? '+' + st.unit : st.unit, step: defaultIncrement(ex.id, st.unit), dec: true, cls: 'w' },
+    timed ? { f: 'sec', hd: t('Seconds'), step: 5, dec: false, cls: 'r', min: 1 } : { f: 'r', hd: t('Reps'), step: 1, dec: false, cls: 'r', min: 1 },
+    { f: kind, hd: EFFORT[kind].hd, dec: true, cls: 'eff', eff: kind },
+  ]
+  const bump = (i, col, dir) => {
+    const cur = rows[i][col.f]
+    if (col.eff) return field(i, col.f, stepEffort(col.eff, cur ?? null, dir))
+    field(i, col.f, Math.max(col.min || 0, Math.round(((+cur || 0) + dir * col.step) * 100) / 100))
+  }
+  const cell = (i, col) => <div className={'stp ' + col.cls} key={col.f}>
+    <button aria-label={t('Decrease')} onClick={() => bump(i, col, -1)}><Icon name="minus" /></button>
+    <span className="val"><NumberField decimal={col.dec} nullable={!!col.eff} value={rows[i][col.f] ?? ''} aria-label={col.hd}
+      onChange={x => field(i, col.f, col.eff ? capEffort(col.eff, x) : x)} /></span>
+    <button aria-label={t('Increase')} onClick={() => bump(i, col, 1)}><Icon name="plus" /></button>
+  </div>
 
   const save = () => {
     if (!date || date > today) { toast(t('Pick a day up to today')); return }
-    const entry = buildExtraEntry(ex.id, cfg, v, ex.custom ? exerciseMuscleSnapshot(ex) : null)
+    const entry = buildExtraEntry(ex.id, cfg, mode === 'cardio' ? v : { ...v, rows }, ex.custom ? exerciseMuscleSnapshot(ex) : null)
     update(s => {
       s.workouts = fileExtraEntry(s.workouts, entry, { iso: date, today, id: uid(), name: t('Extra work') })
     })
@@ -2154,14 +2182,15 @@ function ExtraLog({ ex, close }) {
         <Stepper label={t('Intervals')} value={v.sets} step={1} decimal={false} onChange={whole('sets')} />
         <Stepper label={t('Minutes')} value={v.min} step={1} decimal={false} onChange={whole('min')} />
         <Stepper label={t('Speed (km/h)')} value={v.speed} step={0.5} onChange={set('speed')} />
-      </> : <>
-        <Stepper label={t('Sets')} value={v.sets} step={1} decimal={false} onChange={whole('sets')} />
-        {mode === 'time'
-          ? <Stepper label={t('Seconds')} value={v.sec} step={5} decimal={false} onChange={whole('sec')} />
-          : <Stepper label={t('Reps')} value={v.reps} step={1} decimal={false} onChange={whole('reps')} />}
-        <Stepper label={weightLabel} value={v.weight} step={defaultIncrement(ex.id, st.unit)} onChange={set('weight')} />
-      </>}
+      </> : <Stepper label={t('Sets')} value={v.sets} step={1} decimal={false} onChange={setCount} />}
     </div>
+    {mode !== 'cardio' && <div className="extra-sets" aria-label={weightLabel}>
+      <div className="sethead eff3"><span className="n-sp" />{cols.map(c => <span key={c.f} className={c.cls + '-sp'}>{c.hd}</span>)}</div>
+      {rows.map((_, i) => <div key={i} className="setrow eff3">
+        <span className="n st-badge" aria-label={t('Set {0}', i + 1)}>{i + 1}</span>
+        {cols.map(c => cell(i, c))}
+      </div>)}
+    </div>}
     <div style={{ height: 18 }} />
     <Button variant="primary" onClick={save}>{t('Save')}</Button>
   </>

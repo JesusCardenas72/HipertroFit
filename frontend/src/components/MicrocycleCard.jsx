@@ -58,7 +58,7 @@ export default function MicrocycleCard() {
     <div className="row between" style={{ marginBottom: 8, flexWrap: 'nowrap', alignItems: 'center' }}>
       <div className="row" style={{ gap: 7, minWidth: 0, flex: '1 1 auto', flexWrap: 'nowrap' }}>
         <div className="small muted" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(meso.deload ? { color: 'var(--deload)' } : {}) }}>
-          {t('Microcycle')} #{pos.cycle + 1} · {t(STRATEGY_NAME[strategyOf(S)] || 'Custom')}
+          {t('Microcycle')} #{meso.number} · {t(STRATEGY_NAME[strategyOf(S)] || 'Custom')}
         </div>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { t } from '../lib/i18n.js'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { STRATEGIES, cyclePosition, strategyOf, closeMicrocycle, trainingSteps, microcycleLen } from '../lib/microcycle.js'
-import { mesoState, restartMeso } from '../lib/mesocycle.js'
+import { mesoState, restartMeso, carriedBase, microNumber } from '../lib/mesocycle.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { deloadControlSheet } from './Deload.jsx'
 import { programSheet } from '../sheets.jsx'
@@ -25,8 +25,10 @@ function CloseMicrocycle({ close }) {
   const confirm = () => {
     const strategy = pick
     useStore.getState().update(s => {
+      // The mesocycle goes on: what is carried is read before the block count restarts.
+      const base = carriedBase(s)
       s.program = closeMicrocycle(s, strategy)
-      s.meso = restartMeso(s)
+      s.meso = restartMeso(s, base)
     })
     close()
     const after = useStore.getState().S
@@ -40,8 +42,8 @@ function CloseMicrocycle({ close }) {
   return <>
     <h3 className="row" style={{ gap: 8 }}><Icon name="flag" />{t('Close microcycle')}</h3>
     <div className="muted small" style={{ marginBottom: 14 }}>
-      {t('Microcycle #{0} ends here — {1} of {2} sessions done. A new one starts from #1 with its volume at zero. Pick the training strategy it will follow.',
-        pos.cycle + 1, Math.min(pos.step, pos.len), pos.len)}
+      {t('Microcycle #{0} ends here — {1} of {2} sessions done. The next one is #{3} of this mesocycle, with its volume at zero. Pick the training strategy it will follow.',
+        microNumber(S, pos.cycle), Math.min(pos.step, pos.len), pos.len, carriedBase(S) + 1)}
     </div>
     <h4 className="sec">{t('Training strategy')}</h4>
     <div className="list" role="radiogroup" aria-label={t('Training strategy')} style={{ display: 'flex', flexDirection: 'column', marginBottom: 14 }}>

@@ -23,6 +23,7 @@ import {
 } from '../lib/effort.js'
 import { cycleVolume } from '../lib/volume.js'
 import { cycleWorkouts, cyclePosition } from '../lib/microcycle.js'
+import { microNumber } from '../lib/mesocycle.js'
 import VolumeGroupBars from '../components/VolumeGroupBars.jsx'
 import { Button, Segmented, SelectRow } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
@@ -168,7 +169,7 @@ function MuscleBalance({ S }) {
       <Segmented className="seg-range" value={win} onChange={v => { setWin(v); setSel(null) }}
         options={[{ value: 'micro', label: t('Micro') }, { value: 7, label: t('Wk') }, { value: 30, label: '30d' }, { value: 90, label: '90d' }, { value: 0, label: t('All') }]} />
       {micro && <div className="muted small" style={{ marginTop: -4, marginBottom: 8 }}>
-        {t('Microcycle')} #{microPos.cycle + 1} · {t('Session {0} of {1}', Math.min(microPos.step + 1, microPos.len), microPos.len)}
+        {t('Microcycle')} #{microNumber(S, microPos.cycle)} · {t('Session {0} of {1}', Math.min(microPos.step + 1, microPos.len), microPos.len)}
       </div>}
       {inWin.length ? <>
         <BodyMap className="tappable" load={load} body={S.body} selected={sel}

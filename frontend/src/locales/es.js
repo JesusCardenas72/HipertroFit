@@ -545,7 +545,7 @@ export default {
   'Add routines to the sequence to see the sets it plans per muscle group.': 'Añade rutinas a la secuencia para ver las series que programa por grupo muscular.',
   'Microcycle': 'Microciclo',
   'Close microcycle': 'Cerrar microciclo',
-  'Microcycle #{0} ends here — {1} of {2} sessions done. A new one starts from #1 with its volume at zero. Pick the training strategy it will follow.': 'El microciclo #{0} termina aquí: {1} de {2} sesiones hechas. Empieza uno nuevo desde el #1, con el volumen a cero. Elige la estrategia de entrenamiento que seguirá.',
+  'Microcycle #{0} ends here — {1} of {2} sessions done. The next one is #{3} of this mesocycle, with its volume at zero. Pick the training strategy it will follow.': 'El microciclo #{0} termina aquí: {1} de {2} sesiones hechas. El siguiente es el #{3} de este mesociclo, con el volumen a cero. Elige la estrategia de entrenamiento que seguirá.',
   'Close and start new microcycle': 'Cerrar e iniciar nuevo microciclo',
   'New microcycle started — {0}': 'Nuevo microciclo iniciado: {0}',
   'Micro': 'Microc',

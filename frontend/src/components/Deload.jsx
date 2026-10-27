@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { t } from '../lib/i18n.js'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { mesoState, forceDeloadNow, forceDeloadNext, cancelDeload, exitDeload, deloadNotice, markDeloadNotified, isDeloadWorkout } from '../lib/mesocycle.js'
+import { mesoState, forceDeloadNow, forceDeloadNext, cancelDeload, exitDeload, deloadNotice, markDeloadNotified, isDeloadWorkout, microNumber } from '../lib/mesocycle.js'
 import { deloadActiveSession, undeloadActiveSession } from '../lib/session-start.js'
 import { notifyNow } from '../lib/mobile.js'
 import Icon from './Icon.jsx'
@@ -42,7 +42,7 @@ export function DeloadStatus({ manage = true, style }) {
       <span className="deload-pct">{pctLabel(meso.pct)}</span>
     </div>
     <div className="small">
-      {t('Microcycle #{0}: same sessions with less weight, reps and sets. They do not count toward progression.', meso.cycle + 1)}
+      {t('Microcycle #{0}: same sessions with less weight, reps and sets. They do not count toward progression.', meso.number)}
     </div>
     {manage && <div className="deload-actions">
       <button type="button" className="deload-link" onClick={deloadControlSheet}>{t('Manage deload')}</button>
@@ -97,9 +97,9 @@ function DeloadControl({ close }) {
       {t('A deload is the same sessions with about {0}% less weight, reps and sets, to recover before loading again. You set the cut when each session starts.', Math.round(meso.pct * 100))}
     </div>
     <div className="small" style={{ marginBottom: 14 }}>
-      {meso.deload ? <DeloadBadge pct={meso.pct}>{t('Microcycle #{0} is a deload', meso.cycle + 1)}</DeloadBadge>
+      {meso.deload ? <DeloadBadge pct={meso.pct}>{t('Microcycle #{0} is a deload', meso.number)}</DeloadBadge>
         : meso.next ? <DeloadBadge>{t('Microcycle #{0} will be a deload', meso.cycle + 2)}</DeloadBadge>
-          : t('Microcycle #{0}, session {1} of {2} — loading.', meso.cycle + 1, Math.min(meso.step + 1, meso.len), meso.len)}
+          : t('Microcycle #{0}, session {1} of {2} — loading.', meso.number, Math.min(meso.step + 1, meso.len), meso.len)}
     </div>
     {!meso.deload && <>
       <Button variant="primary" icon="arrowDown" className="deload-btn" onClick={() => now(false)}>
@@ -132,7 +132,7 @@ function ExitDeload({ close }) {
     <h3 className="row" style={{ gap: 8 }}><Icon name="xmark" style={{ color: 'var(--deload)' }} />{t('Exit deload')}</h3>
     <div className="muted small" style={{ marginBottom: 14 }}>
       {meso.deload
-        ? t('The rest of microcycle #{0} goes back to full load and the progression picks up again. Sessions already trained as a deload stay as they were.', meso.cycle + 1)
+        ? t('The rest of microcycle #{0} goes back to full load and the progression picks up again. Sessions already trained as a deload stay as they were.', meso.number)
         : t('This session goes back to full load from the next set on.')}
     </div>
     {sessionDeload && <><Button variant="primary" icon="play" onClick={() => go(true)}>{t('Exit, including the session in progress')}</Button><div style={{ height: 8 }} /></>}
@@ -147,12 +147,12 @@ export const exitDeloadFlow = () => useUI.getState().openSheet(close => <ExitDel
 export const deloadControlSheet = () => useUI.getState().openSheet(close => <DeloadControl close={close} />)
 
 /* ---------- the announcement: shown once, the first time a deload microcycle is running ---------- */
-function DeloadStarted({ cycle, pct, close }) {
+function DeloadStarted({ number, pct, close }) {
   return <div style={{ textAlign: 'center', padding: '4px 0' }}>
     <div className="deload-hero"><Icon name="arrowDown" /></div>
     <h3 style={{ marginBottom: 8 }}>{t('Your deload starts')}</h3>
     <div className="muted" style={{ marginBottom: 16, lineHeight: 1.5 }}>
-      {t('Microcycle #{0} is a deload: the same sessions with about {1}% less weight, reps and sets. You will see it marked in this colour on Home, Stats and every session.', cycle + 1, Math.round(pct * 100))}
+      {t('Microcycle #{0} is a deload: the same sessions with about {1}% less weight, reps and sets. You will see it marked in this colour on Home, Stats and every session.', number, Math.round(pct * 100))}
     </div>
     <Button variant="primary" className="deload-btn" onClick={close}>{t('Got it')}</Button>
     <div style={{ height: 8 }} />
@@ -170,14 +170,16 @@ export function DeloadNotifier() {
     const iv = setInterval(() => {
       if (document.getElementById('splash')) return
       clearInterval(iv)
-      const { pct } = mesoState(useStore.getState().S)
+      const now = useStore.getState().S
+      const { pct } = mesoState(now)
+      const number = microNumber(now, cycle)
       // Marked as soon as it is shown: closing it by a swipe must not bring it back every launch.
       useStore.getState().update(s => { s.meso = markDeloadNotified(s) })
-      useUI.getState().openSheet(close => <DeloadStarted cycle={cycle} pct={pct} close={close} />, { kind: 'center' })
+      useUI.getState().openSheet(close => <DeloadStarted number={number} pct={pct} close={close} />, { kind: 'center' })
       // The same news as a system notification, so it is still there in the tray after the
       // window is closed (and on the lock screen of the phone).
       notifyNow({ id: 3000 + cycle, title: t('Your deload starts'),
-        body: t('Microcycle #{0}: same sessions with about {1}% less weight, reps and sets.', cycle + 1, Math.round(pct * 100)) })
+        body: t('Microcycle #{0}: same sessions with about {1}% less weight, reps and sets.', number, Math.round(pct * 100)) })
     }, 300)
     return () => clearInterval(iv)
   }, [cycle])

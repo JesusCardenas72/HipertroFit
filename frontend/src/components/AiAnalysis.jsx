@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Icon from './Icon.jsx'
 import { Button, Segmented } from './ui.jsx'
 import { useStore } from '../store/useStore.js'
+import { microNumber } from '../lib/mesocycle.js'
 import { useUI } from '../store/useUI.js'
 import { t, exerciseNameFor, getLang } from '../lib/i18n.js'
 import { fmtNum, fmtDate, todayISO } from '../lib/format.js'
@@ -81,7 +82,7 @@ const Line = ({ icon, color, children, action }) =>
 // What a proposal (lib/ai-actions.js) would change, spelled out for the confirmation dialog.
 function ProposalText({ p }) {
   if (p.kind === 'deload') {
-    return <>{t('Mark microcycle #{0} as a deload: the same sessions with about {1}% less weight, reps and sets.', p.cycle + 1, Math.round(p.pct * 100))}</>
+    return <>{t('Mark microcycle #{0} as a deload: the same sessions with about {1}% less weight, reps and sets.', microNumber(useStore.getState().S, p.cycle), Math.round(p.pct * 100))}</>
   }
   return <div style={{ textAlign: 'left' }}>
     <div style={{ marginBottom: 8 }}>{t('{0}: planned effective sets per microcycle {1} → {2}.', groupName(p.group), fmtNum(p.before), fmtNum(p.after))}</div>

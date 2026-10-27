@@ -12,6 +12,12 @@
 //
 // Microcycles are identified by their index from the block start (lib/microcycle.js), so
 // nothing here needs to be recomputed when a session is logged — the count moves on its own.
+//
+// The number the user sees is a different thing: the microcycle's place *in its mesocycle*
+// (microNumber) — #1 after a deload, counting up to the next one. Closing a microcycle by
+// hand restarts the block count from index 0, so the loading microcycles already done in the
+// running mesocycle are carried over in `base`; without it every hand-closed block read #1
+// again and the deload streak never built up.
 
 import { cyclePosition } from './microcycle.js'
 import { isWarmupRow } from './workout-model.js'
@@ -25,7 +31,7 @@ export const DELOAD_MAX = 5
 export const DELOAD_PCT = { min: 0.25, max: 0.5, def: 0.4 }
 
 /** A fresh mesocycle record: nothing deloaded, nothing postponed. */
-export const emptyMeso = () => ({ deloads: [], postponed: [], notified: [], pct: DELOAD_PCT.def })
+export const emptyMeso = () => ({ deloads: [], postponed: [], notified: [], pct: DELOAD_PCT.def, base: 0 })
 
 /** S.meso, defaulted and sanity-checked — old states have no such key at all. */
 export function mesoOf(S) {
@@ -37,7 +43,32 @@ export function mesoOf(S) {
     // Deload microcycles whose start the user has already been told about (deloadNotice).
     notified: Array.isArray(m.notified) ? m.notified.filter(Number.isInteger) : [],
     pct: pct >= DELOAD_PCT.min && pct <= DELOAD_PCT.max ? pct : DELOAD_PCT.def,
+    // Loading microcycles of this mesocycle done before the block count last restarted.
+    base: Number.isInteger(m.base) && m.base > 0 ? m.base : 0,
   }
+}
+
+/**
+ * The 1-based place of microcycle `cycle` (an index from the block start) in its mesocycle:
+ * #1 right after a deload, then up by one per microcycle until the next deload, which is the
+ * last one of the mesocycle. Before any deload of the current count it continues from `base`.
+ */
+export function microNumber(S, cycle = cyclePosition(S).cycle) {
+  const meso = mesoOf(S)
+  const before = meso.deloads.filter(d => d < cycle)
+  return before.length ? cycle - Math.max(...before) : meso.base + cycle + 1
+}
+
+/**
+ * The `base` to carry when the running microcycle is closed by hand: the loading microcycles
+ * of this mesocycle that will be behind the new block. A closed deload ends the mesocycle
+ * (0). A microcycle with nothing logged in it yet is not one done — closing it keeps its
+ * number for the block that replaces it.
+ */
+export function carriedBase(S) {
+  const { cycle, step } = cyclePosition(S)
+  if (step === 0) return microNumber(S, cycle) - 1
+  return isDeloadCycle(S, cycle) ? 0 : microNumber(S, cycle)
 }
 
 /** Whether a given microcycle index is (or is planned as) a deload. */
@@ -54,8 +85,7 @@ export const isDeloadCycle = (S, cycle) => mesoOf(S).deloads.includes(cycle)
 export function mesoState(S) {
   const { cycle, step, len, remaining } = cyclePosition(S)
   const meso = mesoOf(S)
-  const before = meso.deloads.filter(d => d < cycle)
-  const streak = cycle - (before.length ? Math.max(...before) : -1) - 1
+  const streak = microNumber(S, cycle) - 1
   const current = meso.deloads.includes(cycle)
   const target = step === 0 ? cycle : cycle + 1
   const scheduled = current || meso.deloads.includes(cycle + 1)
@@ -63,6 +93,7 @@ export function mesoState(S) {
   const postponedHere = meso.postponed.includes(cycle)
   return {
     cycle, step, len, remaining, streak, target,
+    number: streak + 1,              // this microcycle's place in the mesocycle (microNumber)
     deload: current,                 // the microcycle being trained right now is the deload
     next: meso.deloads.includes(cycle + 1), // the one after this is already marked as a deload
     scheduled,                       // this one or the next is already marked
@@ -75,11 +106,13 @@ export function mesoState(S) {
 /**
  * The mesocycle after the block count restarts (closeMicrocycle). Deloads, postponements and
  * announcements are all microcycle *indices* from the block start, so once the count goes
- * back to #1 the old ones would land on unrelated microcycles; they are dropped. The cut the
- * user last chose is a preference, not an index, and stays.
+ * back to index 0 the old ones would land on unrelated microcycles; they are dropped. The cut
+ * the user last chose is a preference, not an index, and stays. `base` is where the new
+ * count picks up in the mesocycle — carriedBase when a microcycle is closed by hand, 0 (a new
+ * mesocycle) when a whole new plan replaces the old one.
  */
-export function restartMeso(S) {
-  return { ...mesoOf(S), deloads: [], postponed: [], notified: [] }
+export function restartMeso(S, base = 0) {
+  return { ...mesoOf(S), deloads: [], postponed: [], notified: [], base: Math.max(0, Math.round(Number(base) || 0)) }
 }
 
 /** Take the suggestion: mark the next microcycle to start as the deload. */

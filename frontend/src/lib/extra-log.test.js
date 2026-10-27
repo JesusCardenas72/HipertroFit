@@ -33,6 +33,30 @@ describe('buildExtraEntry', () => {
     expect(e.sets).toEqual([{ w: 0, r: 1, done: true }])
   })
 
+  it('writes each set with its own weight, reps and RIR', () => {
+    const e = buildExtraEntry(ex.id, cfg, {
+      sets: 3, reps: 10, weight: 20,
+      rows: [{ w: 20, r: 12, rir: 2 }, { w: 22.5, r: 10, rir: 1 }, { w: 22.5, r: 8, rir: '' }],
+    })
+    expect(e.sets).toEqual([
+      { w: 20, r: 12, rir: 2, done: true },
+      { w: 22.5, r: 10, rir: 1, done: true },
+      { w: 22.5, r: 8, done: true },               // empty effort: not rated, not 0
+    ])
+    expect(e.target).toMatchObject({ sets: 3, reps: 12, weight: 20 })
+  })
+
+  it('fills sets without a row of their own from the shared values, and caps the effort', () => {
+    const e = buildExtraEntry(ex.id, cfg, { sets: 2, reps: 10, weight: 30, rows: [{ w: 30, r: 9, rir: 14 }] })
+    expect(e.sets).toEqual([{ w: 30, r: 9, rir: 10, done: true }, { w: 30, r: 10, done: true }])
+  })
+
+  it('counts only the sets rated near failure as effective volume', () => {
+    const hard = buildExtraEntry(ex.id, cfg, { sets: 2, rows: [{ w: 20, r: 10, rir: 1 }, { w: 20, r: 10, rir: 6 }] })
+    const v = cycleVolume(state(fileExtraEntry([], hard, opts)))
+    expect(v.groups.chest).toBeCloseTo(musclesOf(ex).chest)
+  })
+
   it('logs a timed exercise as seconds', () => {
     const e = buildExtraEntry(ex.id, { mode: 'time', bodyweight: true }, { sets: 1, sec: 60, weight: 0, reps: 10 })
     expect(e.sets).toEqual([{ sec: 60, w: 0, done: true }])
