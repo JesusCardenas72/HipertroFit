@@ -105,6 +105,8 @@ export default {
   'Remove': 'Kaldır',
   'Which exercise in this superset do you want to remove?': 'Bu süper sette hangi egzersizi kaldırmak istiyorsun?',
   'Pick an icon': 'Bir simge seç',
+  'Upper body': 'Üst vücut',
+  'Lower body': 'Alt vücut',
   'Back to weekly plan': 'Haftalık plana dön',
   '{0} set to rest': '{0} dinlenme olarak ayarlandı',
   '{0} planned for {1}': '{0}, {1} için planlandı',

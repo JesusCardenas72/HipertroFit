@@ -105,6 +105,8 @@ export default {
   'Remove': 'Remover',
   'Which exercise in this superset do you want to remove?': 'Que exercício desta supersérie queres remover?',
   'Pick an icon': 'Escolhe um ícone',
+  'Upper body': 'Parte superior',
+  'Lower body': 'Parte inferior',
   'Back to weekly plan': 'Voltar ao plano semanal',
   '{0} set to rest': '{0} marcado como descanso',
   '{0} planned for {1}': '{0} planeado para {1}',

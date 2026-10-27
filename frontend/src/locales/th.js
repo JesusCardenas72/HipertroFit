@@ -101,6 +101,8 @@ export default {
   'Remove': 'ลบ',
   'Which exercise in this superset do you want to remove?': 'ต้องการลบท่าไหนในซูเปอร์เซ็ตนี้?',
   'Pick an icon': 'เลือกไอคอน',
+  'Upper body': 'ร่างกายส่วนบน',
+  'Lower body': 'ร่างกายส่วนล่าง',
   // --- day planning / calendar ---
   'Back to weekly plan': 'กลับไปแผนรายสัปดาห์',
   '{0} set to rest': 'ตั้ง {0} เป็นวันพักแล้ว',

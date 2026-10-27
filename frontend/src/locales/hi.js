@@ -105,6 +105,8 @@ export default {
   'Remove': 'हटाएँ',
   'Which exercise in this superset do you want to remove?': 'इस सुपरसेट से कौन-सा व्यायाम हटाना है?',
   'Pick an icon': 'आइकन चुनें',
+  'Upper body': 'ऊपरी शरीर',
+  'Lower body': 'निचला शरीर',
   'Back to weekly plan': 'साप्ताहिक योजना पर वापस',
   '{0} set to rest': '{0} आराम के लिए सेट',
   '{0} planned for {1}': '{0} को {1} के लिए तय किया',

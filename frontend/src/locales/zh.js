@@ -105,6 +105,8 @@ export default {
   'Remove': '移除',
   'Which exercise in this superset do you want to remove?': '你想移除这个超级组中的哪个动作？',
   'Pick an icon': '选择图标',
+  'Upper body': '上半身',
+  'Lower body': '下半身',
   'Back to weekly plan': '恢复每周计划',
   '{0} set to rest': '{0} 已设为休息',
   '{0} planned for {1}': '{0} 已安排在 {1}',

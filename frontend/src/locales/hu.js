@@ -101,6 +101,8 @@ export default {
   'Remove': 'Eltávolítás',
   'Which exercise in this superset do you want to remove?': 'Melyik gyakorlatot szeretnéd eltávolítani ebből a szuperszettből?',
   'Pick an icon': 'Válassz ikont',
+  'Upper body': 'Felsőtest',
+  'Lower body': 'Alsótest',
   // --- day planning / calendar ---
   'Back to weekly plan': 'Vissza a heti tervhez',
   '{0} set to rest': '{0} pihenőnapra állítva',

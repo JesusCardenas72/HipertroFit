@@ -105,6 +105,8 @@ export default {
   'Remove': '제거',
   'Which exercise in this superset do you want to remove?': '이 슈퍼세트에서 어떤 운동을 제거할까요?',
   'Pick an icon': '아이콘 선택',
+  'Upper body': '상체',
+  'Lower body': '하체',
   'Back to weekly plan': '주간 계획으로 복귀',
   '{0} set to rest': '{0}을(를) 휴식일로 설정',
   '{0} planned for {1}': '{1}에 {0} 예정됨',

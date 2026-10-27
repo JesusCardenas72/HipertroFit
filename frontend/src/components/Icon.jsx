@@ -11,6 +11,34 @@
 //   · strokes only (no fills) except where a shape reads better solid (star.fill)
 //   · round caps + round joins, stroke width from --icon-stroke (1.7 default)
 //   · geometry snapped to .5 so it lands on pixel edges at 24px
+//
+// The muscle-map glyphs are the one deliberate exception: filled and two-tone, the
+// body at low opacity and the trained muscle solid, like an anatomy chart. Outlines
+// at this size turn a torso into a tangle; a silhouette with one region lit reads
+// instantly, and both tones are still currentColor so they follow the theme.
+
+// Left half of a symmetric shape plus its mirror across x = 12.
+const sym = d => <><path d={d} /><path d={d} transform="matrix(-1 0 0 1 24 0)" /></>
+const muscle = (body, hit) => <>
+  <g fill="currentColor" stroke="none" opacity=".35">{body}</g>
+  <g fill="currentColor" stroke="none">{hit}</g>
+</>
+
+// Torso, front and back share one silhouette; which muscle is lit says the side.
+const TRAP = 'M12 3.1h-1.3l-.2 2.1c-1 .7-2.4 1.2-3.7 1.6H12Z'
+const DELT = 'M7.5 7.2c-2.4-.3-4.1 1.1-4.2 3.4 0 .5 0 .9.1 1.3h3.2c.2-1.6.5-3.2.9-4.7Z'
+const TORSO = <>{sym(TRAP)}{sym(DELT)}{sym('M12 7.4H8c-.4 1.8-.4 4 0 6.2.3 2.1.8 4.1 1.2 6.2H12Z')}{sym('M3.4 12.4h3.2l-.3 5.4c-.1.7-.6 1.1-1.3 1.1s-1.2-.4-1.3-1.1Z')}</>
+const PECS = sym('M8.4 7.9h3.1v4.4c-1.2.6-2.4.6-3.4.1-.2-1.5-.1-3 .3-4.5Z')
+const LATS = sym('M8.5 8.6c1.3 1.3 2.4 3 3 4.8l-1.1 3.8c-.8-.9-1.4-2.2-1.8-3.8-.3-1.6-.4-3.2-.1-4.8Z')
+const UPPER_BACK = <>{sym(TRAP)}{sym('M12 7.4H8.8c1.2 1.5 2.4 3.4 3.2 5.6Z')}</>
+// A flexed arm in profile: biceps on top of the upper arm, triceps underneath —
+// on a front/back torso the two would be the same patch of the same silhouette.
+const ARM = <><path d="M3.2 11.8c2-3 7.6-3.8 10.4-1.2l.5-3.2h4.6l.9 7c.3 2.3-1.3 4-3.5 4H3.2Z" /><ellipse cx="16.3" cy="4.7" rx="2.7" ry="2.1" /></>
+// Hips and thighs: the front has the crotch V, the back splits glutes from thighs.
+const LEGS_FRONT = sym('M12 3.4H5.6c-.6 2.6-.8 5.6-.4 8.6.4 3 1.4 5.8 2.2 8.6h3.2c.2-3.6.6-7.4.8-10.8l.6-.6Z')
+const GLUTE = sym('M11.6 3.4H6c-.9 1.6-1.3 3.6-1 5.6.1.7.4 1.2.8 1.7 2 1 4.4 1 5.8.1Z')
+const LEGS_BACK = <>{GLUTE}{sym('M5.8 11.8c1.9.9 4.4.9 5.8.2l-.9 8.6H7.5c-.8-2.8-1.6-5.6-1.7-8.8Z')}</>
+const SHINS = sym('M6.4 3.4h4.8l-.2 5.2c-.2 3-.8 5.4-.8 8l.4 3c.1.6-.3 1-.8 1H8.4c-.5 0-.9-.4-.8-1l.4-3c0-2.6-1.4-5.6-1.6-8.2Z')
 
 const P = {
   /* ---- navigation ---- */
@@ -73,6 +101,23 @@ const P = {
   swim: <><circle cx="8.8" cy="8.2" r="1.8" /><path d="m10.9 10 4.6-2.2 3.3 3.4" /><path d="M3.5 15.6c1.6-1.3 3.1-1.3 4.7 0s3.1 1.3 4.7 0 3.1-1.3 4.7 0c.9.7 1.7.9 2.6.5" /></>,
   boxing: <><path d="M7.6 8.6A4.6 4.6 0 0 1 12.2 4h1.6a5.4 5.4 0 0 1 5.4 5.4v2.4a3 3 0 0 1-3 3H7.6Z" /><path d="M7.6 14.8v2.3a2.6 2.6 0 0 0 2.6 2.6h5.2a2.6 2.6 0 0 0 2.6-2.6v-2.3" /><path d="M7.6 9.8H6.3a1.8 1.8 0 0 0 0 3.6h1.3" /></>,
   stretch: <><circle cx="14.4" cy="5.4" r="1.9" /><path d="M14.4 8.2c-3 1.4-5 4-5.8 7.4" /><path d="M8.6 15.6 6.2 20M8.6 15.6l4.6 4.4" /><path d="M12.6 9.6 18 12" /></>,
+
+  /* ---- muscle maps (two-tone, see header) ---- */
+  pushDay: muscle(TORSO, <>{PECS}{sym(DELT)}</>),
+  pullDay: muscle(TORSO, <>{LATS}{UPPER_BACK}</>),
+  legDay: muscle(LEGS_FRONT, LEGS_FRONT),
+  chest: muscle(TORSO, PECS),
+  shoulders: muscle(TORSO, sym(DELT)),
+  biceps: muscle(ARM, <path d="M4.2 11.4c2-2.4 6.8-3 9.2-.6l-.3 2.8c-3 .7-6.4.6-9-.5Z" />),
+  triceps: muscle(ARM, <path d="M3.2 14.4c3.8.8 7.6.9 11 .2.4 1.5 1.2 2.7 2.4 3.4H3.2Z" />),
+  core: muscle(TORSO, <>{sym('M9.8 12.8h1.7v1.8H9.9Z')}{sym('M10 15.2h1.5V17h-1.3Z')}{sym('M10.2 17.6h1.3v1.8h-1Z')}</>),
+  lats: muscle(TORSO, LATS),
+  upperBack: muscle(TORSO, UPPER_BACK),
+  lowerBack: muscle(TORSO, sym('M12 14.4v5.4H9.8c.2-1.9 1-3.9 2.2-5.4Z')),
+  glutes: muscle(LEGS_BACK, GLUTE),
+  quads: muscle(LEGS_FRONT, sym('M5.7 6.6c2 .8 4 3 4.9 6l-.2 6.2c-.8.4-1.8 0-2.2-.8-1.6-3.2-2.5-7-2.5-11.4Z')),
+  hamstrings: muscle(LEGS_BACK, <>{sym('M6.4 12.8c.8.3 1.7.4 2.5.4l-.3 6.4h-.9c-.6-2.2-1.1-4.4-1.3-6.8Z')}{sym('M9.6 13.2c.6 0 1.2-.1 1.6-.3l-.7 6.7h-1.2Z')}</>),
+  calves: muscle(SHINS, <>{sym('M6.6 4.6h2.2l.3 8.6c-1.1-1.4-2.1-3.3-2.5-5.6Z')}{sym('M9.6 4.6H11l-.2 4c-.2 1.8-.6 3.4-1.1 4.8Z')}</>),
 
   /* ---- actions ---- */
   plus: <path d="M12 5.2v13.6M5.2 12h13.6" />,

@@ -109,6 +109,8 @@ export default {
   'Remove': 'Entfernen',
   'Which exercise in this superset do you want to remove?': 'Welche Übung in diesem Supersatz möchtest du entfernen?',
   'Pick an icon': 'Symbol auswählen',
+  'Upper body': 'Oberkörper',
+  'Lower body': 'Unterkörper',
   // --- day planning / calendar ---
   'Back to weekly plan': 'Zurück zum Wochenplan',
   '{0} set to rest': '{0} als Pausentag gesetzt',

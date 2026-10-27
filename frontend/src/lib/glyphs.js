@@ -17,14 +17,24 @@ export const DEFAULT_GLYPH = 'figureStrength'
 // Grouped, because 20 loose icons is a wall — you scan the group first.
 export const GLYPH_GROUPS = [
   // First, because naming the three days of a split is the most common thing a
-  // picker is opened for — the movement each day is named after, in order.
-  { key: 'Push / Pull / Legs', items: ['bench', 'pullup', 'squat'] },
-  { key: 'Strength',  items: ['figureStrength', 'arm', 'abs', 'legs'] },
-  { key: 'Equipment', items: ['dumbbell', 'barbell', 'kettlebell', 'plate', 'machine'] },
+  // picker is opened for — the muscles each day trains, in order.
+  { key: 'Push / Pull / Legs', items: ['pushDay', 'pullDay', 'legDay'] },
+  // Muscle maps: a day named after what it trains ("Back & biceps") gets that
+  // muscle lit on the body, front-view muscles before back-view ones.
+  { key: 'Upper body', items: ['chest', 'shoulders', 'biceps', 'core', 'triceps', 'lats', 'upperBack', 'lowerBack'] },
+  { key: 'Lower body', items: ['glutes', 'quads', 'hamstrings', 'calves'] },
+  { key: 'Equipment', items: ['figureStrength', 'dumbbell', 'barbell', 'kettlebell', 'machine'] },
   { key: 'Cardio',    items: ['figureRun', 'bike', 'swim', 'boxing', 'timer'] },
   { key: 'Recovery',  items: ['stretch', 'moon', 'heart', 'flame', 'bolt'] },
 ]
 export const GLYPHS = GLYPH_GROUPS.flatMap(g => g.items)
+
+// Keys the picker used to offer, redrawn as muscle maps. Stored routines (and
+// split templates) keep the old key; it just renders as the new glyph.
+const REDRAWN = {
+  bench: 'pushDay', pullup: 'pullDay', squat: 'legDay',
+  arm: 'biceps', abs: 'core', legs: 'legDay',
+}
 
 // Legacy emoji → icon key, so routines created before the redesign keep a
 // sensible glyph instead of all collapsing onto the default.
@@ -42,11 +52,13 @@ const LEGACY = {
   '🐺': 'figureRun', '🦈': 'swim', '🤖': 'machine',
 }
 
+const current = k => REDRAWN[k] || k
+
 export function glyphOf(v) {
   if (!v) return DEFAULT_GLYPH
-  if (ICON_NAMES.includes(v)) return v
-  if (LEGACY[v]) return LEGACY[v]
+  if (ICON_NAMES.includes(v)) return current(v)
+  if (LEGACY[v]) return current(LEGACY[v])
   // strip variation selectors / ZWJ sequences and retry the base emoji
   const base = [...v].filter(c => c !== '️' && c !== '‍')[0]
-  return LEGACY[base] || DEFAULT_GLYPH
+  return LEGACY[base] ? current(LEGACY[base]) : DEFAULT_GLYPH
 }

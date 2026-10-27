@@ -105,6 +105,8 @@ export default {
   'Remove': 'Удалить',
   'Which exercise in this superset do you want to remove?': 'Какое упражнение из этого суперсета удалить?',
   'Pick an icon': 'Выбери иконку',
+  'Upper body': 'Верх тела',
+  'Lower body': 'Низ тела',
   'Back to weekly plan': 'Вернуться к недельному плану',
   '{0} set to rest': '{0} — теперь день отдыха',
   '{0} planned for {1}': '{0} запланировано на {1}',

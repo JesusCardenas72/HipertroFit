@@ -38,6 +38,8 @@ export const PT_BR_OVERRIDES = {
   'This removes the exercise from your current session.': 'Isso remove o exercício da sua sessão atual.',
   'Which exercise in this superset do you want to remove?': 'Qual exercício deste superset você quer remover?',
   'Pick an icon': 'Escolha um ícone',
+  'Upper body': 'Parte superior',
+  'Lower body': 'Parte inferior',
   'Sick, missed a day or want a different session? Pick what to train instead.': 'Ficou doente, perdeu um dia ou quer outro treino? Escolha o que treinar no lugar.',
   'Tap a trained day for details · tap any other day to plan a session': 'Toque em um dia treinado para ver detalhes · toque em outro dia para planejar uma sessão',
   'Delete workout?': 'Excluir treino?',
