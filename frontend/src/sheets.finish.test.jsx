@@ -65,3 +65,53 @@ describe('exercise-end sound when a workout is finished', () => {
     expect(endExercise).not.toHaveBeenCalled()
   })
 })
+
+// A session that changed its routine's plan asks, once filed, whether to keep that plan.
+describe('replacing the routine with the session that was trained', () => {
+  const other = EXDB[1].id
+  function installRoutine(entries) {
+    install([true])
+    useStore.getState().update(s => {
+      s.routines = [{ id: 'r1', name: 'Push', ex: [{ id, mode: 'reps', sets: 3, reps: 5, weight: 40 }] }]
+      s.active.routineId = 'r1'
+      s.active.entries = entries
+    }, true)
+  }
+  const done = cfg => ({ id: cfg.id, target: { ...cfg }, sets: [{ w: 40, r: 5, done: true }] })
+  // The prompt's buttons, found by their onClick in the element tree it renders.
+  function buttons() {
+    const sheet = useUI.getState().sheets.at(-1)
+    const el = sheet.render(() => useUI.getState().closeSheet(sheet.id))
+    const found = []
+    const walk = node => {
+      if (Array.isArray(node)) return node.forEach(walk)
+      if (!node || typeof node !== 'object') return
+      if (node.props?.onClick) found.push(node.props.onClick)
+      walk(node.props?.children)
+    }
+    walk(el.type(el.props))
+    return found
+  }
+
+  it('does not ask when the plan was kept', () => {
+    installRoutine([done({ id, mode: 'reps', sets: 3, reps: 5, weight: 40 })])
+    finishWorkout()
+    expect(useUI.getState().sheets).toHaveLength(1)
+    expect(useStore.getState().S.routines[0].ex).toHaveLength(1)
+  })
+
+  it('replaces the routine on yes, and leaves it on no', () => {
+    const added = { id: other, mode: 'reps', sets: 2, reps: 12 }
+    installRoutine([done({ id, mode: 'reps', sets: 3, reps: 5, weight: 40 }), done(added)])
+    finishWorkout()
+    buttons()[1]()   // keep
+    expect(useStore.getState().S.routines[0].ex.map(e => e.id)).toEqual([id])
+    expect(useUI.getState().sheets).toHaveLength(1)   // on to the summary
+
+    installRoutine([done({ id, mode: 'reps', sets: 3, reps: 5, weight: 40 }), done(added)])
+    useUI.setState({ sheets: [] })
+    finishWorkout()
+    buttons()[0]()   // replace
+    expect(useStore.getState().S.routines[0].ex).toEqual([{ id, mode: 'reps', sets: 3, reps: 5, weight: 40 }, added])
+  })
+})

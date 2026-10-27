@@ -1281,6 +1281,7 @@ function ActiveWorkout() {
       const freshWarm = fresh.filter(isWarmupRow)
       const freshWork = fresh.filter(x => !isWarmupRow(x))
       activeEntry.target = { ...cfg }
+      activeEntry.retuned = true
       activeEntry.plan = plan
       delete activeEntry.decided
       activeEntry.sets = [...doneWarm, ...freshWarm.slice(doneWarm.length), ...doneWork, ...freshWork.slice(doneWork.length)]

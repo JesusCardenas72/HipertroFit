@@ -37,6 +37,7 @@ import { pictureFromFile, pictureFromUrl, pictureFromClipboard, imageFromTransfe
 import { previousRoutineConfig, seedConfig, changedGlobals, applyGlobals, isGlobalField, GLOBAL_LABEL } from './lib/exercise-defaults.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
+import { routineFromSession, sessionChangedRoutine } from './lib/routine-from-session.js'
 import { isWarmupRow } from './lib/workout-model.js'
 import { isFavorite, canFavorite, toggleFavorite, favoritesFirst, favoriteMap } from './lib/favorites.js'
 import { PATTERNS, patternOf } from './lib/movement-patterns.js'
@@ -2405,6 +2406,10 @@ function doFinishWorkout() {
     snapshotFor: e => EXIDX[e.id]?.custom ? exerciseMuscleSnapshot(EXIDX[e.id]) : null,
   })
   w.vol = workoutVolume(w)
+  // Exercises added, removed, swapped, reordered, paired or re-set during the session: the
+  // routine they came from is only rewritten if you say so, once the session is filed.
+  const routine = A.routineId ? st.routines.find(r => r.id === A.routineId) : null
+  const nextEx = routine && sessionChangedRoutine(A, routine) ? routineFromSession(A, routine) : null
   update(s => {
     if (past) {
       s.workouts = completeBackfill(s.workouts, A, w)
@@ -2420,5 +2425,24 @@ function doFinishWorkout() {
   useStore.getState().autoBackupNow()
   useUI.getState().stopRest()
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
-  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: true })
+  const summary = () => ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: true })
+  if (nextEx) ui().openSheet(close => <UpdateRoutinePrompt routineId={routine.id} name={routine.name} ex={nextEx} close={close} then={summary} />, { kind: 'center', locked: true })
+  else summary()
+}
+
+// Asked once, right after a session that changed its routine's plan. Either answer goes on to
+// the summary; "Keep" leaves the saved routine exactly as it was.
+function UpdateRoutinePrompt({ routineId, name, ex, close, then }) {
+  const replace = () => {
+    update(s => { const r = s.routines.find(x => x.id === routineId); if (r) r.ex = ex })
+    toast(t('Routine updated'))
+    close(); then()
+  }
+  return <div style={{ textAlign: 'center', padding: '4px 0' }}>
+    <h3 style={{ marginBottom: 8 }}>{t('Update the routine?')}</h3>
+    <div className="muted" style={{ marginBottom: 18, lineHeight: 1.5 }}>{t('You changed “{0}” during this workout. Replace the saved routine with the workout you just did?', name)}</div>
+    <Button variant="primary" onClick={replace}>{t('Replace routine')}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={() => { close(); then() }}>{t('Keep saved routine')}</Button>
+  </div>
 }
