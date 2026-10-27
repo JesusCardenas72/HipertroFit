@@ -21,7 +21,7 @@ import {
   hasEffort, displayScale, scaleName, toScale, avgRir, effortSummary, effortWeeks,
   effortHistogram, isHardSet, HARD_RIR
 } from '../lib/effort.js'
-import { cycleVolume } from '../lib/volume.js'
+import { cycleVolume, plannedVolume } from '../lib/volume.js'
 import { cycleWorkouts, cyclePosition } from '../lib/microcycle.js'
 import { microNumber } from '../lib/mesocycle.js'
 import VolumeGroupBars from '../components/VolumeGroupBars.jsx'
@@ -140,6 +140,8 @@ function MuscleBalance({ S }) {
   const inWin = micro ? cycleWorkouts(S) : muscleBalanceWindow(S.workouts, win, now)
   // Effective-set volume per group over that same microcycle, to read against the target band.
   const microVol = useMemo(() => (micro ? cycleVolume(S) : null), [micro, S])
+  // What the block plans, so the bars can read the log against the plan and the band's top.
+  const microPlan = useMemo(() => (micro ? plannedVolume(S) : null), [micro, S])
   const microPos = cyclePosition(S)
   // Counting only the sets taken near failure turns the map from "where did the volume go"
   // into "where did the stimulus go" — a muscle can lead on sets and still never be trained
@@ -176,7 +178,7 @@ function MuscleBalance({ S }) {
           onMuscle={m => setSel(s => (s === m ? null : m))} />
         <BodyMapLegend />
         {micro && microVol && <>
-          <VolumeGroupBars vol={microVol} />
+          <VolumeGroupBars vol={microVol} planned={microPlan} />
           {worked.length > 0 && <h4 className="sec" style={{ marginTop: 14 }}>{t('Muscle balance')}</h4>}
         </>}
         {sel && <div className="mrow" style={{ borderTop: 'var(--hair) solid var(--sep)', marginTop: 4, paddingTop: 10 }}>

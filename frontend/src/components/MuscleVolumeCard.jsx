@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { t } from '../lib/i18n.js'
 import { loadOfWorkouts, MUSCLE_NAME } from '../lib/muscles.js'
 import { cycleWorkouts, cyclePosition } from '../lib/microcycle.js'
-import { cycleVolume } from '../lib/volume.js'
+import { cycleVolume, plannedVolume } from '../lib/volume.js'
 import { microNumber } from '../lib/mesocycle.js'
 import BodyMap, { BodyMapLegend } from './BodyMap.jsx'
 import VolumeGroupBars from './VolumeGroupBars.jsx'
@@ -17,6 +17,7 @@ export default function MuscleVolumeCard({ S }) {
   const win = cycleWorkouts(S)
   const pos = cyclePosition(S)
   const vol = cycleVolume(S)
+  const planned = plannedVolume(S)
   const load = loadOfWorkouts(win, null)
   const sets = m => Math.round((load[m] || 0) * 10) / 10
 
@@ -37,7 +38,7 @@ export default function MuscleVolumeCard({ S }) {
         <span className="nm"><b>{t(MUSCLE_NAME[sel])}</b></span>
         <span className="v">{sets(sel) ? t('{0} sets', sets(sel)) : t('not trained')}</span>
       </div>}
-      <VolumeGroupBars vol={vol} />
+      <VolumeGroupBars vol={vol} planned={planned} />
     </> : <div className="muted small">
       {pos.cycle > 0 ? t('New microcycle — volume starts from zero.') : t('Train a session to see your volume build up over the microcycle.')}
     </div>}

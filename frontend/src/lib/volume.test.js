@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from './muscles.js'
 import {
   EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS, ALL_GROUP_KEYS, volumeGroups, setVolumeSplit, targetOf,
-  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, volumeStatus, volumeColor,
+  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, volumeStatus, volumeColor, groupProgress, cycleExecution,
 } from './volume.js'
 
 // A work set with an optional RIR. Inline exercise metadata (tg/mg/sm) resolves through
@@ -310,5 +310,29 @@ describe('split back / legs groups', () => {
     expect(parts.map(g => g.parent + ':' + g.key)).toEqual([
       'legs:glutes', 'legs:hamstrings', 'legs:quads', 'legs:calves',
       'back:upper-back', 'back:lats', 'back:erectors'])
+  })
+})
+
+describe('groupProgress / cycleExecution', () => {
+  const glutes = { key: 'glutes', target: { min: 4, max: 12 } }
+  const vol = { groups: { glutes: 4.04, biceps: 3 }, total: 30 }
+
+  it('reads the effective sets done against the plan and the optimal maximum', () => {
+    const p = groupProgress(glutes, vol, { groups: { glutes: 8 } })
+    expect(p).toEqual({ done: 4, planned: 8, max: 12, min: 4, pct: 50, over: false })
+  })
+  it('flags a plan above the optimal maximum', () => {
+    expect(groupProgress(glutes, vol, { groups: { glutes: 14 } }).over).toBe(true)
+    expect(groupProgress(glutes, vol, { groups: { glutes: 12 } }).over).toBe(false)
+  })
+  it('has no percentage when the group plans nothing; uses the shared band by default', () => {
+    const p = groupProgress({ key: 'biceps' }, vol, { groups: {} })
+    expect(p.pct).toBeNull()
+    expect(p.max).toBe(VOLUME_TARGET.max)
+    expect(groupProgress({ key: 'biceps' }, vol, null).planned).toBe(0)
+  })
+  it('compares the block\'s work sets with the sets it plans', () => {
+    expect(cycleExecution(vol, { total: 120 })).toEqual({ done: 30, planned: 120, pct: 25 })
+    expect(cycleExecution(vol, { total: 0 }).pct).toBeNull()
   })
 })

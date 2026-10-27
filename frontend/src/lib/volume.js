@@ -226,3 +226,30 @@ export function volumeStatus(v, target = VOLUME_TARGET) {
 /** CSS colour token for a volume status — under-target, in-band, over-target. */
 export const volumeColor = status =>
   status === 'ok' ? 'var(--green)' : status === 'high' ? 'var(--red)' : 'var(--orange)'
+
+const round1 = n => Math.round((n || 0) * 10) / 10
+
+/**
+ * One group's row of the live volume panel read against the plan: effective sets done so far
+ * (`done`), the sets the microcycle plans for it (`planned`, plannedVolume), the share of that
+ * plan already executed (`pct`, null when the group plans nothing) and the band's top, the
+ * optimal maximum (`max`). The plan is meant to sit below that maximum — `over` flags a plan
+ * that does not, so the panel can show the programming itself overshoots.
+ */
+export function groupProgress(group, vol, planned) {
+  const band = targetOf(group)
+  const done = round1(vol && vol.groups[group.key])
+  const plan = round1(planned && planned.groups[group.key])
+  return {
+    done, planned: plan, max: band.max, min: band.min,
+    pct: plan > 0 ? Math.round(done / plan * 100) : null,
+    over: plan > band.max,
+  }
+}
+
+/** Work sets done in the block against the sets it plans: { done, planned, pct }. */
+export function cycleExecution(vol, planned) {
+  const done = (vol && vol.total) || 0
+  const plan = (planned && planned.total) || 0
+  return { done, planned: plan, pct: plan > 0 ? Math.round(done / plan * 100) : null }
+}
