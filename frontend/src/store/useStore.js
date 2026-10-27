@@ -52,9 +52,9 @@ export const DEF = {
   // press)", 'local' = translation only), plus per-exercise manual names keyed by exercise id.
   // Both are read by lib/i18n-core.js's exerciseNameFor — see lib/exercise-name.js.
   exNameStyle: 'bilingual', exNames: {}, exMuscles: {}, exPatterns: {},
-  // Favourite exercises (ids), marked with a heart: listed first wherever exercises are picked.
-  // See lib/favorites.js.
-  favEx: [],
+  // Exercises taken out of the favourites by hand (ids). Favourites are otherwise what routines
+  // and the log use; they are listed first wherever exercises are picked. See lib/favorites.js.
+  favOff: [],
   // Plan ▸ Generate plan, between visits: split, level, equipment profile and the picks and set
   // counts changed by hand — choices only; the routines exist once "Create plan" is pressed.
   // See views/PlanGenerate.jsx planGenOf.

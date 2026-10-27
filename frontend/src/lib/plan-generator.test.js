@@ -6,7 +6,9 @@ import { REST } from './program.js'
 import { SPLITS, daysOf, layoutOf, splitForDays } from './split-templates.js'
 import { LEVELS, SET_LIMITS, applyDraft, autoPick, buildDraft, candidatesFor, draftVolume, slotConfig } from './plan-generator.js'
 
-const S0 = (over = {}) => ({ routines: [], folders: [], workouts: [], exDefaults: {}, favEx: [], customEx: [], program: null, meso: null, ...over })
+const S0 = (over = {}) => ({ routines: [], folders: [], workouts: [], exDefaults: {}, favOff: [], customEx: [], program: null, meso: null, ...over })
+// Favourites are what a routine or the log uses (lib/favorites.js).
+const inRoutine = ids => ({ routines: [{ id: 'r', ex: ids.map(id => ({ id })) }] })
 const home = { id: 'p1', name: 'Home', equipment: ['dumbbell', 'band'] }
 const slot = { pattern: 'horizontal_push', role: 'main' }
 
@@ -33,7 +35,7 @@ describe('split templates', () => {
 
 describe('the exercises a slot offers', () => {
   it('lists every exercise of the pattern once: favourites, then your equipment, then the rest', () => {
-    const S = S0({ favEx: ['0025'] })
+    const S = S0(inRoutine(['0025']))
     const g = candidatesFor(S, slot, home)
     const all = [...g.favorites, ...g.owned, ...g.rest]
     expect(new Set(all.map(e => e.id)).size).toBe(all.length)
@@ -62,9 +64,16 @@ describe('the exercises a slot offers', () => {
     expect(autoPick(g, null)).toBe('0289')
   })
 
-  it('keeps an exercise you hearted in the favourites group even with no history', () => {
-    const S = S0({ favEx: ['0251'] })
+  it('keeps an exercise of a routine in the favourites group even with no history', () => {
+    const S = S0(inRoutine(['0251']))
     expect(candidatesFor(S, slot, null).favorites.map(e => e.id)).toContain('0251')
+  })
+
+  it('leaves out a favourite taken out by hand, even one with history', () => {
+    const S = S0({ favOff: ['0025'], workouts: [{ d: '2026-10-01', entries: [{ id: '0025', sets: [{ w: 60, r: 8, done: true }] }] }] })
+    const g = candidatesFor(S, slot, null)
+    expect(g.favorites.map(e => e.id)).not.toContain('0025')
+    expect(g.owned.map(e => e.id)).toContain('0025')
   })
 
   it('treats everything as owned without an equipment profile', () => {
@@ -78,7 +87,7 @@ describe('the exercises a slot offers', () => {
   })
 
   it('starts each slot with an owned favourite, else the best owned, never twice in a day', () => {
-    const S = S0({ favEx: ['0025', '0289'] })
+    const S = S0(inRoutine(['0025', '0289']))
     const g = candidatesFor(S, slot, home)
     expect(autoPick(g, home)).toBe('0289')                       // the dumbbell favourite, not the barbell one
     expect(autoPick(g, home, new Set(['0289']))).not.toBe('0289')

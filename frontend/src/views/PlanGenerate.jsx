@@ -10,7 +10,7 @@ import { addSlot, dropSlot, layoutOfDay, removeSlot, toggleLink } from '../lib/p
 import { dockItems } from '../lib/workout-dock.js'
 import { rowHsl } from '../components/routineMagnets.js'
 import { useRoutineReorder } from './RoutineEdit.jsx'
-import { isFavorite, toggleFavorite } from '../lib/favorites.js'
+import { isFavorite, canFavorite, toggleFavorite } from '../lib/favorites.js'
 import { ownsEquipment, newProfile } from '../lib/equipment.js'
 import { programActive } from '../lib/program.js'
 import { modeOf, supersetUnits, workSetCounts } from '../lib/history.js'
@@ -288,7 +288,7 @@ export default function PlanGenerate() {
                   <div className="pg-exn">{e ? exerciseNameFor(e) : t('Pick an exercise')}</div>
                   {e && <div className="pg-meta">
                     <span className={'pg-tag' + (sl.picked ? ' pick' : '')}>{sl.picked ? t('Chosen by you') : t('suggested')}</span>
-                    {isFavorite(S, e.id) && <span className="pg-tag fav">♥ {t('Favourite')}</span>}
+                    {isFavorite(S, e.id) && <span className="pg-tag fav">★ {t('Favourite')}</span>}
                     <span className="pg-tag">{t(e.eq)}</span>
                     <span className="pg-tag">{t(CLASS_NAME[clsKey(e)])}</span>
                     {ownsEquipment(profile, e) === false && <span className="pg-tag warn">{t('not in your equipment')}</span>}
@@ -396,7 +396,7 @@ function Science() {
 function Picker({ slot, profile, dayName, onPick, close }) {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
-  // The groups are fixed when the sheet opens, so a heart tapped here does not move rows under
+  // The groups are fixed when the sheet opens, so a star tapped here does not move rows under
   // the finger; they re-sort the next time it is opened.
   const [groups] = useState(() => candidatesFor(useStore.getState().S, slot, profile))
   const [q, setQ] = useState('')
@@ -416,8 +416,8 @@ function Picker({ slot, profile, dayName, onPick, close }) {
           {e.id === slot.id && <span className="pg-tag pick">{t('current')}</span>}
         </div>
       </button>
-      <button className="pg-heart" aria-pressed={fav} aria-label={fav ? t('Remove from favourites') : t('Add to favourites')}
-        onClick={() => update(s => { toggleFavorite(s, e.id) })}>{fav ? '♥' : '♡'}</button>
+      {canFavorite(S, e.id) && <button className="pg-heart" aria-pressed={fav} aria-label={fav ? t('Remove from favourites') : t('Add to favourites')}
+        onClick={() => update(s => { toggleFavorite(s, e.id) })}>{fav ? '★' : '☆'}</button>}
     </div>
   })
   const section = (title, list, empty) => {
@@ -431,7 +431,7 @@ function Picker({ slot, profile, dayName, onPick, close }) {
     <div className="pg-sh-head">
       <div className="pg-row pg-between"><span className="pg-label">{dayName} · {t(ROLE[slot.role])}</span><button className="pg-close" onClick={close}>{t('Close')}</button></div>
       <h2 style={{ fontSize: 24 }}>{t(patternName(slot.pattern))}</h2>
-      <p className="pg-hint">{t('{0} exercises in the pattern. Order: your favourites ♥, then what your equipment allows, then the rest.', total)}</p>
+      <p className="pg-hint">{t('{0} exercises in the pattern. Order: your favourites ★, then what your equipment allows, then the rest.', total)}</p>
     </div>
     <div className="pg-sh-tools">
       <input className="pg-search picker-search" type="search" value={q} onChange={e => setQ(e.target.value)}
@@ -439,7 +439,7 @@ function Picker({ slot, profile, dayName, onPick, close }) {
       {slot.picked && <button className="pg-link" style={{ justifySelf: 'start' }} onClick={() => { onPick(null); close() }}>{t('Back to the suggestion')}</button>}
     </div>
     <div>
-      {section('♥ ' + t('Favourites'), groups.favorites, t('No favourites in this pattern yet — tap the heart on any exercise.'))}
+      {section('★ ' + t('Favourites'), groups.favorites, t('No favourites in this pattern yet — exercises you add to a routine or a workout become favourites.'))}
       {section(profile ? t('With “{0}”', profile.name) : t('Available'), groups.owned, t('None with this equipment.'))}
       {profile && section(t('Others'), groups.rest, t('None — your equipment covers the whole pattern.'))}
     </div>

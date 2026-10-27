@@ -1,8 +1,8 @@
 // The plan generator: a split (lib/split-templates.js) turned into real routines and a program.
 //
 // Each day is a list of movement-pattern slots. For every slot the user sees every exercise of
-// that pattern in three groups, in this order: their favourites (hearted, or already trained —
-// most completed work sets first), the ones their equipment profile allows, then the rest
+// that pattern in three groups, in this order: their favourites (lib/favorites.js — most
+// completed work sets first), the ones their equipment profile allows, then the rest
 // (candidatesFor). Each slot comes filled with the best of those (autoPick) so a plan is complete
 // before anything is touched; the user swaps what they want.
 //
@@ -100,7 +100,8 @@ export function slotScore(ex, role, prefer) {
 
 /**
  * Every exercise of a slot's pattern, in the three groups the user picks from: `favorites`
- * (the ones they hearted plus the ones they already trained, most completed work sets first),
+ * (what their routines and log use, minus the ones taken out by hand; most completed work sets
+ * first),
  * `owned` (what the profile allows; everything when there is no profile) and `rest`. Each
  * group best first. `setCounts` is workSetCounts(S), passed in when building the whole draft
  * so the history is read once.
@@ -112,15 +113,13 @@ export function candidatesFor(S, slot, profile, setCounts = workSetCounts(S)) {
     .map(x => x.ex)
   const favorites = [], owned = [], rest = []
   for (const ex of all) {
-    // What you have already trained is a favourite by default, even without a heart: it has
-    // history, so the progression starts with data. An explicit heart still wins a tie.
-    if (isFavorite(S, ex.id) || setCounts[ex.id] > 0) favorites.push(ex)
+    if (isFavorite(S, ex.id)) favorites.push(ex)
     else if (ownsEquipment(profile, ex) !== false) owned.push(ex)
     else rest.push(ex)
   }
-  // `all` is already in slot-score order and sort is stable, so ties keep that order.
-  favorites.sort((a, b) => (setCounts[b.id] || 0) - (setCounts[a.id] || 0)
-    || (isFavorite(S, b.id) ? 1 : 0) - (isFavorite(S, a.id) ? 1 : 0))
+  // What has the most history first, so the progression starts with data. `all` is already in
+  // slot-score order and sort is stable, so ties keep that order.
+  favorites.sort((a, b) => (setCounts[b.id] || 0) - (setCounts[a.id] || 0))
   return { favorites, owned, rest }
 }
 

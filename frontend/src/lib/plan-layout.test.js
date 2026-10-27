@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { addSlot, dropSlot, layoutOfDay, removeSlot, roleForPattern, toggleLink } from './plan-layout.js'
 import { applyDraft, buildDraft } from './plan-generator.js'
 
-const S0 = () => ({ routines: [], folders: [], workouts: [], exDefaults: {}, favEx: [], customEx: [], program: null, meso: null })
+const S0 = () => ({ routines: [], folders: [], workouts: [], exDefaults: {}, favOff: [], customEx: [], program: null, meso: null })
 const ppl = (extra = {}) => buildDraft(S0(), { split: 'ppl', level: 'intermediate', variants: true, ...extra })
 const ids = defs => defs.map(d => d.id)
 

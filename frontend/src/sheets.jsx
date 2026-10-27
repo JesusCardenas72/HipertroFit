@@ -38,7 +38,7 @@ import { previousRoutineConfig, seedConfig, changedGlobals, applyGlobals, isGlob
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
 import { isWarmupRow } from './lib/workout-model.js'
-import { isFavorite, toggleFavorite, favoritesFirst } from './lib/favorites.js'
+import { isFavorite, canFavorite, toggleFavorite, favoritesFirst, favoriteMap } from './lib/favorites.js'
 import { PATTERNS, patternOf } from './lib/movement-patterns.js'
 import { nextUnfinishedUnit, unitEntryIdx } from './lib/supersetFlow.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
@@ -522,13 +522,10 @@ function ExerciseDetail({ ex: shown, close }) {
   const last = lastEntryFor(st, ex.id)
   const best = bestWeightFor(st, ex.id)
   const muscles = muscleTagsOf(ex)
-  const fav = isFavorite(st, ex.id)
   return <>
     <div className="row between" style={{ flexWrap: 'nowrap', gap: 10, alignItems: 'flex-start' }}>
       <h3 className="capitalize" style={{ minWidth: 0 }}>{exerciseNameFor(ex)}</h3>
-      <button className="iconbtn" aria-pressed={fav} aria-label={fav ? t('Remove from favourites') : t('Add to favourites')}
-        title={fav ? t('Remove from favourites') : t('Add to favourites')} style={fav ? { color: 'var(--red)', flex: 'none' } : { flex: 'none' }}
-        onClick={() => update(s => { toggleFavorite(s, ex.id) })}><Icon name={fav ? 'heartFill' : 'heart'} /></button>
+      <FavoriteStar st={st} id={ex.id} />
     </div>
     <Media ex={ex} />
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
@@ -923,18 +920,22 @@ export function deleteCustomEx(ex, afterDelete) {
 }
 
 /* ============================ exercise picker ============================ */
-// Exercises already used in your routines or past workouts (for the "Chosen" filter + a marker).
-function usageMap(st) {
-  const u = {}
-  st.routines.forEach(r => r.ex.forEach(e => { u[e.id] = (u[e.id] || 0) + 1 }))
-  st.workouts.forEach(w => w.entries.forEach(e => { u[e.id] = (u[e.id] || 0) + 1 }))
-  return u
+/** The ★ that takes an exercise out of the favourites or puts it back. Only what you have used can be one. */
+export function FavoriteStar({ st, id }) {
+  if (!canFavorite(st, id)) return null
+  const fav = isFavorite(st, id)
+  return <button className="iconbtn" style={{ flex: 'none', color: fav ? 'var(--acc)' : undefined }}
+    aria-pressed={fav} aria-label={fav ? t('Remove from favourites') : t('Add to favourites')} title={fav ? t('Remove from favourites') : t('Add to favourites')}
+    onClick={ev => { ev.stopPropagation(); update(s => { toggleFavorite(s, id) }) }}><Icon name={fav ? 'starFill' : 'star'} /></button>
 }
+
+// Three independent filters: favourite or not (lib/favorites.js), body part and equipment.
 function ExercisePicker({ onPick, close }) {
   const st = useStore(s => s.S)
-  const usage = usageMap(st)
+  const favs = favoriteMap(st)
   const [q, setQ] = useState('')
-  const [bp, setBp] = useState('')          // '' = all, '★' = chosen, else a body part
+  const [scope, setScope] = useState('')    // '' = all, 'in' = favourites, 'out' = the rest
+  const [bp, setBp] = useState('')          // '' = all body parts
   const [eq, setEq] = useState('')          // '' = any equipment
   const [showAll, setShowAll] = useState(false)
   const [shown, setShown] = useState(50)
@@ -944,16 +945,20 @@ function ExercisePicker({ onPick, close }) {
   const all = allExercises(st)
   const profile = activeProfile(st)
   let base = all.filter(e =>
-    (bp === '★' ? usage[e.id] : (!bp || e.bp === bp)) &&
+    (scope === 'in' ? favs[e.id] : scope === 'out' ? !favs[e.id] : true) &&
+    (!bp || e.bp === bp) &&
     matchExercise(e, q))
-  if (bp === '★') base = [...base].sort((a, b) => (usage[b.id] - usage[a.id]) || exerciseNameFor(a).localeCompare(exerciseNameFor(b)))
+  if (scope === 'in') base = [...base].sort((a, b) => (favs[b.id] - favs[a.id]) || exerciseNameFor(a).localeCompare(exerciseNameFor(b)))
   base = favoritesFirst(st, base)
   const eqFiltered = (profile && !showAll) ? base.filter(e => exAvailable(st, e)) : base
   const eqOpts = equipmentOf(eqFiltered)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
+  // The choice is kept, though: it comes back once another filter brings that equipment back.
   const eqOn = eqOpts.includes(eq) ? eq : ''
   const f = eqOn ? eqFiltered.filter(e => e.eq === eqOn) : eqFiltered
-  const chosenCount = Object.keys(usage).length
+  const favCount = Object.keys(favs).length
+  const pickScope = v => { setScope(s => s === v ? '' : v); setShown(50) }
+  const star = { fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }
   useRevealActiveChip(bpStrip, bp)
   useRevealActiveChip(eqStrip, eqOn)
   return <>
@@ -969,26 +974,28 @@ function ExercisePicker({ onPick, close }) {
         {showAll ? t('Filter by "{0}"', profile.name) : t('Show all equipment')}
       </button>
     </div>}
+    {(favCount > 0 || scope) && <div className="chips" style={{ margin: '10px 0 6px' }}>
+      <button className={'chip' + (scope === 'in' ? ' on' : '')} aria-pressed={scope === 'in'} onClick={() => pickScope('in')}><Icon name="starFill" style={star} />{t('Favourites')} ({favCount})</button>
+      <button className={'chip nocap' + (scope === 'out' ? ' on' : '')} aria-pressed={scope === 'out'} onClick={() => pickScope('out')}><Icon name="star" style={star} />{t('Not favourites')}</button>
+    </div>}
     <div className="chips" ref={bpStrip} style={{ margin: eqOpts.length > 1 ? '10px 0 6px' : '10px 0' }}>
-      {chosenCount > 0 && <button className={'chip' + (bp === '★' ? ' on' : '')} onClick={() => { setBp('★'); setEq(''); setShown(50) }}><Icon name="starFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Chosen')} ({chosenCount})</button>}
-      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(50) }}>{t('All')}</button>
-      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(50) }}>{t(b)}</button>)}
+      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setShown(50) }}>{t('All')}</button>
+      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setShown(50) }}>{t(b)}</button>)}
     </div>
     {eqOpts.length > 1 && <div className="chips" ref={eqStrip} style={{ marginBottom: 10 }}>
       <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(50) }}>{t('Any equipment')}</button>
       {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
     </div>}
     <div className="list">
-      {bp !== '★' && <div className="item" {...tappable(() => customExSheet(null, ex => onPick(ex), q.trim()))}>
+      {scope !== 'in' && <div className="item" {...tappable(() => customExSheet(null, ex => onPick(ex), q.trim()))}>
         <div className="thumb thumb-x"><Icon name="sparkles" /></div>
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name, muscles, equipment, instructions and image')}</div></div><Icon name="plus" className="chev" />
       </div>}
       {f.slice(0, shown).map(e => <div key={e.id} className="item" {...tappable(() => onPick(e))}>
         <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(muscleLabel(e.tg || e.bp))} · {t(e.eq)}</div></div>
-        {isFavorite(st, e.id) && <span className="tag" style={{ color: 'var(--red)' }} title={t('Favourite')}><Icon name="heartFill" /></span>}
-        {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}<Icon name="plus" className="chev" />
+        <FavoriteStar st={st} id={e.id} /><Icon name="plus" className="chev" />
       </div>)}
-      {f.length === 0 && bp === '★' && <div className="empty">{t('Nothing chosen yet — add exercises and they’ll show up here.')}</div>}
+      {f.length === 0 && scope === 'in' && <div className="empty">{t('No favourites yet — exercises you add to a routine or a workout show up here.')}</div>}
     </div>
     {f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
   </>
