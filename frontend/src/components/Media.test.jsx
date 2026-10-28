@@ -2,7 +2,7 @@
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Media from './Media.jsx'
+import Media, { Thumb } from './Media.jsx'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -77,5 +77,29 @@ describe('Media gifSize', () => {
     mount({ minimizable: true })
     expect(host.querySelector('.exmedia img')).toBeTruthy()
     expect(host.querySelector('.exmedia.mini')).toBeFalsy()
+  })
+})
+
+describe('Thumb', () => {
+  const show = ex => act(() => root.render(<Thumb ex={ex} muscle />))
+  const CURL = { id: 'curl', n: 'barbell curl', primaries: ['biceps'], secondaries: ['forearm'] }
+
+  it('stands the trained muscle in for a missing picture', () => {
+    show(CURL)
+    const pic = host.querySelector('.thumb-x img.icn-img')
+    expect(pic.getAttribute('src')).toContain('biceps')
+  })
+
+  it('badges the trained muscle on the exercise picture in a list', () => {
+    show({ ...CURL, img: 'curl.jpg' })
+    expect(host.querySelector('.thumb-wrap > img.thumb')).toBeTruthy()
+    expect(host.querySelector('.thumb-wrap > .thumb-mus').getAttribute('src')).toContain('biceps')
+  })
+
+  it('keeps the plain picture without the `muscle` flag, and for cardio', () => {
+    act(() => root.render(<Thumb ex={{ ...CURL, img: 'curl.jpg' }} />))
+    expect(host.querySelector('.thumb-mus')).toBeFalsy()
+    show({ id: 'run', bp: 'cardio', tg: 'cardiovascular system', img: 'run.jpg' })
+    expect(host.querySelector('.thumb-mus')).toBeFalsy()
   })
 })

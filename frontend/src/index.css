@@ -150,6 +150,17 @@ button,.chip,.tile,.item,.wday,.cal-d,.swatch,.hm-c,.lrow,.seg button,.stp butto
   fill:none;stroke:currentColor;stroke-width:var(--icon-stroke);
   stroke-linecap:round;stroke-linejoin:round;
 }
+/* the muscle and split glyphs are pictures (components/Icon.jsx): their own colours on a
+   transparent background. A coloured icon tile around one steps aside so the picture stands
+   on the surface itself — !important because call sites often set the tile colour inline. */
+.icn-img{object-fit:contain}
+.lrow-i:has(>.icn-img){background:transparent!important}
+.lrow-i>.icn-img{width:100%;height:100%}
+.thumb-x>.icn-img{width:100%;height:100%;padding:8%}
+.glyph-cell>.icn-img{width:74%;height:74%}
+.iconbtn>.icn-img{width:100%;height:100%;padding:12%}
+/* next to a label, a line-height picture is too small to read: let it grow into the padding */
+.tag>.icn-img,.chip>.icn-img{font-size:1.5em;margin:-3px 1px -3px -4px}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 
@@ -551,6 +562,12 @@ h4.sec{
 .thumb-x{
   display:flex;align-items:center;justify-content:center;font-size:calc(21px * var(--fs));
   background:var(--surface-2);color:var(--label-2);
+}
+/* the muscle an exercise trains, badged on the corner of its picture (Thumb `muscle`) */
+.thumb-wrap{position:relative;flex:none;display:block}
+.thumb-mus{
+  position:absolute;right:-4px;bottom:-4px;font-size:22px;
+  filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4));
 }
 .item .tt{font-size:calc(16px * var(--fs));font-weight:400;line-height:1.25;letter-spacing:-.009em}
 .item .ss{color:var(--label-2);font-size:calc(13px * var(--fs));margin-top:2px}

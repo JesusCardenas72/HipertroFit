@@ -504,7 +504,7 @@ export default function RoutineEdit() {
         style={hue == null ? undefined : { '--ss': rowHsl(hue) }}>
         {unitFirst.has(i) && <div className="ss-label"><Icon name="link" />{t('Superset')}</div>}
         <div className={'item' + (inSS.has(i) ? ' in-ss' : '')} onClick={() => configure(i)}>
-          <Thumb ex={ex} />
+          <Thumb ex={ex} muscle />
           <div className="grow"><div className="tt capitalize">{exerciseNameFor(ex)}</div><div className="ss">{exLine(e, S.unit)}</div>
             {e.note && <div className="small dim" style={{ marginTop: 2 }}>{e.note}</div>}</div>
           {noEquip && <span className="tag" style={{ color: 'var(--orange)', borderColor: 'var(--orange)' }} title={t('Needs {0} — not in your active profile', t(ex.eq))}><Icon name="warning" /></span>}

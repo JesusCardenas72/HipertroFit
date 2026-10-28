@@ -93,7 +93,7 @@ export default function Library() {
       {f.slice(0, shown).map(e => {
         const best = bestWeightFor(S, e.id)
         return <div key={e.id} className="item" {...tappable(() => exerciseDetailSheet(e))}>
-          <Thumb ex={e} />
+          <Thumb ex={e} muscle />
           <div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(muscleLabel(e.tg || e.bp))} · {t(e.eq)}</div></div>
           <FavoriteStar st={S} id={e.id} />
           {best > 0 && <span className="tag acc">{fmtNum(best)}</span>}

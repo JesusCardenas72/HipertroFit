@@ -3,6 +3,7 @@ import { imgSrc, gifSrc } from '../lib/exercises.js'
 import { useStore } from '../store/useStore.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
+import { muscleGlyphOf } from '../lib/glyphs.js'
 
 // Big autoplaying animation; tap toggles to the still frame. `compact` shrinks it (superset cards).
 // A custom exercise shows the picture you gave it: a still image only (no play toggle), or an
@@ -41,7 +42,12 @@ export default function Media({ ex, id, compact, minimizable }) {
   )
 }
 
-export function Thumb({ ex }) {
-  if (!ex.img) return <div className="thumb thumb-x"><Icon name="dumbbell" /></div>
-  return <img className="thumb" loading="lazy" decoding="async" draggable={false} src={imgSrc(ex)} alt="" />
+// Without a picture of its own an exercise shows the muscle it trains. `muscle` (exercise
+// lists) adds that muscle as a badge on the picture's corner, so a routine reads by muscle.
+export function Thumb({ ex, muscle }) {
+  const glyph = muscleGlyphOf(ex)
+  if (!ex.img) return <div className="thumb thumb-x"><Icon name={glyph || 'dumbbell'} /></div>
+  const img = <img className="thumb" loading="lazy" decoding="async" draggable={false} src={imgSrc(ex)} alt="" />
+  if (!muscle || !glyph) return img
+  return <span className="thumb-wrap">{img}<Icon name={glyph} className="thumb-mus" /></span>
 }
