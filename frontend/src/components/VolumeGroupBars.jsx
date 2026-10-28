@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { t } from '../lib/i18n.js'
 import { fmtNum } from '../lib/format.js'
 import Icon from './Icon.jsx'
@@ -23,9 +23,32 @@ import { VOLUME_GROUPS, VOLUME_TARGET, volumeStatus, volumeColor, targetOf, grou
 // sets done, the planned figure and the share executed. Without it (the Programming sheet, where
 // `vol` already is the plan) the bars read as before.
 const PARENT_NAME = { back: 'Back muscles', legs: 'Legs' }
+const PEEK_HOLD_MS = 200
+
+// Holding a name that isn't shown whole — cut off with an ellipsis, or abbreviated (`short`) —
+// opens it: the figures beside it fold away and the full name slides out, until the finger
+// lifts. Names shown whole do nothing. Returns the row key being peeked at and the handlers.
+function usePeek() {
+  const [peek, setPeek] = useState(null)
+  const timer = useRef(0)
+  const stop = () => { clearTimeout(timer.current); setPeek(null) }
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const bind = (key, abbreviated) => ({
+    onPointerDown: e => {
+      const el = e.currentTarget
+      if (!abbreviated && el.scrollWidth <= el.clientWidth + 1) return
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => setPeek(key), PEEK_HOLD_MS)
+    },
+    onPointerUp: stop, onPointerCancel: stop, onPointerLeave: stop,
+    onContextMenu: e => e.preventDefault(),
+  })
+  return [peek, bind]
+}
 
 export default function VolumeGroupBars({ vol, title, planned }) {
   const [info, setInfo] = useState(false)
+  const [peek, bindPeek] = usePeek()
   if (!vol) return null
   const split = VOLUME_GROUPS.some(g => g.parent)
   const plan = planned && planned.total > 0 ? planned : null
@@ -65,8 +88,8 @@ export default function VolumeGroupBars({ vol, title, planned }) {
         const scale = band.max || 1
         return <Fragment key={g.key}>
           {first && <span className="vol-group-h">{t(PARENT_NAME[g.parent])}</span>}
-          <div className={'vol-bar-row' + (g.parent ? ' sub' : '')}>
-            <span className="nm">{t(g.short || g.name)}</span>
+          <div className={'vol-bar-row' + (g.parent ? ' sub' : '') + (peek === g.key ? ' peek' : '')}>
+            <span className="nm" title={t(g.name)} {...bindPeek(g.key, !!g.short && t(g.short) !== t(g.name))}>{t(peek === g.key ? g.name : (g.short || g.name))}</span>
             <span className="v">
               <b style={{ color }}>{t(plan ? '{0} eff' : '{0} sts', fmtNum(v))}</b>
               {plan && <span className="pct">{p.pct == null ? '—' : p.pct + '%'}</span>}
