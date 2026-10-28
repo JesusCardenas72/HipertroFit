@@ -86,6 +86,10 @@ const loadRest = () => {
 
 let toastTm = null
 let clipTm = null
+// The finish line of the rest whose alert has started. The alert begins before zero, so a rest
+// can be skipped while its bell is already ringing — and a rest that did not run out owes no
+// bell: stopRest() cuts it then, and only that one (never the exercise-end sound).
+let ringingFor = null
 // The rest between exercises waiting for the exercise-end sound to start (see endExercise).
 let exEndPending = null
 let timerInt = null
@@ -121,6 +125,7 @@ const scheduleRestAlert = endsAt => {
     const focusGap = total > 0 ? REST_ALERT_FOCUS_GAP_MS : 0
     const fire = () => {
       clipTm = null
+      ringingFor = endsAt
       // The setting is read now, not when the rest started, so muting mid-rest is respected.
       playClips(useStore.getState().S.sound, clips, { focusGap })
     }
@@ -197,10 +202,9 @@ export const useUI = create((set, get) => ({
 
   startRest(sec, forIdx, kind = 'sets', { keepClips = false } = {}) {
     get().stopRest()
-    // The previous rest's alert may still be ringing — a new set has started, so cut it.
-    // This is the only place that stops it: stopRest() runs immediately after the alert
-    // begins, so cancelling from there would silence it before it was heard. The rest that
-    // endExercise() starts is the exception: the sound playing then is its own.
+    // A sound may still be playing — the previous rest's bell after it ran out, or an
+    // exercise-end sound — and a new set has started, so cut it. The rest that endExercise()
+    // starts is the exception: the sound playing then is its own.
     if (!keepClips) stopClips()
     // Rest timer set to Off. Stopping and returning rather than starting a zero-length timer
     // keeps every caller honest: the four places that start a rest do not each need to know.
@@ -235,7 +239,9 @@ export const useUI = create((set, get) => ({
       if (left === tm.left) return
       if (left <= 0) {
         // The alert has been playing for the last few seconds and is finishing right about
-        // now — nothing to start here, and stopRest() below deliberately does not cut it.
+        // now — nothing to start here. This rest ran out, so its bell is no longer one to cut:
+        // stopRest() below lets it finish.
+        ringingFor = null
         vibrate([200, 100, 200]); get().flashTimer(); maybeRestNotification(); get().toast(t('Rest over — next set!')); get().stopRest(); return
       }
       set({ timer: { ...tm, left } })
@@ -256,7 +262,9 @@ export const useUI = create((set, get) => ({
     pushRestTimer(left)
     // The finish line moved, so the alert has to move with it. If it had already started, it
     // would now end well before the rest does — cut it and let the new schedule play it again.
-    stopClips()
+    // Only the rest's own bell: the exercise-end sound this rest may have started with plays on.
+    if (ringingFor === tm.endsAt) stopClips()
+    ringingFor = null
     scheduleRestAlert(endsAt)
   },
   // The active list changed shape (an exercise removed or inserted at `at`): keep the rest
@@ -268,14 +276,19 @@ export const useUI = create((set, get) => ({
     saveRest(get().timer)
   },
   stopRest() {
+    const tm = get().timer
     if (timerInt) clearInterval(timerInt); timerInt = null
     if (timerTick) document.removeEventListener('visibilitychange', timerTick); timerTick = null
-    if (get().timer) cancelPushRestTimer()
+    if (tm) cancelPushRestTimer()
     // A rest still waiting on the exercise-end sound is dropped with it.
     exEndPending = null
-    // Drop a pending alert (a rest skipped before it began owes you no bell), but never stop
-    // one already playing: this runs the moment the countdown hits zero, which is exactly when
-    // the alert is finishing. Cutting it here would clip the last note off every rest.
+    // The bell is for a rest that runs out, and nothing else. A pending one is dropped (a rest
+    // skipped before it began owes you no bell), and one already ringing for a rest stopped
+    // early — skipped, trimmed past zero, a set ticked, the session ended — is cut. A rest that
+    // ran out cleared ringingFor first (see runRest): this runs the moment the countdown hits
+    // zero, exactly when its bell is finishing, and cutting it would clip the last note.
+    if (tm && ringingFor === tm.endsAt) stopClips()
+    ringingFor = null
     cancelRestAlert()
     set({ timer: null })
     saveRest(null)

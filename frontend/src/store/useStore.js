@@ -16,6 +16,9 @@ export const DEF = {
   // 0 = none, n = n seconds. A running workout can override it (S.active.restExSec). See
   // lib/rest-between.js.
   restExSec: null,
+  // Rest after a warm-up set, in seconds (0 = none): its own clock, not restSec. See
+  // lib/supersetFlow.js restSecAfterSet.
+  warmupRestSec: 0,
   theme: 'dark', accent: 'lime', body: 'male', targetW: null,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
   // Plan ▸ Routines folders ({ id, name, open }); a routine is filed by `routine.folder`. Purely a

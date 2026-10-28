@@ -190,6 +190,7 @@ export default {
   'Weight drop (%)': 'वज़न में कमी (%)',
   'Rest-pause reps': 'रेस्ट-पॉज़ रेप्स',
   'Rest-pause rest': 'रेस्ट-पॉज़ आराम',
+  'Warm-up rest': 'वार्म-अप के बाद आराम',
   'Every set becomes a drop-set: after the main set, {0} drop(s) with no rest, each about {1}% lighter.': 'हर सेट ड्रॉप सेट बन जाता है: मुख्य सेट के बाद बिना आराम के {0} ड्रॉप, हर एक लगभग {1}% हल्का।',
   'Every set becomes rest-pause: {0} reps to start, then {1} more split into short bursts, {2}s rest before each, roughly halving each time.': 'हर सेट रेस्ट-पॉज़ बन जाता है: शुरुआत में {0} रेप्स, फिर छोटे बर्स्ट में बंटे {1} और, हर एक से पहले {2} सेकंड आराम, हर बार लगभग आधा होते हुए।',
   'Cardio logged': 'कार्डियो दर्ज हुआ',

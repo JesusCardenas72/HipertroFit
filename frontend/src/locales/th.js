@@ -186,6 +186,7 @@ export default {
   'Weight drop (%)': 'ลดน้ำหนัก (%)',
   'Rest-pause reps': 'จำนวนครั้งเรสต์-พอส',
   'Rest-pause rest': 'พักเรสต์-พอส',
+  'Warm-up rest': 'พักหลังวอร์มอัพ',
   'Every set becomes a drop-set: after the main set, {0} drop(s) with no rest, each about {1}% lighter.': 'ทุกเซ็ตจะกลายเป็นดรอปเซ็ต: หลังเซ็ตหลักจะมี {0} ดรอปโดยไม่พัก แต่ละดรอปเบาลงประมาณ {1}%',
   'Every set becomes rest-pause: {0} reps to start, then {1} more split into short bursts, {2}s rest before each, roughly halving each time.': 'ทุกเซ็ตจะกลายเป็นเรสต์-พอส: เริ่มด้วย {0} ครั้ง จากนั้นอีก {1} ครั้งแบ่งเป็นชุดสั้น ๆ พัก {2} วินาทีก่อนแต่ละชุด โดยลดลงเกือบครึ่งทุกครั้ง',
   'Cardio logged': 'บันทึกคาร์ดิโอแล้ว',

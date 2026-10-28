@@ -325,6 +325,31 @@ describe('Workout set completion flow', () => {
     expect(mocks.startRest).toHaveBeenCalledWith(90, expect.any(Number), 'exercise')
   })
 
+  // A warm-up set rests on its own clock (Settings ▸ Warm-up rest), none by default — never the
+  // work sets' 90 s — and the work sets after it keep theirs.
+  it('times the rest after a warm-up set with the warm-up rest', async () => {
+    const warmed = () => exercise('warmed', [], {
+      asked: true,
+      sets: [
+        { w: 20, r: 5, done: false, phase: 'warmup' },
+        { w: 60, r: 5, done: false },
+        { w: 60, r: 5, done: false },
+      ],
+    })
+    await mount([warmed()])
+    await toggleSetOf(0, 0)
+    expect(mocks.startRest).toHaveBeenCalledWith(0, 0, 'sets')
+    await rerender()
+    await toggleSetOf(0, 1)
+    expect(mocks.startRest).toHaveBeenLastCalledWith(90, 0, 'sets')
+
+    await unmount()
+    vi.clearAllMocks()
+    await mount([warmed()], 0, { warmupRestSec: 30 })
+    await toggleSetOf(0, 0)
+    expect(mocks.startRest).toHaveBeenCalledWith(30, 0, 'sets')
+  })
+
   it('keeps a superset on its warm-ups before handing over to the linked work sets', async () => {
     await mount([
       exercise('warmed', [false, false, false, false], {

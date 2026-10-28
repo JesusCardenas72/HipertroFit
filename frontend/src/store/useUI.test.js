@@ -162,6 +162,44 @@ describe('rest alert lands on the end of the rest', () => {
     expect(playClips).not.toHaveBeenCalled()
   })
 
+  // The bell is for a rest that runs out, and nothing else. It starts before zero, so a rest can
+  // be stopped while it is already ringing — and then it has to stop with the rest.
+  const untilBell = async sec => {
+    useUI.getState().startRest(sec)
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync((sec - CLIP_SECONDS) * 1000 - GAP)
+    expect(playClips).toHaveBeenCalledTimes(1)
+    vi.mocked(stopClips).mockClear()
+  }
+
+  it('lets the bell of a rest that runs out finish', async () => {
+    await untilBell(90)
+    await vi.advanceTimersByTimeAsync(CLIP_SECONDS * 1000 + GAP)
+    expect(useUI.getState().timer).toBe(null)
+    expect(stopClips).not.toHaveBeenCalled()
+  })
+
+  it('cuts the bell when the rest is skipped while it rings', async () => {
+    await untilBell(90)
+    useUI.getState().stopRest()
+    expect(stopClips).toHaveBeenCalledTimes(1)
+  })
+
+  it('cuts the bell when the rest is trimmed past zero while it rings', async () => {
+    await untilBell(90)
+    useUI.getState().addRest(-30)
+    expect(useUI.getState().timer).toBe(null)
+    expect(stopClips).toHaveBeenCalledTimes(1)
+  })
+
+  it('has nothing to cut when a rest is skipped before its bell', async () => {
+    useUI.getState().startRest(90)
+    await vi.advanceTimersByTimeAsync(0)
+    vi.mocked(stopClips).mockClear()
+    useUI.getState().stopRest()
+    expect(stopClips).not.toHaveBeenCalled()
+  })
+
   it('re-times the alert when the rest is extended', async () => {
     useUI.getState().startRest(90)
     await vi.advanceTimersByTimeAsync(0)
@@ -221,6 +259,15 @@ describe('exercise-end sound', () => {
     useUI.getState().endExercise(120, 3)
     vi.mocked(stopClips).mockClear()
     await vi.advanceTimersByTimeAsync(REST_ALERT_FOCUS_GAP_MS)
+    expect(stopClips).not.toHaveBeenCalled()
+  })
+
+  it('is not cut by skipping or re-timing the rest it started', async () => {
+    useUI.getState().endExercise(120, 3)
+    await vi.advanceTimersByTimeAsync(REST_ALERT_FOCUS_GAP_MS)
+    vi.mocked(stopClips).mockClear()
+    useUI.getState().addRest(15)
+    useUI.getState().stopRest()
     expect(stopClips).not.toHaveBeenCalled()
   })
 

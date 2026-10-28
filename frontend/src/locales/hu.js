@@ -173,6 +173,7 @@ export default {
   'Every set becomes rest-pause: {0} reps to start, then {1} more split into short bursts, {2}s rest before each, roughly halving each time.': 'Minden sorozat rest-pause-zá válik: kezdésként {0} ismétlés, majd további {1} rövid burstökre bontva, mindegyik előtt {2} mp pihenővel, nagyjából minden alkalommal megfeleződve.',
   'Every set becomes a drop-set: after the main set, {0} drop(s) with no rest, each about {1}% lighter.': 'Minden sorozat dropszetté válik: a fő sorozat után {0} további lépés pihenő nélkül, mindegyik kb. {1}%-kal könnyebb.',
   'Rest-pause rest': 'Rest-pause pihenő',
+  'Warm-up rest': 'Pihenő bemelegítés után',
   'Rest-pause reps': 'Rest-pause ismétlés',
   'Weight drop (%)': 'Súlycsökkentés (%)',
   'Drops': 'Dropszettek',

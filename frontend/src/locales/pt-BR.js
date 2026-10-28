@@ -412,6 +412,7 @@ export const PT_BR_OVERRIDES = {
   'default': 'padrão',
   'Effective sets are counted per muscle group over the current microcycle, against a target of {0}–{1}. An exercise’s main muscle always scores a full set; this is what its supporting muscles add. Changing it also moves the muscle map and the recovery estimate.': 'As séries efetivas são contadas por grupo muscular ao longo do microciclo atual, com meta de {0}–{1}. O músculo principal de um exercício sempre conta como uma série completa; aqui você define o que os músculos auxiliares acrescentam. Alterar isso também muda o mapa muscular e a estimativa de recuperação.',
   'Rest between exercises': 'Descanso entre exercícios',
+  'Warm-up rest': 'Descanso de aquecimento',
   'Rest between exercises (this workout)': 'Descanso entre exercícios (neste treino)',
   'Same as between sets': 'Igual ao descanso entre séries',
   'App setting': 'Configuração do app',

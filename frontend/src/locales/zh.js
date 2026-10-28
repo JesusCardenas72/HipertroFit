@@ -190,6 +190,7 @@ export default {
   'Weight drop (%)': '减重幅度（%）',
   'Rest-pause reps': '歇息暂停次数',
   'Rest-pause rest': '歇息暂停休息',
+  'Warm-up rest': '热身组后休息',
   'Every set becomes a drop-set: after the main set, {0} drop(s) with no rest, each about {1}% lighter.': '每组都变成递减组：主组之后，无休息完成 {0} 次递减，每次约减轻 {1}%。',
   'Every set becomes rest-pause: {0} reps to start, then {1} more split into short bursts, {2}s rest before each, roughly halving each time.': '每组都变成歇息暂停组：先做 {0} 次，再分成几个短爆发共 {1} 次，每次前休息 {2} 秒，每次数量大约减半。',
   'Cardio logged': '有氧已记录',

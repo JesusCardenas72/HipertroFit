@@ -10,7 +10,7 @@ import { beep, vibrate } from '../lib/sound.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { dateLocale } from '../lib/i18n-core.js'
 import { api } from '../lib/api.js'
-import { insertionAfterEntry, insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, unitEntryIdx } from '../lib/supersetFlow.js'
+import { insertionAfterEntry, insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, restSecAfterSet, unitEntryIdx } from '../lib/supersetFlow.js'
 import { exerciseRestChoice, restBetweenExercisesSec, restExLabel, settingChoice, REST_EX_PRESETS } from '../lib/rest-between.js'
 import Media, { Thumb } from '../components/Media.jsx'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, swapActiveWorkoutExercise } from '../sheets.jsx'
@@ -1466,11 +1466,13 @@ function ActiveWorkout() {
       // The rest this set has earned: the exercise's own restSec when it set one, the global
       // timer when it did not, and the longest of the group's across a superset (issue #10).
       // Resolved once here so every branch below times the same break.
-      const restSec = restSecFor(fresh.entries, freshUnit || [idx], S.restSec)
+      const workRestSec = restSecFor(fresh.entries, freshUnit || [idx], S.restSec)
+      // A warm-up set rests on its own clock (Settings ▸ Warm-up rest, none by default).
+      const restSec = restSecAfterSet(fresh.entries[idx].sets[i], workRestSec, S.warmupRestSec)
       // Once the exercise (or superset) is finished, the break before the next one can have its
-      // own length — the exercise's own choice, else the workout's, else Settings, else the rest
-      // above. See rest-between.js.
-      const exRestSec = restBetweenExercisesSec(restSec, fresh.restExSec, S.restExSec, exerciseRestChoice(fresh.entries, freshUnit || [idx]))
+      // own length — the exercise's own choice, else the workout's, else Settings, else the work
+      // sets' rest above (never the warm-up's). See rest-between.js.
+      const exRestSec = restBetweenExercisesSec(workRestSec, fresh.restExSec, S.restExSec, exerciseRestChoice(fresh.entries, freshUnit || [idx]))
       const unitRestSec = freshUnitDone ? exRestSec : restSec
       // Which break this is. The closing set never also starts a between-sets rest: the
       // between-exercises one replaces it, so the two times cannot add up.

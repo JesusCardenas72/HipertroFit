@@ -110,6 +110,18 @@ export function restSecFor(entries, unit, defaultRestSec) {
 }
 
 /**
+ * The rest after the set just ticked, before the next set: a warm-up set runs on a clock of its
+ * own, `warmupRestSec` (Settings ▸ Warm-up rest; unset or 0 = no rest, the default) — it gets you
+ * ready for the work rather than taking anything out of you, so it does not borrow the work
+ * sets' rest. Any other set takes `restSec`, the restSecFor of its group. The break after an
+ * exercise's closing set is a different one (rest-between.js), whatever that set was.
+ */
+export function restSecAfterSet(set, restSec, warmupRestSec) {
+  if (!isWarmupRow(set)) return restSec
+  return warmupRestSec > 0 ? warmupRestSec : 0
+}
+
+/**
  * The member of a unit to land on when the session moves into it: the first one with a warm-up
  * still to do, else the first one with any set left, else the first member. Landing on a work
  * set while a linked exercise has not warmed up yet would start the group in the wrong phase.

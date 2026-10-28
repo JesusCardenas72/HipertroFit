@@ -190,6 +190,7 @@ export default {
   'Weight drop (%)': 'Riduzione peso (%)',
   'Rest-pause reps': 'Ripetizioni rest-pause',
   'Rest-pause rest': 'Recupero rest-pause',
+  'Warm-up rest': 'Recupero dopo il riscaldamento',
   'Every set becomes a drop-set: after the main set, {0} drop(s) with no rest, each about {1}% lighter.': 'Ogni serie diventa un drop-set: dopo la serie principale, {0} riduzione/i senza recupero, ciascuna circa il {1}% più leggera.',
   'Every set becomes rest-pause: {0} reps to start, then {1} more split into short bursts, {2}s rest before each, roughly halving each time.': 'Ogni serie diventa rest-pause: {0} ripetizioni iniziali, poi altre {1} suddivise in brevi burst, con {2}s di recupero prima di ciascuno, dimezzando circa ogni volta.',
   'Cardio logged': 'Cardio registrato',

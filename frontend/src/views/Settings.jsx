@@ -236,6 +236,11 @@ export default function Settings() {
           { value: 0, label: restExLabel(0, t) },
           ...REST_EX_PRESETS.map(v => ({ value: v, label: restExLabel(v, t) })),
         ]} />
+      {/* The break after a warm-up set runs on its own clock, not the rest timer's: a warm-up
+          readies you for the work rather than tiring you, so by default there is none. */}
+      <SelectRow icon="flame" iconTint="var(--red)" title={t('Warm-up rest')}
+        value={S.warmupRestSec || 0} onChange={v => update(s => { s.warmupRestSec = v })}
+        options={[0, 15, 30, 45, 60, 90, 120].map(v => ({ value: v, label: v + 's' }))} />
       {/* Default for a rest-pause burst added live on a plain set — a planned exercise's own
           "Rest (s)" (in its Intensifier config) overrides this, same as the main rest timer
           is the fallback whenever an exercise has no progression rule of its own. */}

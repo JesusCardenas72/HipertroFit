@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { insertionAfterEntry, insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, unitEntryIdx } from './supersetFlow.js'
+import { insertionAfterEntry, insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, restSecAfterSet, unitEntryIdx } from './supersetFlow.js'
 
 const entry = done => ({ sets: done.map(value => ({ done: value })) })
 
@@ -267,5 +267,31 @@ describe('resumeEntryIdx', () => {
     markResumeAt(entries, 0)
     markResumeAt(entries, 1)
     expect(entries.map(e => !!e.resume)).toEqual([false, true])
+  })
+})
+
+// A warm-up set readies you for the work rather than tiring you: it rests on a clock of its own
+// (Settings ▸ Warm-up rest), none by default, instead of borrowing the work sets' rest.
+describe('restSecAfterSet', () => {
+  const warmup = { done: true, phase: 'warmup' }
+  const legacyWarmup = { done: true, warmup: true }
+  const work = { done: true, phase: 'work' }
+
+  it('gives a warm-up set no rest unless one is set for warm-ups', () => {
+    expect(restSecAfterSet(warmup, 90)).toBe(0)
+    expect(restSecAfterSet(warmup, 90, 0)).toBe(0)
+    expect(restSecAfterSet(legacyWarmup, 180, null)).toBe(0)
+  })
+
+  it('times a warm-up set with the warm-up rest, whatever the work sets take', () => {
+    expect(restSecAfterSet(warmup, 90, 30)).toBe(30)
+    expect(restSecAfterSet(warmup, 0, 45)).toBe(45)
+  })
+
+  it('leaves every other set on the work rest', () => {
+    expect(restSecAfterSet(work, 90, 30)).toBe(90)
+    expect(restSecAfterSet({ done: true }, 120, 30)).toBe(120)
+    expect(restSecAfterSet({ done: true, type: 'dropset', drops: [] }, 60, 0)).toBe(60)
+    expect(restSecAfterSet(undefined, 90, 30)).toBe(90)
   })
 })

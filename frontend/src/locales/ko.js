@@ -190,6 +190,7 @@ export default {
   'Weight drop (%)': '중량 감소(%)',
   'Rest-pause reps': '레스트포즈 반복 수',
   'Rest-pause rest': '레스트포즈 휴식',
+  'Warm-up rest': '워밍업 후 휴식',
   'Every set becomes a drop-set: after the main set, {0} drop(s) with no rest, each about {1}% lighter.': '모든 세트가 드롭세트가 됩니다: 메인 세트 후 휴식 없이 {0}회 드롭, 매번 약 {1}%씩 가벼워집니다.',
   'Every set becomes rest-pause: {0} reps to start, then {1} more split into short bursts, {2}s rest before each, roughly halving each time.': '모든 세트가 레스트포즈가 됩니다: 처음 {0}회를 하고, 짧은 버스트로 나눠 {1}회를 더 하며, 매번 전에 {2}초씩 쉬고 매번 대략 절반으로 줄어듭니다.',
   'Cardio logged': '유산소 기록됨',

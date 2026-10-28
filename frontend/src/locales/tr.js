@@ -190,6 +190,7 @@ export default {
   'Weight drop (%)': 'Ağırlık düşüşü (%)',
   'Rest-pause reps': 'Rest-pause tekrarları',
   'Rest-pause rest': 'Rest-pause dinlenmesi',
+  'Warm-up rest': 'Isınma sonrası dinlenme',
   'Every set becomes a drop-set: after the main set, {0} drop(s) with no rest, each about {1}% lighter.': 'Her set düşüş setine dönüşür: ana setten sonra dinlenmeden {0} düşüş, her biri yaklaşık %{1} daha hafif.',
   'Every set becomes rest-pause: {0} reps to start, then {1} more split into short bursts, {2}s rest before each, roughly halving each time.': 'Her set rest-pause olur: başlangıçta {0} tekrar, ardından kısa patlamalara bölünmüş {1} tekrar daha, her birinden önce {2} sn dinlenme, her seferinde yaklaşık yarıya inerek.',
   'Cardio logged': 'Kardiyo kaydedildi',
