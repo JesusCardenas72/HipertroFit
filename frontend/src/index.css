@@ -2129,12 +2129,20 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .wheel-scroll{
   position:relative;height:100%;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior:contain;
   padding:80px 0;scrollbar-width:none;touch-action:pan-y;
-  -webkit-mask-image:linear-gradient(transparent,#000 35%,#000 65%,transparent);
-  mask-image:linear-gradient(transparent,#000 35%,#000 65%,transparent);
+  -webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);
+  mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);
 }
 .wheel-scroll::-webkit-scrollbar{display:none}
-.wheel-it{height:40px;line-height:40px;text-align:center;scroll-snap-align:center;font-size:18px;color:var(--label-3);cursor:pointer}
-.wheel-it.on{font-size:22px;font-weight:600;color:var(--label)}
+/* one size for every value: the drum (Wheel.jsx) shrinks and tilts them away from the band, so
+   nothing jumps when a value lands. Digits have no descenders, so a plain line-height leaves them
+   sitting high in the band — trimming the box to cap height centres them on the glyphs. */
+.wheel-it{
+  height:40px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;
+  font-size:22px;font-variant-numeric:tabular-nums;color:var(--label-3);cursor:pointer;
+  transition:color .15s;
+}
+.wheel-it>span{text-box:trim-both cap alphabetic;backface-visibility:hidden;will-change:transform}
+.wheel-it.on{font-weight:600;color:var(--label)}
 .ss-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;font-size:13px;color:var(--label-3)}
 .ss-del{color:var(--red);font-size:15px;font-weight:500;flex:none}
 .ss-del:disabled{opacity:.4}
