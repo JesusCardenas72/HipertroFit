@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { isoOf } from './format.js'
 import { registerPlugin } from '@capacitor/core'
-import { androidPluginBox, backupFileName, base64ToBytes, buildReminderNotifications, bytesToBase64 } from './mobile.js'
+import { BACKUPS_KEPT, androidPluginBox, backupFileName, backupsToPrune, base64ToBytes, buildReminderNotifications, bytesToBase64 } from './mobile.js'
 
 const push = { id: 'push', name: 'Push' }
 const pull = { id: 'pull', name: 'Pull' }
@@ -80,6 +80,37 @@ describe('backupFileName', () => {
     expect(backupFileName('2026-09-10')).toBe('hipertrofit-backup-2026-09-10.json')
     expect(backupFileName('2026-09-10')).toBe(backupFileName('2026-09-10'))
     expect(backupFileName('2026-09-11')).not.toBe(backupFileName('2026-09-10'))
+  })
+})
+
+describe('backupsToPrune', () => {
+  const days = ['2026-10-20', '2026-10-21', '2026-10-23', '2026-10-24', '2026-10-27', '2026-10-28']
+
+  it('keeps the five newest snapshots and drops the older ones, oldest first', () => {
+    expect(BACKUPS_KEPT).toBe(5)
+    // Listing order is whatever the provider returns — not necessarily by date.
+    const names = [...days].reverse().map(d => backupFileName(d))
+    expect(backupsToPrune(names)).toEqual([backupFileName('2026-10-20')])
+    expect(backupsToPrune(days.map(d => backupFileName(d)), 2)).toEqual(days.slice(0, 4).map(d => backupFileName(d)))
+  })
+
+  it('deletes nothing while the folder holds five or fewer', () => {
+    expect(backupsToPrune(days.slice(1).map(d => backupFileName(d)))).toEqual([])
+    expect(backupsToPrune([])).toEqual([])
+  })
+
+  it('never touches files it did not write itself', () => {
+    const names = [
+      ...days.map(d => backupFileName(d)),
+      'notes.txt', 'hipertrofit-backup-2020-01-01 (1).json', 'hipertrofit-backup-2020-01-01.json.bak',
+      'my-hipertrofit-backup-2020-01-01.json', 'hipertrofit-backup-latest.json',
+    ]
+    expect(backupsToPrune(names)).toEqual([backupFileName('2026-10-20')])
+  })
+
+  it('a name listed twice counts once', () => {
+    const names = days.slice(1).map(d => backupFileName(d))
+    expect(backupsToPrune([...names, names[0]])).toEqual([])
   })
 })
 

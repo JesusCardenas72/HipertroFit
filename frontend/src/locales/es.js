@@ -361,6 +361,7 @@ export default {
   'Auto-backup on changes': 'Copia automática al modificar',
   'Saves a dated copy to the Documents folder after finishing a workout or editing a routine — point a sync app at it, or copy it out by hand.': 'Guarda una copia fechada en la carpeta Documentos al terminar un entrenamiento o editar una rutina — apunta una app de sincronización a ella, o cópiala a mano.',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': 'Guarda una copia fechada al terminar un entrenamiento o editar una rutina. Un archivo por día, que se sobrescribe a lo largo del día.',
+  'Keeps the last {0} copies and deletes older ones.': 'Conserva las últimas {0} copias y borra las más antiguas.',
   'Backup folder': 'Carpeta de copias',
   'Documents': 'Documentos',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': 'Elige dónde se escriben las copias. Google Drive no se puede seleccionar directamente: elige una carpeta que una app de sincronización replique en Drive.',

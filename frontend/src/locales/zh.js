@@ -822,6 +822,7 @@ export default {
   'Couldn’t save the sound on this device.': '无法将声音保存到此设备。',
   'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.': '仅存储在此设备上。最长 {0} 秒 — 播放时会恰好在休息结束时结束。',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': '完成训练或编辑训练日后保存一份带日期的副本。每天一个文件，当天内会被覆盖。',
+  'Keeps the last {0} copies and deletes older ones.': '保留最近 {0} 份副本，更早的会被删除。',
   'Backup folder': '备份文件夹',
   'Documents': '文档',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': '选择副本的写入位置。无法直接选择 Google Drive；请选择由同步应用镜像到 Drive 的文件夹。',

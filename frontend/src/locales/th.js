@@ -835,6 +835,7 @@ export default {
   'Couldn’t save the sound on this device.': 'บันทึกเสียงลงอุปกรณ์นี้ไม่ได้',
   'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.': 'เก็บไว้ในอุปกรณ์นี้เท่านั้น ยาวได้ไม่เกิน {0} วินาที — เล่นให้จบพอดีกับเวลาพัก',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': 'บันทึกสำเนาที่มีวันที่หลังจบเวิร์กเอาต์หรือแก้ไขรูทีน วันละหนึ่งไฟล์ และเขียนทับตลอดทั้งวัน',
+  'Keeps the last {0} copies and deletes older ones.': 'เก็บสำเนาล่าสุดไว้ {0} ชุด และลบชุดที่เก่ากว่า',
   'Backup folder': 'โฟลเดอร์สำรองข้อมูล',
   'Documents': 'เอกสาร',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': 'เลือกที่เก็บสำเนา เลือก Google Drive โดยตรงไม่ได้ ให้เลือกโฟลเดอร์ที่แอปซิงก์สะท้อนขึ้น Drive',

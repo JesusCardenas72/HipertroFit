@@ -822,6 +822,7 @@ export default {
   'Couldn’t save the sound on this device.': 'Nie udało się zapisać dźwięku na tym urządzeniu.',
   'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.': 'Zapisany tylko na tym urządzeniu. Do {0} s — odtwarza się tak, aby skończyć się dokładnie z przerwą.',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': 'Zapisuje kopię z datą po zakończeniu treningu lub edycji planu. Jeden plik dziennie, nadpisywany w ciągu dnia.',
+  'Keeps the last {0} copies and deletes older ones.': 'Zachowuje {0} ostatnich kopii i usuwa starsze.',
   'Backup folder': 'Folder kopii zapasowych',
   'Documents': 'Dokumenty',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': 'Wybierz, gdzie zapisywać kopie. Google Drive nie można wybrać bezpośrednio; wybierz folder, który aplikacja synchronizująca odzwierciedla na Dysku.',

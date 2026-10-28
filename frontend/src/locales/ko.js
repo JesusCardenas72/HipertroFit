@@ -822,6 +822,7 @@ export default {
   'Couldn’t save the sound on this device.': '이 기기에 소리를 저장할 수 없어요.',
   'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.': '이 기기에만 저장돼요. 최대 {0}초 — 휴식이 끝나는 순간에 맞춰 끝나도록 재생돼요.',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': '운동을 마치거나 루틴을 수정한 뒤 날짜가 붙은 사본을 저장해요. 하루에 파일 하나이며, 그날 안에서는 덮어써요.',
+  'Keeps the last {0} copies and deletes older ones.': '최근 사본 {0}개만 남기고 오래된 사본은 삭제해요.',
   'Backup folder': '백업 폴더',
   'Documents': '문서',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': '사본을 저장할 위치를 고르세요. Google Drive는 직접 선택할 수 없어요. 동기화 앱이 Drive에 미러링하는 폴더를 고르세요.',

@@ -827,6 +827,7 @@ export default {
   'Couldn’t save the sound on this device.': 'A hangot nem sikerült elmenteni ezen az eszközön.',
   'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.': 'Csak ezen az eszközön tárolódik. Legfeljebb {0} másodperc — úgy szólal meg, hogy pontosan a pihenővel együtt érjen véget.',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': 'Edzés befejezése vagy rutin szerkesztése után dátumozott másolatot ment. Naponta egy fájl, amelyet a nap folyamán felülír.',
+  'Keeps the last {0} copies and deletes older ones.': 'Megőrzi az utolsó {0} másolatot, a régebbieket törli.',
   'Backup folder': 'Biztonsági mentés mappája',
   'Documents': 'Dokumentumok',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': 'Válaszd ki, hová kerüljenek a másolatok. A Google Drive közvetlenül nem választható; válassz olyan mappát, amelyet egy szinkronizáló alkalmazás tükröz a Drive-ra.',

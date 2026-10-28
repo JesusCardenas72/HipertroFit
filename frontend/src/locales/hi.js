@@ -822,6 +822,7 @@ export default {
   'Couldn’t save the sound on this device.': 'इस डिवाइस पर आवाज़ सेव नहीं हो सकी।',
   'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.': 'सिर्फ़ इस डिवाइस पर सेव है। अधिकतम {0} सेकंड — यह इस तरह बजती है कि आराम के साथ ही खत्म हो।',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': 'वर्कआउट पूरा होने या रूटीन बदलने के बाद तारीख़ वाली कॉपी सेव करता है। रोज़ एक फ़ाइल, जो दिन भर ओवरराइट होती रहती है।',
+  'Keeps the last {0} copies and deletes older ones.': 'आख़िरी {0} कॉपियाँ रखता है और पुरानी हटा देता है।',
   'Backup folder': 'बैकअप फ़ोल्डर',
   'Documents': 'दस्तावेज़',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': 'चुनें कि कॉपियाँ कहाँ लिखी जाएँ। Google Drive सीधे नहीं चुना जा सकता; ऐसा फ़ोल्डर चुनें जिसे कोई सिंक ऐप Drive पर मिरर करता हो।',

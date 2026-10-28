@@ -9,7 +9,7 @@ import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/pus
 import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
-import { MOBILE, shareExport, syncReminder, backupFolderStatus, pickBackupFolder, clearBackupFolder } from '../lib/mobile.js'
+import { MOBILE, shareExport, syncReminder, backupFolderStatus, pickBackupFolder, clearBackupFolder, BACKUPS_KEPT } from '../lib/mobile.js'
 import { ConnectSheet } from './MobileOnboarding.jsx'
 import { UpdateRow } from '../components/AppUpdate.jsx'
 import { loadStarterPlan, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet } from '../sheets.jsx'
@@ -341,7 +341,7 @@ export default function Settings() {
       <Row icon="download" iconTint="var(--blue)" title={t('Import backup')} accessory="chevron" onClick={() => fileRef.current.click()} />
       <Row icon="upload" iconTint="var(--blue)" title={t('Export backup (JSON)')} accessory="chevron" onClick={doExport} />
       {MOBILE && <Row icon="history" iconTint="var(--blue)" title={t('Auto-backup on changes')}
-        subtitle={t('Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.')}>
+        subtitle={t('Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.') + ' ' + t('Keeps the last {0} copies and deletes older ones.', BACKUPS_KEPT)}>
         <Switch checked={!!S.autoBackup} onChange={v => update(s => { s.autoBackup = v })} />
       </Row>}
       {MOBILE && !!S.autoBackup && <BackupFolderRow toast={toast} />}

@@ -822,6 +822,7 @@ export default {
   'Couldn’t save the sound on this device.': 'Ses bu cihaza kaydedilemedi.',
   'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.': 'Yalnızca bu cihazda saklanır. En fazla {0} saniye — tam dinlenmeyle birlikte bitecek şekilde çalar.',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': 'Antrenman bitince veya rutin düzenlenince tarihli bir kopya kaydeder. Günde bir dosya, gün içinde üzerine yazılır.',
+  'Keeps the last {0} copies and deletes older ones.': 'Son {0} kopyayı saklar, daha eskilerini siler.',
   'Backup folder': 'Yedekleme klasörü',
   'Documents': 'Belgeler',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': 'Kopyaların nereye yazılacağını seç. Google Drive doğrudan seçilemez; bir eşitleme uygulamasının Drive\'a yansıttığı bir klasör seç.',

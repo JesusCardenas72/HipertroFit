@@ -207,6 +207,24 @@ export function backupFileName(today = todayISO()) {
   return `hipertrofit-backup-${today}.json`
 }
 
+// How many of those snapshots the folder keeps. One file per day, so these are the last five
+// days a backup was made on — a week off training does not push the last good copy out.
+export const BACKUPS_KEPT = 5
+
+// Same pattern as BACKUP_NAME in BackupFolderPlugin.java, which refuses to delete anything else.
+const BACKUP_NAME = /^hipertrofit-backup-\d{4}-\d{2}-\d{2}\.json$/
+
+/**
+ * Which files of a folder listing to delete so only the `keep` newest snapshots remain. Only names
+ * exactly as backupFileName() writes them are counted or touched: the user's own files, a sync
+ * app's, or a "hipertrofit-backup-… (1).json" duplicate are left alone. The ISO date in the name
+ * sorts as text, so the oldest come first.
+ */
+export function backupsToPrune(names, keep = BACKUPS_KEPT) {
+  const ours = [...new Set(names.filter(n => BACKUP_NAME.test(n)))].sort()
+  return ours.slice(0, Math.max(0, ours.length - keep))
+}
+
 // The destination folder (Android only — see BackupFolderPlugin.java). The user picks it once
 // through the system folder picker; pointing it at a folder that a mirroring app keeps in sync
 // with Google Drive is what makes these backups leave the phone. Drive cannot be picked
@@ -288,15 +306,26 @@ export async function releaseOtherAudio() {
 // Falls back to Documents when no folder is set, or when writing to the chosen one fails (card
 // pulled out, permission revoked, sync app uninstalled and took its folder with it) — a backup
 // landing somewhere beats no backup at all.
+//
+// Older snapshots are pruned only after the new one is written, in whichever folder it went to,
+// and a pruning failure never counts as a failed backup: worst case the folder keeps a few extra.
 export async function writeAutoBackup(state) {
   const name = backupFileName()
   const data = JSON.stringify(state)
   const p = (await backupPlugin())?.plugin
   if (p) {
+    let written = false
     try {
       await p.write({ name, data })
-      return
+      written = true
     } catch (e) { /* no folder chosen, or it went away — fall through to Documents */ }
+    if (written) {
+      try {
+        const { names } = await p.list()
+        for (const old of backupsToPrune(names || [])) await p.remove({ name: old })
+      } catch (e) { /* folder unreachable for a moment — prune again after the next backup */ }
+      return
+    }
   }
   try {
     const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
@@ -307,6 +336,12 @@ export async function writeAutoBackup(state) {
       encoding: Encoding.UTF8,
       recursive: true,
     })
+    try {
+      const { files } = await Filesystem.readdir({ path: '', directory: Directory.Documents })
+      for (const old of backupsToPrune((files || []).map(f => f.name))) {
+        await Filesystem.deleteFile({ path: old, directory: Directory.Documents })
+      }
+    } catch (e) { /* as above — extra copies, never a lost one */ }
   } catch (e) { /* best effort — the private mirror in Directory.Data still has the data */ }
 }
 // A one-off system notification, shown right away: a native local notification on the mobile

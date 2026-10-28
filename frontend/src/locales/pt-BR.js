@@ -434,6 +434,7 @@ export const PT_BR_OVERRIDES = {
   'Couldn’t save the sound on this device.': 'Não foi possível salvar o som neste dispositivo.',
   'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.': 'Salvo apenas neste dispositivo. Até {0} segundos — toca de modo a terminar exatamente quando o descanso termina.',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': 'Salva uma cópia datada depois de concluir um treino ou editar uma rotina. Um arquivo por dia, sobrescrito ao longo do dia.',
+  'Keeps the last {0} copies and deletes older ones.': 'Mantém as últimas {0} cópias e exclui as mais antigas.',
   'Backup folder': 'Pasta de backup',
   'Documents': 'Documentos',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': 'Escolha onde as cópias são gravadas. O Google Drive não pode ser escolhido diretamente; escolha uma pasta que um app de sincronização espelhe no Drive.',

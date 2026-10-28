@@ -822,6 +822,7 @@ export default {
   'Couldn’t save the sound on this device.': 'Не удалось сохранить звук на этом устройстве.',
   'Stored on this device only. Up to {0} seconds — it plays so that it ends exactly when the rest does.': 'Хранится только на этом устройстве. До {0} с — воспроизводится так, чтобы закончиться ровно с отдыхом.',
   'Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.': 'Сохраняет копию с датой после завершения тренировки или изменения программы. Один файл в день, перезаписывается в течение дня.',
+  'Keeps the last {0} copies and deletes older ones.': 'Хранит последние {0} копий, более старые удаляет.',
   'Backup folder': 'Папка для резервных копий',
   'Documents': 'Документы',
   'Choose where the copies are written. Google Drive cannot be picked directly; pick a folder a sync app mirrors to Drive.': 'Выберите, куда записывать копии. Google Drive нельзя выбрать напрямую; выберите папку, которую приложение синхронизации отражает на Drive.',

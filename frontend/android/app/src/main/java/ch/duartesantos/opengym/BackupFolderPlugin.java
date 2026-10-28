@@ -10,6 +10,7 @@ import android.provider.DocumentsContract;
 
 import androidx.activity.result.ActivityResult;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -19,6 +20,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 /**
  * "Auto-backup on changes" → a folder the user picks.
@@ -46,6 +48,9 @@ public class BackupFolderPlugin extends Plugin {
     private static final String PREFS = "hipertrofit-backup-folder";
     private static final String KEY_URI = "tree-uri";
     private static final String MIME_JSON = "application/json";
+    // Exactly what backupFileName() in lib/mobile.js produces. remove() refuses anything else, so
+    // a folder the user also keeps their own files in can never lose one of them to the pruning.
+    private static final Pattern BACKUP_NAME = Pattern.compile("hipertrofit-backup-\\d{4}-\\d{2}-\\d{2}\\.json");
 
     private SharedPreferences prefs() {
         return getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -174,6 +179,57 @@ public class BackupFolderPlugin extends Plugin {
             call.resolve(r);
         } catch (Exception e) {
             call.reject("Could not write the backup", e);
+        }
+    }
+
+    /**
+     * Names of the files directly in the chosen folder. Only names: which of them are old
+     * snapshots to drop is decided in lib/mobile.js (backupsToPrune), next to its test.
+     */
+    @PluginMethod
+    public void list(PluginCall call) {
+        Uri tree = grantedTree();
+        if (tree == null) {
+            call.reject("no-folder");
+            return;
+        }
+        JSArray names = new JSArray();
+        Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree));
+        try (Cursor c = getContext().getContentResolver().query(children, new String[]{
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+        }, null, null, null)) {
+            while (c != null && c.moveToNext()) {
+                if (!c.isNull(0)) names.put(c.getString(0));
+            }
+        } catch (Exception e) {
+            call.reject("Could not list the backup folder", e);
+            return;
+        }
+        JSObject r = new JSObject();
+        r.put("names", names);
+        call.resolve(r);
+    }
+
+    /** Delete one dated snapshot from the chosen folder. A name that is already gone is not an error. */
+    @PluginMethod
+    public void remove(PluginCall call) {
+        String name = call.getString("name");
+        if (name == null || !BACKUP_NAME.matcher(name).matches()) {
+            call.reject("not a backup file name");
+            return;
+        }
+        Uri tree = grantedTree();
+        if (tree == null) {
+            call.reject("no-folder");
+            return;
+        }
+        try {
+            ContentResolver resolver = getContext().getContentResolver();
+            Uri file = findChild(resolver, tree, name);
+            if (file != null) DocumentsContract.deleteDocument(resolver, file);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Could not delete the old backup", e);
         }
     }
 
