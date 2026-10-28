@@ -43,7 +43,7 @@ function cleanEx(e) {
   if (e.prog) o.prog = e.prog
   if (e.inc > 0) o.inc = e.inc
   // Adjustable dumbbells: the weights only make sense on the rungs they were planned on.
-  if (mode !== 'cardio' && e.adj && e.adj.from > 0 && e.adj.step > 0) o.adj = { from: +e.adj.from, step: +e.adj.step }
+  if (mode !== 'cardio') { const adj = cleanAdj(e.adj); if (adj) o.adj = adj }
   if (e.repsMin != null) o.repsMin = e.repsMin
   if (e.repsMax != null) o.repsMax = e.repsMax
   // The exercise's own rest (issue #10) is part of how it is prescribed, so it travels too —
@@ -76,10 +76,12 @@ function cleanRestSec(v) {
   return n > 0 ? n : 0
 }
 
-/** An adjustable-dumbbell ladder with a positive first rung and step, or nothing. */
+/** An adjustable-dumbbell ladder with a positive first rung and step, or nothing — and its last
+ *  rung when it has a sensible one. */
 function cleanAdj(x) {
-  const from = Number(x && x.from), step = Number(x && x.step)
-  return from > 0 && step > 0 && from < 1000 && step < 100 ? { from, step } : null
+  const from = Number(x && x.from), step = Number(x && x.step), to = Number(x && x.to)
+  if (!(from > 0 && step > 0 && from < 1000 && step < 100)) return null
+  return to >= from && to < 1000 ? { from, to, step } : { from, step }
 }
 
 /** Keep the floors the config sheet and applyIntensifierPlan already enforce, and nothing else:

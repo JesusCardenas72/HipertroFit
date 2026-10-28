@@ -73,10 +73,12 @@ const round2 = v => Math.round(v * 100) / 100
  * The values one wheel of the set sheet turns through: 0 up to `max` (or further, when the
  * current value is past it) in `step`s — or the rungs of a ladder { from, step } — with the
  * current value slotted in even when it is off the grid, so opening the sheet never moves it.
+ * A ladder with a last rung (`to`) stops there instead of at `max`.
  * `empty` puts a "nothing logged" (null) first, for the optional effort wheel.
  */
 export function wheelValues(cur, { step = 1, min = 0, max = 100, empty = false } = {}) {
   const ladder = step && typeof step === 'object' ? step : null
+  if (ladder && ladder.to >= ladder.from) max = ladder.to
   const by = ladder ? ladder.step : Number(step) || 1
   const c = Number(cur)
   const top = Number.isFinite(c) && c > max ? c : max

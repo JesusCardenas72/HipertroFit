@@ -9,17 +9,30 @@
 // Everything that rounds a load (the set steppers, the progression engine, warm-up ramps,
 // deloads, set-by-set targets) takes a `scale`, which is either the plain number it always was
 // or a ladder `{ from, step }`. A number keeps behaving exactly as before.
+//
+// A ladder may also have a last rung, `to`: the heaviest the dumbbells go (32.5 kg on a 4–32.5
+// set). Nothing rounds or steps past it, so progression stops asking for weight they don't have.
+// Without `to` the ladder is open-ended, as ladders always were.
 
-export const ADJUSTABLE_DUMBBELLS = { from: 4, step: 1.5 }
+export const ADJUSTABLE_DUMBBELLS = { from: 4, to: 32.5, step: 1.5 }
 
 const round2 = v => Math.round(v * 100) / 100
 
-/** The exercise's ladder, `{ from, step }`, when it is set up for adjustable dumbbells; else null. */
+/** The exercise's ladder, `{ from, step, to? }`, when it is set up for adjustable dumbbells; else null. */
 export function ladderOf(cfg) {
   const a = cfg && cfg.adj
   if (!a) return null
-  const from = Number(a.from), step = Number(a.step)
-  return from > 0 && step > 0 ? { from, step } : null
+  const from = Number(a.from), step = Number(a.step), to = Number(a.to)
+  if (!(from > 0 && step > 0)) return null
+  return to >= from ? { from, step, to } : { from, step }
+}
+
+/** The heaviest rung of a ladder with a last rung — `to` itself, or the rung just under it when
+ *  the clicks don't land on it exactly; Infinity for an open-ended ladder or a plain number. */
+export function topOf(scale) {
+  if (!(scale && typeof scale === 'object' && scale.to >= scale.from)) return Infinity
+  const { from, step, to } = scale
+  return round2(from + Math.floor((to - from) / step + 1e-9) * step)
 }
 
 /** The gap between two loadable weights: the ladder's step, or the plain number. */
@@ -40,26 +53,42 @@ export function snapLoad(v, scale, how = 'round') {
     if (!(v > 0)) return 0
     if (v <= from) return from
     // The tiny epsilon keeps a floor of 8.5 on a 1.5 ladder from 4 at 8.5, not 7 (binary noise).
-    return round2(from + fn((v - from) / step + (how === 'floor' ? 1e-9 : 0)) * step)
+    return Math.min(topOf(scale), round2(from + fn((v - from) / step + (how === 'floor' ? 1e-9 : 0)) * step))
   }
   if (!(scale > 0)) return Math.round(v * 10) / 10
   return Math.round(fn(v / scale + (how === 'floor' ? 1e-9 : 0)) * scale * 10) / 10
 }
 
 /**
+ * An exercise config set up for adjustable dumbbells `adj` ({ from, to?, step }): the ladder on
+ * it and the planned weight on one of its rungs. A config that already has a ladder of its own
+ * keeps it — it was chosen for that exercise. Without a usable `adj` the config is unchanged.
+ */
+export function withAdjustable(cfg, adj) {
+  if (ladderOf(cfg)) return cfg
+  const ladder = ladderOf({ adj })
+  if (!ladder) return cfg
+  return { ...cfg, adj: { ...ladder }, weight: snapLoad(Number(cfg && cfg.weight) || 0, ladder) }
+}
+
+/**
  * One stepper tap from `v`. A plain number adds or takes away the step, never below 0, as the
  * steppers always did. On a ladder the tap moves to the next rung in that direction: up from
  * nothing is the first rung, a weight between rungs (typed by hand, or logged before) goes to
- * the rung on that side of it, and down from the first rung stays there.
+ * the rung on that side of it, and down from the first rung stays there. Up from the last rung
+ * stays there too, and a weight logged past it (before the ladder had one) is left alone going
+ * up and comes down to the last rung.
  */
 export function stepLoad(v, dir, scale) {
   const cur = Number(v) || 0
   if (!(scale && typeof scale === 'object')) return Math.max(0, round2(cur + dir * (Number(scale) || 0)))
   const { from, step } = scale
+  const top = topOf(scale)
   if (dir > 0) {
     if (cur < from) return from
-    return round2(from + (Math.floor((cur - from) / step + 1e-9) + 1) * step)
+    const up = round2(from + (Math.floor((cur - from) / step + 1e-9) + 1) * step)
+    return up > top ? Math.max(round2(cur), top) : up
   }
   if (cur <= from) return cur > 0 ? from : 0
-  return round2(from + (Math.ceil((cur - from) / step - 1e-9) - 1) * step)
+  return Math.min(top, round2(from + (Math.ceil((cur - from) / step - 1e-9) - 1) * step))
 }

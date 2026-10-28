@@ -1,11 +1,20 @@
 import { describe, expect, test } from 'vitest'
-import { ADJUSTABLE_DUMBBELLS, ladderOf, snapLoad, stepLoad, stepOf, minLoadOf } from './load-scale.js'
+import { ADJUSTABLE_DUMBBELLS, ladderOf, topOf, withAdjustable, snapLoad, stepLoad, stepOf, minLoadOf } from './load-scale.js'
 
-const L = ADJUSTABLE_DUMBBELLS
+// An open-ended ladder (no last rung), as every ladder was before `to`.
+const L = { from: 4, step: 1.5 }
+// The default set: 4 to 32.5 kg, 1.5 kg a click.
+const D = ADJUSTABLE_DUMBBELLS
 
 describe('ladderOf', () => {
   test('reads the adjustable-dumbbell ladder off a config', () => {
     expect(ladderOf({ adj: { from: 4, step: 1.5 } })).toEqual({ from: 4, step: 1.5 })
+  })
+  test('keeps a last rung at or above the first, drops one below it', () => {
+    expect(ladderOf({ adj: { from: 4, to: 32.5, step: 1.5 } })).toEqual({ from: 4, to: 32.5, step: 1.5 })
+    expect(ladderOf({ adj: { from: 4, to: 4, step: 1.5 } })).toEqual({ from: 4, to: 4, step: 1.5 })
+    expect(ladderOf({ adj: { from: 4, to: 2, step: 1.5 } })).toEqual({ from: 4, step: 1.5 })
+    expect(ladderOf({ adj: { from: 4, to: '', step: 1.5 } })).toEqual({ from: 4, step: 1.5 })
   })
   test('no ladder without the flag, or with a ladder that cannot load anything', () => {
     expect(ladderOf({})).toBeNull()
@@ -37,6 +46,50 @@ describe('stepLoad on adjustable dumbbells (4 kg, +1.5 kg)', () => {
     let w = 4
     for (let i = 0; i < 40; i++) w = stepLoad(w, 1, L)
     expect(w).toBe(64)
+  })
+})
+
+describe('a ladder with a last rung (4 → 32.5 kg, +1.5 kg)', () => {
+  test('the default set is 4 to 32.5 kg in 1.5 kg clicks', () => {
+    expect(D).toEqual({ from: 4, to: 32.5, step: 1.5 })
+  })
+  test('its top is the last weight the clicks reach', () => {
+    expect(topOf(D)).toBe(32.5)
+    expect(topOf({ from: 4, to: 33, step: 1.5 })).toBe(32.5)
+    expect(topOf(L)).toBe(Infinity)
+    expect(topOf(2.5)).toBe(Infinity)
+  })
+  test('stepping up stops at the last rung', () => {
+    let w = 4
+    for (let i = 0; i < 40; i++) w = stepLoad(w, 1, D)
+    expect(w).toBe(32.5)
+    expect(stepLoad(31, 1, D)).toBe(32.5)
+  })
+  test('a weight logged past the last rung is left alone going up and comes down to it', () => {
+    expect(stepLoad(40, 1, D)).toBe(40)
+    expect(stepLoad(40, -1, D)).toBe(32.5)
+  })
+  test('nothing rounds past the last rung', () => {
+    expect(snapLoad(50, D)).toBe(32.5)
+    expect(snapLoad(33.4, D, 'floor')).toBe(32.5)
+    expect(snapLoad(31.5, D)).toBe(31)
+  })
+})
+
+describe('withAdjustable', () => {
+  test('puts the ladder on the config and the planned weight on a rung', () => {
+    expect(withAdjustable({ sets: 3, reps: 10, weight: 12 }, D)).toEqual({ sets: 3, reps: 10, weight: 11.5, adj: { from: 4, to: 32.5, step: 1.5 } })
+    expect(withAdjustable({ weight: 0 }, D).weight).toBe(0)
+    expect(withAdjustable({ weight: 45 }, D).weight).toBe(32.5)
+  })
+  test('a config with dumbbells of its own keeps them', () => {
+    const own = { weight: 10, adj: { from: 2, step: 2 } }
+    expect(withAdjustable(own, D)).toBe(own)
+  })
+  test('nothing usable to set up leaves the config alone', () => {
+    const cfg = { weight: 10 }
+    expect(withAdjustable(cfg, null)).toBe(cfg)
+    expect(withAdjustable(cfg, { from: 0, step: 1.5 })).toBe(cfg)
   })
 })
 

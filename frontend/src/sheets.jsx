@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, matchExercise, exOr, normalizeStr, muscleTagsOf, catalogueRow, imgSrc, gifSrc } from './lib/exercises.js'
-import { activeProfile, exAvailable, ALL_EQUIPMENT, newProfile } from './lib/equipment.js'
+import { activeProfile, exAvailable, ALL_EQUIPMENT, ADJUSTABLE, newProfile, adjustableOf, adjustableFor } from './lib/equipment.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount, DAYN, DAYS, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { programActive, emptyProgram, sessionsPerRound, REST } from './lib/program.js'
 import { STRATEGIES, microcycleLen, strategyOf, cyclePosition } from './lib/microcycle.js'
@@ -30,7 +30,7 @@ import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-sha
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
 import { normalizeRepRange } from './lib/rep-range.js'
-import { ladderOf, snapLoad, ADJUSTABLE_DUMBBELLS } from './lib/load-scale.js'
+import { ladderOf, snapLoad, topOf, withAdjustable } from './lib/load-scale.js'
 import { routineExerciseConfig, classifyExercise, CLASS_NAME, CLASS_REP_RANGE, EXERCISE_CLASSES } from './lib/exercise-class.js'
 import { buildCustomExercise, stepsText, copyName, NAME_MAX, DESC_MAX, MAX_IMAGE_BYTES } from './lib/custom-exercise.js'
 import { pictureFromFile, pictureFromUrl, pictureFromClipboard, imageFromTransfer, gifFromDataUrl, frameCanvas, frameToJpeg } from './lib/image-file.js'
@@ -576,7 +576,8 @@ function PatternRow({ ex }) {
 export const exerciseDetailSheet = ex => ui().openSheet(close => <ExerciseDetail ex={ex} close={close} />)
 
 /* ============================ add to routine ============================ */
-function AddToRoutine({ ex, close }) {
+// `opts.adj`: add it set up for those adjustable dumbbells (the Library's adjustable-dumbbell filter).
+function AddToRoutine({ ex, opts, close }) {
   const st = useStore(s => s.S)
   const pick = rid => {
     close()
@@ -590,7 +591,7 @@ function AddToRoutine({ ex, close }) {
       const r = isNew ? S().routines[S().routines.length - 1] : st.routines.find(x => x.id === rid)
       toast(t('“{0}” added to {1}', exerciseNameFor(ex), r ? r.name : t('routine')))
       if (isNew && r) nav('/plan/r/' + r.id)
-    })
+    }, opts)
   }
   return <>
     <h3 className="capitalize">{t('Add “{0}”', exerciseNameFor(ex))}</h3>
@@ -606,7 +607,7 @@ function AddToRoutine({ ex, close }) {
     </div>
   </>
 }
-export const addToRoutineSheet = ex => ui().openSheet(close => <AddToRoutine ex={ex} close={close} />)
+export const addToRoutineSheet = (ex, opts) => ui().openSheet(close => <AddToRoutine ex={ex} opts={opts} close={close} />)
 
 /* ============================ custom exercises (issue #11) ============================ */
 // An exercise that is not in the catalogue is fully yours: every field a catalogue row has
@@ -1074,19 +1075,26 @@ export function swapActiveWorkoutExercise(index) {
 function EquipmentProfileSheet({ profile, close }) {
   const update = useStore(s => s.update)
   const nameRef = useRef(null)
+  const unit = useStore(s => s.S.unit)
   const [checked, setChecked] = useState(new Set(profile?.equipment || []))
+  const [adj, setAdj] = useState(() => adjustableOf(profile))
   const toggle = k => setChecked(s => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n })
+  const hasAdj = checked.has(ADJUSTABLE)
+  const adjTop = topOf(adj)
+  const adjInvalid = hasAdj && !(adj.from > 0 && adj.step > 0 && adj.to >= adj.from)
   const save = () => {
     const name = (nameRef.current.value || '').trim()
-    if (!name) { return }
+    if (!name || adjInvalid) { return }
     update(s => {
       s.equipProfiles = s.equipProfiles || []
       const equipment = [...checked]
+      // The range is kept with the profile only while it has the dumbbells.
+      const withAdj = p => { if (hasAdj) p.adj = { from: adj.from, to: adj.to, step: adj.step }; else delete p.adj }
       if (profile) {
         const p = s.equipProfiles.find(x => x.id === profile.id)
-        if (p) { p.name = name; p.equipment = equipment }
+        if (p) { p.name = name; p.equipment = equipment; withAdj(p) }
       } else {
-        const p = newProfile(name); p.equipment = equipment
+        const p = newProfile(name); p.equipment = equipment; withAdj(p)
         s.equipProfiles.push(p)
         if (!s.activeEquipId) s.activeEquipId = p.id
       }
@@ -1105,10 +1113,26 @@ function EquipmentProfileSheet({ profile, close }) {
         <button key={k} className={'chip' + (checked.has(k) ? ' on' : '')} onClick={() => toggle(k)}>{t(k)}</button>
       ))}
     </div>
+    {hasAdj && <>
+      <div className="row cfgrow" style={{ marginTop: 14, marginBottom: 8 }}>
+        <Stepper label={t('Starting weight ({0})', unit)} value={adj.from} step={0.5}
+          invalid={!(adj.from > 0) || !(adj.to >= adj.from)} onChange={v => setAdj(a => ({ ...a, from: v }))} />
+        <Stepper label={t('Final weight ({0})', unit)} value={adj.to} step={0.5}
+          invalid={!(adj.to >= adj.from)} onChange={v => setAdj(a => ({ ...a, to: v }))} />
+        <Stepper label={t('Per click ({0})', unit)} value={adj.step} step={0.25}
+          invalid={!(adj.step > 0)} onChange={v => setAdj(a => ({ ...a, step: v }))} />
+      </div>
+      <div className="dim small">
+        {adjInvalid ? t('The final weight has to be at least the starting one, and a click has to add something.')
+          : adjTop < adj.to - 1e-9 ? t('From {0} to {1} {2}, {3} {2} a click — the clicks stop at {4} {2}.', fmtNum(adj.from), fmtNum(adj.to), unit, fmtNum(adj.step), fmtNum(adjTop))
+            : t('From {0} to {1} {2}, {3} {2} a click.', fmtNum(adj.from), fmtNum(adj.to), unit, fmtNum(adj.step))}
+        {' '}{t('Dumbbell exercises set to adjustable dumbbells start from this range.')}
+      </div>
+    </>}
     <div className="dim small" style={{ marginTop: 10 }}>
       {t('Body-weight exercises are always available, in every profile.')}
     </div>
-    <div style={{ height: 14 }} /><Button variant="primary" onClick={save}>{t('Save')}</Button>
+    <div style={{ height: 14 }} /><Button variant="primary" disabled={adjInvalid} onClick={save}>{t('Save')}</Button>
   </>
 }
 export const equipmentProfileSheet = profile => ui().openSheet(close => <EquipmentProfileSheet profile={profile} close={close} />)
@@ -1127,7 +1151,9 @@ function fmtGlobalValue(field, value, unit) {
   if (field === 'prog') return t(POLICY_NAME[value] || value)
   if (field === 'restSec') return t('{0}s', fmtNum(value))
   if (field === 'inc' || field === 'weight') return fmtNum(value) + ' ' + unit
-  if (field === 'adj') return t('From {0} {2}, +{1} {2}', fmtNum(value.from), fmtNum(value.step), unit)
+  if (field === 'adj') return value.to >= value.from
+    ? t('{0}–{1} {3}, +{2} {3}', fmtNum(value.from), fmtNum(value.to), fmtNum(value.step), unit)
+    : t('From {0} {2}, +{1} {2}', fmtNum(value.from), fmtNum(value.step), unit)
   return fmtNum(value)
 }
 const progressionStepIsValid = (step, policy) =>
@@ -1202,14 +1228,15 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
   // actually has. Offered on dumbbell work and on custom exercises, whose equipment may be
   // anything; bodyweight work has no weight to step.
   const ladder = !cardio && !bw ? ladderOf(c) : null
-  const offerAdj = !cardio && !bw && (ex.eq === 'dumbbell' || !ex.eq || ex.eq === 'custom' || !!c.adj)
+  const offerAdj = !cardio && !bw && (ex.eq === 'dumbbell' || ex.eq === ADJUSTABLE || !ex.eq || ex.eq === 'custom' || !!c.adj)
+  // Switched on, it starts from the adjustable dumbbells of your equipment profile (Settings).
   const setAdj = v => setC(x => {
     if (!v) return { ...x, adj: undefined }
-    const adj = x.adj && ladderOf(x) ? x.adj : { ...ADJUSTABLE_DUMBBELLS }
+    const adj = x.adj && ladderOf(x) ? x.adj : adjustableFor(st)
     return { ...x, adj, weight: snapLoad(x.weight || 0, adj) }
   })
   const setAdjField = (field, v) => setC(x => {
-    const adj = { ...(x.adj || ADJUSTABLE_DUMBBELLS), [field]: v }
+    const adj = { ...(x.adj || adjustableFor(st)), [field]: v }
     return { ...x, adj, weight: ladderOf({ adj }) ? snapLoad(x.weight || 0, adj) : x.weight }
   })
   const progressionPolicy = policyFor({ ...c, id: ex.id }, routine, mode)
@@ -1286,7 +1313,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
     const withRest = restSec ? { restSec } : {}
     // Only on loaded work, and only when it is a ladder that can load something — so a barbell
     // config keeps exactly the shape it had. The planned weight lands on one of its rungs.
-    const withAdj = ladder ? { adj: { from: ladder.from, step: ladder.step } } : {}
+    const withAdj = ladder ? { adj: { from: ladder.from, ...(ladder.to != null ? { to: ladder.to } : {}), step: ladder.step } } : {}
     const loadOf = w => (ladder ? snapLoad(Math.max(0, w || 0), ladder) : Math.max(0, w || 0))
     if (cardio) commit({ sets, min: Math.max(1, Math.round(c.min) || 20), speed: Math.max(0, c.speed || 8), ...withNote, ...withRest })
     else if (mode === 'time') commit({ sets, mode: 'time', sec: Math.max(1, Math.round(c.sec) || 45), weight: loadOf(c.weight), ...flags, ...prog, ...withNote, ...withWarmups, ...withRest, ...withAdj })
@@ -1412,7 +1439,9 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
       </Row>}
       {offerAdj && <Row className={gcls('adj')} icon="dumbbell" iconTint="var(--acc)" title={t('Adjustable dumbbells')}
         subtitle={ladder
-          ? t('Weights go {0}, {1}, {2}… {3}', fmtNum(ladder.from), fmtNum(ladder.from + ladder.step), fmtNum(ladder.from + 2 * ladder.step), st.unit)
+          ? ladder.to != null
+            ? t('Weights go {0}, {1}, {2}… up to {3} {4}', fmtNum(ladder.from), fmtNum(ladder.from + ladder.step), fmtNum(ladder.from + 2 * ladder.step), fmtNum(topOf(ladder)), st.unit)
+            : t('Weights go {0}, {1}, {2}… {3}', fmtNum(ladder.from), fmtNum(ladder.from + ladder.step), fmtNum(ladder.from + 2 * ladder.step), st.unit)
           : t('Weights in fixed clicks from a starting weight, e.g. from 4 kg in 1.5 kg steps.')}>
         <Switch checked={!!c.adj} onChange={setAdj} />
       </Row>}
@@ -1421,6 +1450,11 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
       <div className="row cfgrow" style={{ marginBottom: 8 }}>
         <Stepper label={t('Starting weight ({0})', st.unit)} value={c.adj.from} step={0.5} className={gcls('adj')}
           invalid={!(c.adj.from > 0)} onChange={v => setAdjField('from', v)} />
+        {/* A ladder set up before it had a last rung shows none; the first tap starts it at
+            the profile's, not at 0,5 kg. */}
+        <Stepper label={t('Final weight ({0})', st.unit)} value={c.adj.to ?? ''} step={0.5} className={gcls('adj')}
+          invalid={c.adj.to != null && c.adj.to !== '' && !(c.adj.to >= c.adj.from)}
+          onChange={v => setAdjField('to', c.adj.to == null && v < c.adj.from ? Math.max(c.adj.from, adjustableFor(st).to) : v)} />
         <Stepper label={t('Per click ({0})', st.unit)} value={c.adj.step} step={0.25} className={gcls('adj')}
           invalid={!(c.adj.step > 0)} onChange={v => setAdjField('step', v)} />
       </div>
@@ -1513,6 +1547,7 @@ function plannedRows(ex, cfg, routine, unit) {
     else rows.push([t('Reps'), cfg.prog === 'double' && cfg.repsMin ? `${cfg.repsMin}–${cfg.reps}` : fmtNum(cfg.reps || 0)])
     const bw = isBw({ ...cfg, id: ex.id })
     if (!bw || cfg.weight > 0) rows.push([bw ? t('Added ({0})', unit) : t('Weight ({0})', unit), fmtNum(cfg.weight || 0)])
+    if (ladderOf(cfg)) rows.push([t('Adjustable dumbbells'), fmtGlobalValue('adj', ladderOf(cfg), unit)])
     const policy = policyFor({ ...cfg, id: ex.id }, routine, mode)
     rows.push([t('Progression'), cfg.prog ? t(POLICY_NAME[policy]) : t('Follow the routine ({0})', t(POLICY_NAME[policy]))])
     if (cfg.warmupSets) rows.push([t('Warm-up sets'), fmtNum(cfg.warmupSets)])
@@ -1543,13 +1578,17 @@ function ReusedExercise({ ex, found, routine, onAccept, onEdit, close }) {
 // Adding an exercise while designing a routine. Set up before in another routine, it keeps what
 // it was given there — the user is told so and can accept it as it is or open the config sheet on
 // it. Never set up, the config sheet opens on the class defaults (routineExerciseConfig).
-export function addExerciseToRoutine(ex, routine, onAdd) {
+// With `adj` (adjustable dumbbells { from, to, step }) either one is set up for them, unless it
+// already has dumbbells of its own (withAdjustable).
+export function addExerciseToRoutine(ex, routine, onAdd, { adj } = {}) {
   const st = S()
+  const seed = cfg => (adj ? withAdjustable(cfg, adj) : cfg)
   const found = previousRoutineConfig(st.routines, ex.id, routine?.id)
-  if (!found) return exConfigSheet(ex, null, onAdd, null, routine, routineExerciseConfig(st, ex))
-  ui().openSheet(close => <ReusedExercise ex={ex} found={found} routine={routine} close={close}
-    onAccept={() => onAdd({ ...found.cfg })}
-    onEdit={() => exConfigSheet(ex, null, onAdd, null, routine, { ...found.cfg })} />)
+  if (!found) return exConfigSheet(ex, null, onAdd, null, routine, seed(routineExerciseConfig(st, ex)))
+  const cfg = seed({ ...found.cfg })
+  ui().openSheet(close => <ReusedExercise ex={ex} found={{ ...found, cfg }} routine={routine} close={close}
+    onAccept={() => onAdd({ ...cfg })}
+    onEdit={() => exConfigSheet(ex, null, onAdd, null, routine, { ...cfg })} />)
 }
 
 /* ============================ glyph picker ============================ */

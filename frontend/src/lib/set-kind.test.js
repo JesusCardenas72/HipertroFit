@@ -94,6 +94,13 @@ describe('wheelValues', () => {
     expect(wheelValues(7, { step: { from: 4, step: 1.5 }, max: 8.5 })).toEqual([0, 4, 5.5, 7, 8.5])
   })
 
+  it('stops a ladder at its last rung instead of the top', () => {
+    const v = wheelValues(7, { step: { from: 4, to: 32.5, step: 1.5 }, max: 300 })
+    expect(v[1]).toBe(4)
+    expect(v[v.length - 1]).toBe(32.5)
+    expect(v).toHaveLength(21)
+  })
+
   it('starts the effort wheel with nothing logged', () => {
     expect(wheelValues(null, { step: 0.5, min: 9, max: 10, empty: true })).toEqual([null, 9, 9.5, 10])
   })

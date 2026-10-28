@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { useStore } from '../store/useStore.js'
 import { EXDB, BODYPARTS, allExercises, equipmentOf, matchExercise } from '../lib/exercises.js'
-import { activeProfile, exAvailable } from '../lib/equipment.js'
+import { activeProfile, exAvailable, ADJUSTABLE, adjustableFor } from '../lib/equipment.js'
+import { topOf } from '../lib/load-scale.js'
 import { muscleLabel } from '../lib/muscles.js'
 import { bestWeightFor, workSetCounts } from '../lib/history.js'
 import { favoriteMap, favoritesFirst } from '../lib/favorites.js'
@@ -19,6 +20,7 @@ export default function Library() {
   const [scope, setScope] = useState('')   // '' = all, 'fav' / 'nofav' = favourite or not, 'trained' = in history
   const [bp, setBp] = useState('')
   const [eq, setEq] = useState('')
+  const [adjOn, setAdjOn] = useState(false)   // the dumbbell chip, tapped again: adjustable dumbbells
   const [showAll, setShowAll] = useState(false)   // ignore the active equipment profile for this session
   const [shown, setShown] = useState(40)
   const bpStrip = useRef(null), eqStrip = useRef(null)
@@ -35,6 +37,14 @@ export default function Library() {
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
   const eqOn = eqOpts.includes(eq) ? eq : ''
   const f = eqOn ? eqFiltered.filter(e => e.eq === eqOn) : eqFiltered
+  // Adjustable dumbbells list the dumbbell exercises; "+ Plan" sets them up for your set's range.
+  const adjustable = eqOn === 'dumbbell' && adjOn
+  const adj = adjustable ? adjustableFor(S) : null
+  const pickEq = x => {
+    if (x === 'dumbbell' && eqOn === 'dumbbell') setAdjOn(v => !v)
+    else { setEq(x); setAdjOn(false) }
+    setShown(40)
+  }
   const pickScope = v => { setScope(s => s === v ? '' : v); setShown(40) }
   const ico = { fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }
   useRevealActiveChip(bpStrip, bp)
@@ -65,8 +75,15 @@ export default function Library() {
       {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setShown(40) }}>{t(b)}</button>)}
     </div>
     {eqOpts.length > 1 && <div className="chips" ref={eqStrip} style={{ marginBottom: 12 }}>
-      <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(40) }}>{t('Any equipment')}</button>
-      {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(40) }}>{t(x)}</button>)}
+      <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => pickEq('')}>{t('Any equipment')}</button>
+      {/* Tapped again once on, the dumbbell chip switches between dumbbells and adjustable ones. */}
+      {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => pickEq(x)}>
+        {x === 'dumbbell' && adjustable ? t(ADJUSTABLE) : t(x)}
+      </button>)}
+    </div>}
+    {adjustable && <div className="small dim row" style={{ margin: '-4px 2px 12px', gap: 6, alignItems: 'center' }}>
+      <Icon name="dumbbell" style={{ fontSize: 13 }} />
+      {t('{0}–{1} {3}, +{2} {3} — added to a routine with these weights.', fmtNum(adj.from), fmtNum(topOf(adj)), fmtNum(adj.step), S.unit)}
     </div>}
     <div className="list">
       <div className="item" {...tappable(() => customExSheet(null, ex => exerciseDetailSheet(ex), q.trim()))}>
@@ -80,7 +97,7 @@ export default function Library() {
           <div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(muscleLabel(e.tg || e.bp))} · {t(e.eq)}</div></div>
           <FavoriteStar st={S} id={e.id} />
           {best > 0 && <span className="tag acc">{fmtNum(best)}</span>}
-          <Button size="sm" variant="tinted" icon="plus" onClick={ev => { ev.stopPropagation(); addToRoutineSheet(e) }}>{t('Plan')}</Button>
+          <Button size="sm" variant="tinted" icon="plus" onClick={ev => { ev.stopPropagation(); addToRoutineSheet(e, adj && e.eq === 'dumbbell' ? { adj } : undefined) }}>{t('Plan')}</Button>
         </div>
       })}
       {f.length === 0 && <div className="empty"><div className="ico"><Icon name="magnifier" /></div>{t('No match')}</div>}
