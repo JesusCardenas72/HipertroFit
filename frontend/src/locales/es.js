@@ -82,6 +82,7 @@ export default {
   'Add exercise': 'Añadir ejercicio',
   'Search {0} exercises…': 'Buscar entre {0} ejercicios…',
   'Not favourites': 'No favoritos',
+  'All exercises': 'Todos',
   'No favourites yet — exercises you add to a routine or a workout show up here.': 'Aún no hay favoritos — los ejercicios que añadas a una rutina o a un entrenamiento aparecerán aquí.',
   'No match': 'Sin resultados',
   'Show more': 'Mostrar más',

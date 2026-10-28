@@ -52,8 +52,12 @@ export default function Library() {
       </button>
     </div>}
     {(favCount > 0 || trainedCount > 0 || scope) && <div className="chips" style={{ marginBottom: 8 }}>
-      <button className={'chip' + (scope === 'fav' ? ' on' : '')} aria-pressed={scope === 'fav'} onClick={() => pickScope('fav')}><Icon name="starFill" style={ico} />{t('Favourites')} ({favCount})</button>
-      <button className={'chip nocap' + (scope === 'nofav' ? ' on' : '')} aria-pressed={scope === 'nofav'} onClick={() => pickScope('nofav')}><Icon name="star" style={ico} />{t('Not favourites')}</button>
+      {/* one chip for favourites that cycles: favourites → not favourites → all */}
+      <button className={'chip nocap' + (scope === 'fav' || scope === 'nofav' ? ' on' : '')} aria-pressed={scope === 'fav' || scope === 'nofav'}
+        onClick={() => { setScope(s => s === 'fav' ? 'nofav' : s === 'nofav' ? '' : 'fav'); setShown(40) }}>
+        <Icon name={scope === 'fav' ? 'starFill' : 'star'} style={ico} />
+        {scope === 'fav' ? `${t('Favourites')} (${favCount})` : scope === 'nofav' ? t('Not favourites') : t('All exercises')}
+      </button>
       {trainedCount > 0 && <button className={'chip' + (scope === 'trained' ? ' on' : '')} aria-pressed={scope === 'trained'} onClick={() => pickScope('trained')}><Icon name="clock" style={ico} />{t('Trained')} ({trainedCount})</button>}
     </div>}
     <div className="chips" ref={bpStrip} style={{ marginBottom: eqOpts.length > 1 ? 8 : 12 }}>
