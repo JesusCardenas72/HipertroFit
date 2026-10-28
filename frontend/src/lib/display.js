@@ -10,8 +10,10 @@
 //
 // Text is a multiplier, `--fs`, that every font size in index.css is written against.
 
-export const UI_SCALE = { min: 85, max: 120, step: 5 }
-export const TEXT_SCALE = { min: 85, max: 130, step: 5 }
+export const UI_SCALE = { min: 50, max: 250, step: 5 }
+export const TEXT_SCALE = { min: 50, max: 250, step: 5 }
+// Dragging across the percentage: one step every this many screen pixels.
+export const DRAG_PX_PER_STEP = 8
 export const DEFAULT_DISPLAY = { ui: 100, text: 100 }
 const KEY = 'gym_display_v1'
 
@@ -21,6 +23,15 @@ export function clampScale(v, range) {
   if (!Number.isFinite(n)) return 100
   const snapped = Math.round(n / range.step) * range.step
   return Math.min(range.max, Math.max(range.min, snapped))
+}
+
+/**
+ * The value while dragging across the percentage: `start` moved one step per `pxPerStep` pixels
+ * the pointer has travelled (`dx`, right is larger), kept inside `range`. Measured in screen
+ * pixels, since the interface itself changes size under the finger as the value changes.
+ */
+export function dragScale(start, dx, range, pxPerStep = DRAG_PX_PER_STEP) {
+  return clampScale(start + Math.trunc(dx / pxPerStep) * range.step, range)
 }
 
 /** Stored settings read back safely: missing or broken values fall back to normal size. */

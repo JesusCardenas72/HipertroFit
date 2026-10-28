@@ -20,7 +20,7 @@ import { playClips, stopClips } from '../lib/sound.js'
 import { REST_EX_PRESETS, restExLabel, settingChoice } from '../lib/rest-between.js'
 import { DEFAULT_SECONDARY, normalizeSecondaryWeight } from '../lib/muscles.js'
 import { VOLUME_TARGET, normalizeVolumeSplit } from '../lib/volume.js'
-import { UI_SCALE, TEXT_SCALE, DEFAULT_DISPLAY, loadDisplay, saveDisplay, clampScale } from '../lib/display.js'
+import { UI_SCALE, TEXT_SCALE, DEFAULT_DISPLAY, loadDisplay, saveDisplay, clampScale, dragScale } from '../lib/display.js'
 
 /* A stored sound — the rest-end bell, the exercise-end bells or the "time to progress" celebration —
    or a file from this device (lib/custom-sound.js). The file is checked before it is kept — a clip
@@ -571,13 +571,33 @@ function PushCard({ S, update, toast }) {
 }
 
 // Interface and text size, for this device only (lib/display.js): each tap redraws the app at
-// the new size straight away, so the setting is judged on the screen it changes.
+// the new size straight away, so the setting is judged on the screen it changes. Dragging across
+// the percentage moves it in steps too (lib/display.js dragScale), left smaller, right larger.
 function ScaleRow({ icon, title, value, range, onChange }) {
+  // The drag is followed on the window: the percentage itself moves as the app resizes, so it
+  // can slip out from under the pointer mid-drag.
+  const down = e => {
+    e.preventDefault()
+    const x = e.screenX
+    let last = value
+    const move = ev => {
+      const v = dragScale(value, ev.screenX - x, range)
+      if (v !== last) { last = v; onChange(v) }
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+  }
   return <Row icon={icon} iconTint="var(--blue)" title={title}>
     <span className="scale-ctl">
       <button className="iconbtn" aria-label={t('Smaller')} disabled={value <= range.min}
         onClick={() => onChange(clampScale(value - range.step, range))}><Icon name="minus" /></button>
-      <b>{value}%</b>
+      <b className="scale-drag" onPointerDown={down}>{value}%</b>
       <button className="iconbtn" aria-label={t('Larger')} disabled={value >= range.max}
         onClick={() => onChange(clampScale(value + range.step, range))}><Icon name="plus" /></button>
     </span>
