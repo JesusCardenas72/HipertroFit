@@ -332,8 +332,9 @@ export default function Settings() {
       <Row icon="key" iconTint="var(--teal)" title={t('Import from Hevy')}
         subtitle={t('Pull your history with a Hevy Pro API key')}
         accessory="chevron" onClick={importFromHevy} />
-      <Row icon="upload" iconTint="var(--blue)" title={t('Import backup')} accessory="chevron" onClick={() => fileRef.current.click()} />
-      <Row icon="download" iconTint="var(--blue)" title={t('Export backup (JSON)')} accessory="chevron" onClick={doExport} />
+      {/* The arrow points the way the data goes: into the app, or out of it. */}
+      <Row icon="download" iconTint="var(--blue)" title={t('Import backup')} accessory="chevron" onClick={() => fileRef.current.click()} />
+      <Row icon="upload" iconTint="var(--blue)" title={t('Export backup (JSON)')} accessory="chevron" onClick={doExport} />
       {MOBILE && <Row icon="history" iconTint="var(--blue)" title={t('Auto-backup on changes')}
         subtitle={t('Saves a dated copy after finishing a workout or editing a routine. One file per day, overwritten as the day goes on.')}>
         <Switch checked={!!S.autoBackup} onChange={v => update(s => { s.autoBackup = v })} />
