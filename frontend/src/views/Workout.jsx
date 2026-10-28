@@ -72,8 +72,14 @@ function StartChooser() {
         <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
         <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
         <span className="tag acc">{t('Start')}</span></div>)}</div></>}
-    <div style={{ height: 14 }} />
-    <Button icon="shuffle" onClick={() => startFlow(null)}>{t('Freestyle workout (pick as you go)')}</Button>
+    {/* No routine: a row like the routines', set apart from them and in its own colour. */}
+    <div className="list free-start">
+      <div className="item free" onClick={() => startFlow(null)}>
+        <span className="lrow-i"><Icon name="freeWorkout" /></span>
+        <div className="grow"><div className="tt">{t('Freestyle workout')}</div><div className="ss">{t('Pick exercises as you go')}</div></div>
+        <span className="tag">{t('Start')}</span>
+      </div>
+    </div>
     {!S.routines.length && <><div style={{ height: 10 }} /><Button variant="primary" onClick={() => nav('/plan')}>{t('Build a plan first')}</Button></>}
   </div>
 }

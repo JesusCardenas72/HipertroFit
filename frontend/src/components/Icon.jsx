@@ -144,6 +144,8 @@ const P = {
   cornerDownRight: <path d="M6.4 4.4v7.2a3 3 0 0 0 3 3h10.2M15.4 10.4l4.2 4.2-4.2 4.2" />,
   expand: <path d="M14.4 4.4h5.2v5.2M9.6 19.6H4.4v-5.2M19.6 4.4 13.8 10.2M4.4 19.6l5.8-5.8" />,
   minimize: <path d="M19.6 9.6h-5.2V4.4M4.4 14.4h5.2v5.2M14.4 9.6l5.2-5.2M9.6 14.4l-5.2 5.2" />,
+  // someone seated under a barbell held overhead, on a mat: the freestyle workout
+  freeWorkout: <><path d="M2.6 5.2h18.8M5 2.6v5.2M19 2.6v5.2" /><circle cx="12" cy="8.6" r="2.2" /><path d="M7.4 5.4 8.8 12h6.4l1.4-6.6M8.8 12l.4 6M15.2 12l-.4 6" /><path d="M4.2 20.4h15.6" /></>,
   // a large and a small capital A: the text-size setting
   textSize: <path d="M3 19 8.5 5h1L15 19M5.2 14h7.6M14.6 19l3.4-8.4h.8L22 19M15.7 16.2h5.2" />,
   // a phone: settings kept on this device

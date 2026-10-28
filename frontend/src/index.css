@@ -2169,3 +2169,10 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .scale-ctl{display:inline-flex;align-items:center;gap:4px}
 .scale-ctl b{min-width:48px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
 .scale-ctl .iconbtn:disabled{opacity:.35}
+/* Start screen: the freestyle workout, a routine-like row apart from the routines, in blue */
+.free-start{margin-top:22px}
+.item.free{background:color-mix(in srgb,var(--blue) 16%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue) 35%,transparent)}
+.item.free:active{background:color-mix(in srgb,var(--blue) 26%,var(--surface))}
+.item.free .lrow-i{--tint:var(--blue)}
+.item.free .tt{color:var(--blue);font-weight:500}
+.item.free .tag{background:color-mix(in srgb,var(--blue) 22%,transparent);color:var(--blue)}

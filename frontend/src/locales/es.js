@@ -177,6 +177,8 @@ export default {
   'Other routines': 'Otras rutinas',
   'Start ▶': 'Empezar ▶',
   'Freestyle workout (pick as you go)': 'Entrenamiento libre (elige sobre la marcha)',
+  'Freestyle workout': 'Entrenamiento libre',
+  'Pick exercises as you go': 'Elige sobre la marcha',
   'Build a plan first': 'Crea primero un plan',
   'Duration (min)': 'Duración (min)',
   'Last time': 'La última vez',
