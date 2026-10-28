@@ -118,15 +118,19 @@
 
 /* ---------------------------------------------------------------- reset -- */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* Settings ▸ Appearance (lib/display.js): --fs scales every font size; --ui-zoom is the CSS zoom
+   a desktop browser draws the app at, which --vh / --dvh take back out of the viewport units. */
+:root{--fs:1;--ui-zoom:1;--vh:calc(1vh / var(--ui-zoom));--dvh:var(--vh)}
+@supports (height:1dvh){:root{--dvh:calc(1dvh / var(--ui-zoom))}}
 html{
-  font-size:16px;background:var(--bg);overscroll-behavior:none;overflow-x:clip;
+  font-size:calc(16px * var(--fs));background:var(--bg);overscroll-behavior:none;overflow-x:clip;
   -webkit-text-size-adjust:100%;
 }
 body{
   background:var(--bg);color:var(--label);
   font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Segoe UI',Roboto,system-ui,sans-serif;
-  font-size:17px;line-height:1.29;letter-spacing:-.01em;
-  min-height:100vh;overscroll-behavior-y:none;overflow-x:clip;
+  font-size:calc(17px * var(--fs));line-height:1.29;letter-spacing:-.01em;
+  min-height:calc(100 * var(--vh));overscroll-behavior-y:none;overflow-x:clip;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
   touch-action:manipulation;
   font-variant-numeric:tabular-nums;
@@ -150,18 +154,18 @@ button,.chip,.tile,.item,.wday,.cal-d,.swatch,.hm-c,.lrow,.seg button,.stp butto
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 
 /* ------------------------------------------------------------ type scale -- */
-.t-large  {font-size:34px;line-height:1.06;font-weight:700;letter-spacing:-.028em}
-.t-title  {font-size:28px;line-height:1.12;font-weight:700;letter-spacing:-.024em}
-.t-title2 {font-size:22px;line-height:1.18;font-weight:700;letter-spacing:-.021em}
-.t-head   {font-size:17px;line-height:1.29;font-weight:600;letter-spacing:-.012em}
-.t-body   {font-size:17px;line-height:1.29;font-weight:400;letter-spacing:-.012em}
-.t-callout{font-size:16px;line-height:1.31;font-weight:400;letter-spacing:-.009em}
-.t-sub    {font-size:15px;line-height:1.33;font-weight:400;letter-spacing:-.006em}
-.t-foot   {font-size:13px;line-height:1.38;font-weight:400;letter-spacing:-.001em}
-.t-cap    {font-size:12px;line-height:1.33;font-weight:400;letter-spacing:0}
+.t-large  {font-size:calc(34px * var(--fs));line-height:1.06;font-weight:700;letter-spacing:-.028em}
+.t-title  {font-size:calc(28px * var(--fs));line-height:1.12;font-weight:700;letter-spacing:-.024em}
+.t-title2 {font-size:calc(22px * var(--fs));line-height:1.18;font-weight:700;letter-spacing:-.021em}
+.t-head   {font-size:calc(17px * var(--fs));line-height:1.29;font-weight:600;letter-spacing:-.012em}
+.t-body   {font-size:calc(17px * var(--fs));line-height:1.29;font-weight:400;letter-spacing:-.012em}
+.t-callout{font-size:calc(16px * var(--fs));line-height:1.31;font-weight:400;letter-spacing:-.009em}
+.t-sub    {font-size:calc(15px * var(--fs));line-height:1.33;font-weight:400;letter-spacing:-.006em}
+.t-foot   {font-size:calc(13px * var(--fs));line-height:1.38;font-weight:400;letter-spacing:-.001em}
+.t-cap    {font-size:calc(12px * var(--fs));line-height:1.33;font-weight:400;letter-spacing:0}
 
 .muted{color:var(--label-2)} .dim{color:var(--label-3)}
-.small{font-size:13px;line-height:1.38}
+.small{font-size:calc(13px * var(--fs));line-height:1.38}
 .accent{color:var(--acc)}
 .capitalize{text-transform:capitalize}
 /* exercise names and body-part/equipment terms arrive lowercase from the dataset,
@@ -188,7 +192,7 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
    the timer (60) and the sheets (100); never takes a tap. */
 .ver-badge{
   position:fixed;top:calc(var(--sat) + 1px);right:calc(8px + var(--sar));z-index:30;
-  font-size:9px;line-height:10px;font-weight:500;letter-spacing:.02em;
+  font-size:calc(9px * var(--fs));line-height:10px;font-weight:500;letter-spacing:.02em;
   color:var(--label-3);opacity:.7;pointer-events:none;user-select:none;-webkit-user-select:none;
 }
 
@@ -219,7 +223,7 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
   from{transform:perspective(1100px) translateX(var(--slide-from,0px)) rotateY(var(--turn-from,0deg)) scale(var(--scale-from,1));opacity:var(--fade-from,1)}
   to{transform:perspective(1100px) translateX(var(--slide-to,0px)) rotateY(var(--turn-to,0deg)) scale(var(--scale-to,1));opacity:var(--fade-to,1)}
 }
-.deck-turn .deck-layer{backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-origin:50% 40vh}
+.deck-turn .deck-layer{backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-origin:50% calc(40 * var(--vh))}
 /* exactly SetDrum's settle, 1 + 2(k−1)³ + (k−1)², written as a Bézier */
 .deck-turn .deck-sliding{animation:deck-turn var(--turn) cubic-bezier(.333,1.333,.667,1) both}
 /* A screen away from the front is wrapped round the cylinder (turnBands in lib/slide.js): SlideDeck
@@ -227,7 +231,7 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
    screen showing its own part of it, and hides the real one (.deck-ghost) until it lands flat. Opaque
    bands, overlapping a hair, so no seam shows; the page's colour falls over a band as it turns away. */
 .deck-ghost{opacity:0!important;pointer-events:none}
-.deck-bands{position:absolute;inset:0;perspective:1100px;perspective-origin:50% 40vh;pointer-events:none;z-index:3}
+.deck-bands{position:absolute;inset:0;perspective:1100px;perspective-origin:50% calc(40 * var(--vh));pointer-events:none;z-index:3}
 .deck-band{position:absolute;top:0;bottom:0;clip-path:inset(-200vh 0);backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:transform}
 .deck-band::before{content:"";position:absolute;inset:0;background:var(--bg)}
 .deck-band::after{content:"";position:absolute;inset:0;background:var(--bg);opacity:var(--shade,0);pointer-events:none}
@@ -245,13 +249,13 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
 
 /* large title, the way a nav bar does it */
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 18px}
-.hdr h1{font-size:34px;line-height:1.06;font-weight:700;letter-spacing:-.028em}
-.hdr .sub{color:var(--label-2);font-size:15px;letter-spacing:-.006em;margin-top:4px}
+.hdr h1{font-size:calc(34px * var(--fs));line-height:1.06;font-weight:700;letter-spacing:-.028em}
+.hdr .sub{color:var(--label-2);font-size:calc(15px * var(--fs));letter-spacing:-.006em;margin-top:4px}
 
 .iconbtn{
   width:36px;height:36px;border-radius:50%;flex:none;
   background:var(--surface);color:var(--label);
-  display:flex;align-items:center;justify-content:center;font-size:18px;
+  display:flex;align-items:center;justify-content:center;font-size:calc(18px * var(--fs));
   transition:background var(--fast),transform var(--fast);
 }
 .iconbtn:active{background:var(--surface-2);transform:scale(.92)}
@@ -268,11 +272,11 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
 .iconbtn:disabled{opacity:.32}
 
 h4.sec{
-  font-size:13px;font-weight:400;letter-spacing:-.004em;color:var(--label-2);
+  font-size:calc(13px * var(--fs));font-weight:400;letter-spacing:-.004em;color:var(--label-2);
   text-transform:none;margin:22px 0 8px;padding:0 4px;
 }
 .card h2{
-  font-size:13px;font-weight:400;letter-spacing:-.004em;color:var(--label-2);
+  font-size:calc(13px * var(--fs));font-weight:400;letter-spacing:-.004em;color:var(--label-2);
   text-transform:none;margin:0 0 12px;
 }
 .divider{height:var(--hair);background:var(--sep);margin:14px 0;border:0}
@@ -291,16 +295,16 @@ h4.sec{
   background:var(--surface);border-radius:var(--r-card);
   padding:16px;margin-bottom:12px;
 }
-.card .big{font-size:30px;font-weight:600;letter-spacing:-.026em;line-height:1.1}
+.card .big{font-size:calc(30px * var(--fs));font-weight:600;letter-spacing:-.026em;line-height:1.1}
 
 /* ------------------------------------------------------ inset group list -- */
 .sect{margin-bottom:22px}
 .sect-t{
-  font-size:13px;font-weight:400;color:var(--label-2);
+  font-size:calc(13px * var(--fs));font-weight:400;color:var(--label-2);
   letter-spacing:-.004em;padding:0 4px 7px;display:block;
 }
 .sect-b{background:var(--surface);border-radius:var(--r-card);overflow:hidden}
-.sect-f{font-size:13px;color:var(--label-2);padding:7px 4px 0;line-height:1.38}
+.sect-f{font-size:calc(13px * var(--fs));color:var(--label-2);padding:7px 4px 0;line-height:1.38}
 
 .lrow{
   display:flex;align-items:center;gap:12px;width:100%;text-align:left;
@@ -314,13 +318,13 @@ h4.sec{
 .lrow:has(.lrow-i)+.lrow:has(.lrow-i)::before{left:55px}
 .lrow.tap:active{background:var(--surface-2)}
 .lrow-i{
-  width:29px;height:29px;border-radius:7px;flex:none;font-size:18px;
+  width:29px;height:29px;border-radius:7px;flex:none;font-size:calc(18px * var(--fs));
   display:flex;align-items:center;justify-content:center;
   background:var(--tint,var(--acc));color:#fff;
 }
 .lrow-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.lrow-t{font-size:17px;letter-spacing:-.012em;line-height:1.25}
-.lrow-s{font-size:13px;color:var(--label-2);line-height:1.3}
+.lrow-t{font-size:calc(17px * var(--fs));letter-spacing:-.012em;line-height:1.25}
+.lrow-s{font-size:calc(13px * var(--fs));color:var(--label-2);line-height:1.3}
 /* flex:none would let a long value ("Follow the routine (Linear progression)") run straight
    through the title next to it, since the title's column is already free to shrink to nothing.
    Letting the value shrink and ellipsise instead keeps the two out of each other's way.
@@ -328,7 +332,7 @@ h4.sec{
    none of the shrink — a long value would otherwise take the whole row and squeeze the title
    to 21px. A basis of 45% fixes that but reserves the space even for "3", costing the title
    141px on the rows that need it most. A cap does neither. */
-.lrow-v{color:var(--label-2);font-size:17px;letter-spacing:-.012em;flex:0 1 auto;max-width:45%;min-width:0;
+.lrow-v{color:var(--label-2);font-size:calc(17px * var(--fs));letter-spacing:-.012em;flex:0 1 auto;max-width:45%;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 /* The rule above keeps a long *value* off the title. A control handed to the row as a child
    was never covered by it: a segmented control sized for English ("Dark | Light | System")
@@ -357,8 +361,8 @@ h4.sec{
    out of the card even with a whole line to itself. Shrinking cannot cost a wrap that should
    not happen — line breaking measures the track at its content width either way. */
 .lrow-ctl .seg-inline{flex:0 1 auto}
-.lrow-c{color:var(--label);font-size:15px;flex:none;--icon-stroke:2.4}
-.lrow-k{color:var(--acc);font-size:17px;flex:none;--icon-stroke:2.4}
+.lrow-c{color:var(--label);font-size:calc(15px * var(--fs));flex:none;--icon-stroke:2.4}
+.lrow-k{color:var(--acc);font-size:calc(17px * var(--fs));flex:none;--icon-stroke:2.4}
 .lrow.danger,.lrow.danger .lrow-t{color:var(--red)}
 /* The Stats exercise name gets its own line so long names cannot run into the title.
    Two columns only — label/value on the left, chevron on the right — so this is for rows
@@ -376,7 +380,7 @@ h4.sec{
    vertical negative margin keeps it from making the row taller. The horizontal ones pull the
    hit area back under the row's own 12px gap instead of adding to it. */
 .helpbtn{
-  color:var(--label-3);font-size:16px;background:none;line-height:0;flex:none;
+  color:var(--label-3);font-size:calc(16px * var(--fs));background:none;line-height:0;flex:none;
   margin:-11px -2px -11px -4px;padding:11px 4px;
 }
 .helpbtn:active{color:var(--label)}
@@ -384,11 +388,11 @@ h4.sec{
 /* -------------------------------------------------------------- buttons -- */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;
-  padding:14px 18px;border-radius:var(--r);font-size:17px;font-weight:600;
+  padding:14px 18px;border-radius:var(--r);font-size:calc(17px * var(--fs));font-weight:600;
   letter-spacing:-.012em;background:var(--surface-2);color:var(--label);
   transition:transform var(--fast) var(--ease),background var(--fast),opacity var(--fast);
 }
-.btn .icn{font-size:19px}
+.btn .icn{font-size:calc(19px * var(--fs))}
 .btn:active{transform:scale(.975)}
 .btn.primary{background:var(--acc);color:var(--on-acc)}
 .btn.primary:active{background:var(--acc-2)}
@@ -396,9 +400,9 @@ h4.sec{
 .btn.danger{background:color-mix(in srgb,var(--red) 15%,transparent);color:var(--red)}
 .btn.ghost,.btn.plain{background:none;color:var(--acc);font-weight:400}
 .btn.ghost:active,.btn.plain:active{background:var(--surface-2)}
-.btn.sm{padding:8px 14px;width:auto;font-size:15px;border-radius:var(--r-sm);gap:5px}
-.btn.sm .icn{font-size:16px}
-.btn.xs{padding:5px 10px;width:auto;font-size:13px;border-radius:7px;gap:4px}
+.btn.sm{padding:8px 14px;width:auto;font-size:calc(15px * var(--fs));border-radius:var(--r-sm);gap:5px}
+.btn.sm .icn{font-size:calc(16px * var(--fs))}
+.btn.xs{padding:5px 10px;width:auto;font-size:calc(13px * var(--fs));border-radius:7px;gap:4px}
 .btn:disabled{opacity:.32;pointer-events:none}
 
 /* ----------------------------------------------------------- tab bar ----- */
@@ -419,7 +423,7 @@ h4.sec{
 :root[data-theme="light"] #tabbar{background:rgba(249,249,251,.94)}
 #tabbar button{
   flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
-  color:var(--label-3);font-size:10px;font-weight:500;letter-spacing:.005em;padding-top:3px;
+  color:var(--label-3);font-size:calc(10px * var(--fs));font-weight:500;letter-spacing:.005em;padding-top:3px;
   transition:color var(--fast);
 }
 /* The label is the one thing here with no width of its own, so it used to spill out of its
@@ -435,7 +439,7 @@ h4.sec{
    the alpha doubled up and the icon read as a stack of loose layers. Carrying the
    fade on the <svg> instead of in the stroke colour flattens the icon first and
    fades it as one shape — and it does that for every icon, not just this one. */
-#tabbar button .icn{font-size:25px;--icon-stroke:1.65;color:var(--label)}
+#tabbar button .icn{font-size:calc(25px * var(--fs));--icon-stroke:1.65;color:var(--label)}
 #tabbar button.on{color:var(--acc)}
 #tabbar button.on .icn{--icon-stroke:2;color:inherit;opacity:1}
 #tabbar button.start{margin-top:-24px}
@@ -446,7 +450,7 @@ h4.sec{
   transition:transform var(--fast) var(--ease);
 }
 #tabbar button.start:active .cir{transform:scale(.93)}
-#tabbar button.start .cir .icn{font-size:26px;--icon-stroke:2;color:inherit;opacity:1}
+#tabbar button.start .cir .icn{font-size:calc(26px * var(--fs));--icon-stroke:2;color:inherit;opacity:1}
 #tabbar button.start span{color:var(--acc);font-weight:600}
 /* `.cir` is itself a <span>, so the label rules above and below reach it too and
    outrank the `.cir` block — which is how the running state ended up painting an
@@ -482,8 +486,8 @@ h4.sec{
   flex:1;text-align:center;padding:8px 2px 9px;border-radius:10px;
   background:none;border:none;transition:background var(--fast);
 }
-.wday .lbl{font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.03em}
-.wday .num{font-size:17px;font-weight:400;margin:4px 0;letter-spacing:-.012em}
+.wday .lbl{font-size:calc(11px * var(--fs));color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.03em}
+.wday .num{font-size:calc(17px * var(--fs));font-weight:400;margin:4px 0;letter-spacing:-.012em}
 .wday .dot{width:5px;height:5px;border-radius:50%;background:transparent;margin:0 auto}
 .wday .dot.plan{background:var(--label-3)}
 .wday .dot.ovr{background:var(--orange)}
@@ -545,16 +549,16 @@ h4.sec{
    a long press and no drag ghost when a scroll starts on the picture */
 .thumb,.exmedia img{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
 .thumb-x{
-  display:flex;align-items:center;justify-content:center;font-size:21px;
+  display:flex;align-items:center;justify-content:center;font-size:calc(21px * var(--fs));
   background:var(--surface-2);color:var(--label-2);
 }
-.item .tt{font-size:16px;font-weight:400;line-height:1.25;letter-spacing:-.009em}
-.item .ss{color:var(--label-2);font-size:13px;margin-top:2px}
+.item .tt{font-size:calc(16px * var(--fs));font-weight:400;line-height:1.25;letter-spacing:-.009em}
+.item .ss{color:var(--label-2);font-size:calc(13px * var(--fs));margin-top:2px}
 .item .grow{flex:1;min-width:0}
-.chev{color:var(--label);flex:none;font-size:15px;--icon-stroke:2.4}
+.chev{color:var(--label);flex:none;font-size:calc(15px * var(--fs));--icon-stroke:2.4}
 .tag{
   display:inline-flex;align-items:center;gap:3px;background:var(--surface-2);
-  color:var(--label-2);border-radius:6px;padding:3px 7px;font-size:12px;
+  color:var(--label-2);border-radius:6px;padding:3px 7px;font-size:calc(12px * var(--fs));
   font-weight:500;text-transform:capitalize;
 }
 .tag.acc{background:var(--acc-soft);color:var(--acc)}
@@ -578,7 +582,7 @@ h4.sec{
 .chips{touch-action:pan-x}
 .chip{
   flex:none;padding:6px 13px;border-radius:99px;background:var(--surface);
-  font-size:14px;font-weight:400;color:var(--label);text-transform:capitalize;
+  font-size:calc(14px * var(--fs));font-weight:400;color:var(--label);text-transform:capitalize;
   letter-spacing:-.006em;transition:background var(--fast),color var(--fast);
 }
 .chip:active{background:var(--surface-2)}
@@ -589,7 +593,7 @@ h4.sec{
 /* --- text field --- */
 .field,.input{
   width:100%;background:var(--surface);border:none;border-radius:var(--r);
-  padding:13px 15px;font-size:17px;letter-spacing:-.012em;outline:none;
+  padding:13px 15px;font-size:calc(17px * var(--fs));letter-spacing:-.012em;outline:none;
   transition:box-shadow var(--fast);
 }
 .field::placeholder,.input::placeholder{color:var(--label-3)}
@@ -597,13 +601,13 @@ h4.sec{
 .field.area,textarea.input{min-height:92px;resize:vertical;line-height:1.42}
 .exnote{
   background:var(--surface);border-radius:var(--r);padding:13px 15px;
-  line-height:1.45;white-space:pre-wrap;font-size:15px;margin-bottom:10px;color:var(--label-2);
+  line-height:1.45;white-space:pre-wrap;font-size:calc(15px * var(--fs));margin-bottom:10px;color:var(--label-2);
 }
 
 /* --- search field --- */
 .searchf{position:relative;display:flex;align-items:center}
 .searchf .lead{
-  position:absolute;left:11px;font-size:16px;color:var(--label-3);
+  position:absolute;left:11px;font-size:calc(16px * var(--fs));color:var(--label-3);
   pointer-events:none;--icon-stroke:2.1;z-index:1;
 }
 .searchf .field{padding-left:35px;padding-right:36px;background:var(--surface-2);border-radius:10px}
@@ -611,7 +615,7 @@ h4.sec{
 .searchf .clear{
   position:absolute;right:8px;width:22px;height:22px;border-radius:50%;
   background:var(--label-3);color:var(--bg);display:flex;align-items:center;
-  justify-content:center;font-size:11px;--icon-stroke:3;
+  justify-content:center;font-size:calc(11px * var(--fs));--icon-stroke:3;
 }
 /* legacy .search wrapper */
 .search{position:relative}
@@ -671,40 +675,40 @@ h4.sec{
 }
 :root[data-theme="light"] .seg-sel{background:#fff}
 .seg button{
-  position:relative;z-index:1;padding:6px 8px;font-size:14px;font-weight:500;
+  position:relative;z-index:1;padding:6px 8px;font-size:calc(14px * var(--fs));font-weight:500;
   letter-spacing:-.006em;color:var(--label);display:flex;align-items:center;
   justify-content:center;gap:5px;min-height:30px;transition:opacity var(--fast);
 }
-.seg button .icn{font-size:16px}
+.seg button .icn{font-size:calc(16px * var(--fs))}
 .seg button:not(.on){color:var(--label-2);font-weight:400}
 .seg button:active{opacity:.5}
 /* sitting in a list row: shrink to content instead of filling the row */
 .seg-inline{flex:none;min-width:132px}
 .seg-range{margin-bottom:10px}
-.seg-inline button{padding:5px 10px;font-size:13px;min-height:28px}
+.seg-inline button{padding:5px 10px;font-size:calc(13px * var(--fs));min-height:28px}
 /* Once the track above is allowed to shrink, the labels are what has to give. The icon stays
    — on the theme row (moon/sun/gear) it carries the choice on its own once "Sistema" has been
    clipped. Scoped to seg-inline: a full-width segmented control has the room to wrap instead. */
 .seg-inline button>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.seg-inline button .icn{font-size:14px}
+.seg-inline button .icn{font-size:calc(14px * var(--fs))}
 
 /* native time input, restyled to sit in a row like a value label */
 .timef{
   background:var(--surface-2);border:none;border-radius:8px;padding:6px 10px;
-  font-size:16px;color:var(--label);outline:none;font-variant-numeric:tabular-nums;
+  font-size:calc(16px * var(--fs));color:var(--label);outline:none;font-variant-numeric:tabular-nums;
 }
 .timef::-webkit-calendar-picker-indicator{filter:invert(.5)}
 :root[data-theme="light"] .timef::-webkit-calendar-picker-indicator{filter:none}
 
 /* --- stepper --- */
 .stp-w{display:flex;flex-direction:column;gap:6px;min-width:0}
-.stp-l{font-size:13px;color:var(--label-2);text-align:center}
+.stp-l{font-size:calc(13px * var(--fs));color:var(--label-2);text-align:center}
 .stp{
   display:flex;align-items:center;background:var(--surface-2);
   border-radius:10px;overflow:hidden;min-width:0;
 }
 .stp button{
-  width:40px;height:44px;flex:none;color:var(--label);font-size:16px;
+  width:40px;height:44px;flex:none;color:var(--label);font-size:calc(16px * var(--fs));
   display:flex;align-items:center;justify-content:center;
   transition:background var(--fast);--icon-stroke:2.2;
 }
@@ -713,10 +717,10 @@ h4.sec{
   flex:1;min-width:0;display:flex;align-items:baseline;justify-content:center;gap:3px;padding:0 2px;
   align-self:stretch;
 }
-.stp .val i{font-style:normal;font-size:12px;color:var(--label-2);flex:none}
+.stp .val i{font-style:normal;font-size:calc(12px * var(--fs));color:var(--label-2);flex:none}
 .stp .num{
   width:100%;min-width:0;text-align:center;background:none;border:none;outline:none;
-  font-size:17px;font-weight:500;letter-spacing:-.012em;padding:0;
+  font-size:calc(17px * var(--fs));font-weight:500;letter-spacing:-.012em;padding:0;
   -moz-appearance:textfield;appearance:textfield;
   /* the field is the whole height of the stepper, not just its 18px text line, so a tap
      anywhere between the two buttons focuses it */
@@ -747,7 +751,7 @@ h4.sec{
   background:none;box-shadow:inset 0 0 0 1.8px var(--label-4);color:transparent;
   transition:background var(--fast),box-shadow var(--fast),color var(--fast),transform var(--fast);
 }
-.chk .icn{font-size:16px;--icon-stroke:2.6}
+.chk .icn{font-size:calc(16px * var(--fs));--icon-stroke:2.6}
 /* 30px is the right look next to a stepper but a poor target: extend the tap area to 44px
    without painting it; the left side stays shorter so the stepper's + button keeps its edge */
 .chk::before,.ck::before{content:'';position:absolute;inset:-7px -7px -7px -4px}
@@ -768,21 +772,21 @@ h4.sec{
 .exmedia .gifhint,.exmedia .giftoggle{
   position:absolute;bottom:9px;display:inline-flex;align-items:center;gap:4px;
   background:rgba(0,0,0,.45);color:#fff;border-radius:99px;padding:5px 11px;
-  font-size:12px;font-weight:500;
+  font-size:calc(12px * var(--fs));font-weight:500;
   -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
 }
 .exmedia .gifhint{right:9px}
 .exmedia .giftoggle{left:9px}
-.exmedia .gifhint .icn,.exmedia .giftoggle .icn{font-size:13px}
+.exmedia .gifhint .icn,.exmedia .giftoggle .icn{font-size:calc(13px * var(--fs))}
 /* the "Expand" chip that brings a hidden animation back, sitting beside the exercise
    number — not overlaid on media, so it carries its own (non-absolute) styling */
 .giftoggle.inline{
   display:inline-flex;align-items:center;gap:4px;
   background:var(--acc-soft);color:var(--acc);border-radius:99px;padding:3px 10px;
-  font-size:12px;font-weight:500;
+  font-size:calc(12px * var(--fs));font-weight:500;
 }
 .giftoggle.inline:active{transform:scale(.94)}
-.giftoggle.inline .icn{font-size:13px}
+.giftoggle.inline .icn{font-size:calc(13px * var(--fs))}
 .giftoggle.inline.plain{background:var(--surface-2);color:var(--label-2)}
 /* the position line above the card: when its chips do not fit one row on a phone they wrap to a
    second instead of running off the edge; the "Between exercises" label still truncates if
@@ -800,7 +804,7 @@ h4.sec{
 
 .sethead{
   display:flex;align-items:center;gap:8px;padding:0 0 6px;
-  font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
+  font-size:calc(11px * var(--fs));color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
 }
 .sethead .n-sp{width:24px;flex:none}
 .sethead .w-sp{flex:1.4;text-align:center}
@@ -818,7 +822,7 @@ h4.sec{
 .setswipe-track{
   position:absolute;inset:0;z-index:0;border-radius:8px;
   display:flex;align-items:center;justify-content:flex-start;padding-left:14px;
-  background:color-mix(in srgb,var(--red) 45%,transparent);color:#fff;font-size:17px;
+  background:color-mix(in srgb,var(--red) 45%,transparent);color:#fff;font-size:calc(17px * var(--fs));
   transition:background var(--fast);
 }
 .setswipe-track.armed{background:var(--red)}
@@ -828,12 +832,12 @@ h4.sec{
 .setrow+.setrow::before{
   content:'';position:absolute;left:32px;right:0;top:0;height:var(--hair);background:var(--sep);
 }
-.setph{margin:8px 0 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:10px}
+.setph{margin:8px 0 2px;font-size:calc(11px * var(--fs));letter-spacing:.08em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:10px}
 .setph::after{content:'';flex:1;height:1px;background:var(--sep)}
 .setsep{height:1px;background:var(--sep);margin:9px 0}
 .setrow .n{
   width:24px;height:24px;border-radius:50%;background:var(--surface-2);color:var(--label-2);
-  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:calc(12px * var(--fs));font-weight:500;flex:none;
   transition:background var(--fast),color var(--fast);
 }
 .setrow .stp.w{flex:1.4;min-width:0}
@@ -850,8 +854,8 @@ h4.sec{
 .setrow.eff3 .stp.r,.sethead.eff3 .r-sp{flex:1}
 .setrow.eff3 .stp.eff,.setrow.eff3 .eff-sp,.sethead.eff3 .eff-sp{flex:.85}
 .setrow.eff3 .stp{flex-direction:column-reverse;align-items:stretch}
-.setrow.eff3 .stp button{width:100%;height:24px;font-size:13px}
-.setrow.eff3 .stp .num{font-size:16px;min-height:36px}
+.setrow.eff3 .stp button{width:100%;height:24px;font-size:calc(13px * var(--fs))}
+.setrow.eff3 .stp .num{font-size:calc(16px * var(--fs));min-height:36px}
 .setrow.eff3 .stp .val{padding:0 2px}
 /* the set to do next: a soft accent wash and a ringed number, eased in and out as it moves on */
 /* the wash spills 6px past the row with a spread shadow, so marking a row never shifts the layout */
@@ -875,16 +879,16 @@ h4.sec{
 /* drop-set drops / rest-pause bursts riding on a work row, editable like the row itself
    (issue: drop-sets & rest-pause) */
 .subrow{display:flex;align-items:center;gap:6px;padding:3px 0 3px 32px}
-.subrow .subn{font-size:11px;color:var(--label-3);flex:none;width:46px}
+.subrow .subn{font-size:calc(11px * var(--fs));color:var(--label-3);flex:none;width:46px}
 .subrow .stp.mini{flex:1;min-width:0}
 .subrow .stp.mini button{width:26px;height:30px}
-.subrow .stp.mini .num{font-size:13px;min-height:30px}
-.subrow .iconbtn{width:26px;height:26px;font-size:11px;flex:none}
+.subrow .stp.mini .num{font-size:calc(13px * var(--fs));min-height:30px}
+.subrow .iconbtn{width:26px;height:26px;font-size:calc(11px * var(--fs));flex:none}
 /* What the same set position did last session, one value straight above each stepper it
    refers to — weight over weight, reps over reps, effort over effort. It shares the row's flex
    numbers (and the eff3 variant) so every figure stays centred over its own column. The chip
    that writes the progression's target back into a row that drifted from it sits underneath. */
-.setprev{display:flex;align-items:center;gap:8px;padding:4px 0 0;font-size:12px;color:var(--label-2)}
+.setprev{display:flex;align-items:center;gap:8px;padding:4px 0 0;font-size:calc(12px * var(--fs));color:var(--label-2)}
 .setprev .subn{width:24px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:var(--label-3)}
 .setprev .subn svg{width:11px;height:11px}
 .setprev .pv{min-width:0;text-align:center;font-variant-numeric:tabular-nums;color:var(--label-2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -899,7 +903,7 @@ h4.sec{
 .setsug{display:flex;justify-content:flex-end;padding:0 0 5px 32px}
 .setsug .chip.add{
   display:inline-flex;align-items:center;gap:3px;flex:none;
-  color:var(--acc);text-transform:none;font-size:11px;font-weight:500;padding:3px 9px;
+  color:var(--acc);text-transform:none;font-size:calc(11px * var(--fs));font-weight:500;padding:3px 9px;
 }
 .setsug .chip.add svg{width:11px;height:11px}
 .setextra{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px 32px}
@@ -909,7 +913,7 @@ h4.sec{
 /* why the next target is what it is (issue #17) */
 .progline{
   width:100%;display:flex;align-items:flex-start;gap:7px;margin:6px 0 2px;padding:0;
-  text-align:left;font-size:13px;line-height:1.38;color:var(--acc);
+  text-align:left;font-size:calc(13px * var(--fs));line-height:1.38;color:var(--acc);
 }
 .progline.warn{color:var(--yellow)}
 .progline svg{flex:none;margin-top:2px}
@@ -918,7 +922,7 @@ h4.sec{
 .setrow .setgo{
   width:30px;height:30px;border-radius:50%;flex:none;
   display:flex;align-items:center;justify-content:center;
-  background:var(--surface-2);color:var(--acc);font-size:14px;
+  background:var(--surface-2);color:var(--acc);font-size:calc(14px * var(--fs));
   transition:background var(--fast),opacity var(--fast);
 }
 .setrow .setgo:disabled{opacity:.3;cursor:default}
@@ -943,7 +947,7 @@ h4.sec{
   animation:slideup var(--med) var(--ease);
 }
 @keyframes slideup{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
-#timer .t{font-size:26px;font-weight:600;letter-spacing:-.026em;font-variant-numeric:tabular-nums;min-width:66px}
+#timer .t{font-size:calc(26px * var(--fs));font-weight:600;letter-spacing:-.026em;font-variant-numeric:tabular-nums;min-width:66px}
 #timer .bar{flex:1;height:4px;background:var(--surface-3);border-radius:99px;overflow:hidden}
 #timer .bar i{display:block;height:100%;background:var(--acc);transition:width 1s linear}
 /* rest variant: −15/+15/Skip and the clock won't share one line on a phone, so the clock and
@@ -960,7 +964,7 @@ h4.sec{
 #timer.working .t{color:var(--acc)}
 #timer.working .grow{flex:1;min-width:0}
 #timer.working .lbl{
-  font-size:12px;color:var(--label-2);margin-bottom:5px;text-transform:capitalize;
+  font-size:calc(12px * var(--fs));color:var(--label-2);margin-bottom:5px;text-transform:capitalize;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 
@@ -976,19 +980,19 @@ h4.sec{
   position:absolute;left:0;right:0;bottom:0;background:var(--bg-el);
   border-radius:var(--r-xl) var(--r-xl) 0 0;
   padding:8px calc(18px + var(--sar)) calc(20px + var(--sab)) calc(18px + var(--sal));
-  max-height:90vh;max-height:min(90vh,calc(100dvh - 8px));
+  max-height:calc(90 * var(--vh));max-height:min(calc(90 * var(--vh)),calc(calc(100 * var(--dvh)) - 8px));
   overflow-y:auto;-webkit-overflow-scrolling:touch;scroll-padding-bottom:calc(20px + var(--sab));
   animation:sheetup .34s var(--ease);
   overscroll-behavior:contain;touch-action:pan-y;will-change:transform;
 }
 .sheet:has(.picker-search){
   bottom:var(--picker-keyboard-bottom,0px);
-  max-height:min(90vh,calc(100dvh - 8px),calc(var(--picker-visual-height,100vh) - 8px));
+  max-height:min(calc(90 * var(--vh)),calc(calc(100 * var(--dvh)) - 8px),calc(var(--picker-visual-height,calc(100 * var(--vh))) - 8px));
 }
 :root[data-theme="light"] .sheet{background:var(--bg)}
 @keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
 .sheet .grab{width:36px;height:5px;border-radius:99px;background:var(--label-4);margin:6px auto 14px}
-.sheet h3{font-size:20px;font-weight:600;letter-spacing:-.021em;margin-bottom:14px}
+.sheet h3{font-size:calc(20px * var(--fs));font-weight:600;letter-spacing:-.021em;margin-bottom:14px}
 .picker-search{
   position:sticky;top:0;z-index:2;margin-bottom:0;padding-bottom:10px;
   background:var(--bg-el);
@@ -1026,14 +1030,14 @@ h4.sec{
   content:'';position:absolute;left:14px;right:0;top:0;height:var(--hair);background:var(--sep);
 }
 .efftbl .n{
-  width:36px;flex:none;text-align:center;font-size:17px;font-weight:600;
+  width:36px;flex:none;text-align:center;font-size:calc(17px * var(--fs));font-weight:600;
   letter-spacing:-.02em;font-variant-numeric:tabular-nums;
 }
-.efftbl .f{flex:1;min-width:0;font-size:15px;color:var(--label-2);line-height:1.3}
+.efftbl .f{flex:1;min-width:0;font-size:calc(15px * var(--fs));color:var(--label-2);line-height:1.3}
 /* the header names the columns without competing with them */
 .efftbl .hd{background:var(--surface-2);padding-top:8px;padding-bottom:8px}
 .efftbl .hd .n,.efftbl .hd .f{
-  font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  font-size:calc(11px * var(--fs));font-weight:600;letter-spacing:.05em;text-transform:uppercase;
   color:var(--label-3);
 }
 /* the row a working set usually lands on — the anchor the others are read against */
@@ -1045,7 +1049,7 @@ h4.sec{
 .glyph-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
 .glyph-cell{
   aspect-ratio:1;border-radius:13px;background:var(--surface);
-  display:flex;align-items:center;justify-content:center;font-size:24px;
+  display:flex;align-items:center;justify-content:center;font-size:calc(24px * var(--fs));
   color:var(--label);transition:background var(--fast),color var(--fast),transform var(--fast);
 }
 .glyph-cell:active{transform:scale(.92)}
@@ -1068,21 +1072,21 @@ h4.sec{
 .bwstep{display:flex;align-items:center;justify-content:center;gap:18px;margin:14px 0 6px}
 .bw-pm{
   width:46px;height:46px;border-radius:50%;background:var(--surface);flex:none;
-  color:var(--label);display:flex;align-items:center;justify-content:center;font-size:19px;
+  color:var(--label);display:flex;align-items:center;justify-content:center;font-size:calc(19px * var(--fs));
   transition:background var(--fast),transform var(--fast);--icon-stroke:2.2;
 }
 .bw-pm:active{background:var(--surface-2);transform:scale(.92)}
 .bw-read{
-  font-size:52px;font-weight:600;letter-spacing:-.035em;min-width:158px;text-align:center;
+  font-size:calc(52px * var(--fs));font-weight:600;letter-spacing:-.035em;min-width:158px;text-align:center;
   font-variant-numeric:tabular-nums;line-height:1;
 }
-.bw-read .u{font-size:19px;color:var(--label-2);font-weight:400;letter-spacing:-.01em}
+.bw-read .u{font-size:calc(19px * var(--fs));color:var(--label-2);font-weight:400;letter-spacing:-.01em}
 .bwin{display:flex;align-items:baseline;justify-content:center;gap:7px;margin:16px 0}
 .bwin input{
   width:150px;background:none;border:none;outline:none;text-align:right;
-  font-size:52px;font-weight:600;letter-spacing:-.035em;color:var(--label);
+  font-size:calc(52px * var(--fs));font-weight:600;letter-spacing:-.035em;color:var(--label);
 }
-.bwin span{color:var(--label-2);font-size:19px}
+.bwin span{color:var(--label-2);font-size:calc(19px * var(--fs))}
 
 /* --------------------------------------------------------------- charts -- */
 .chart{width:100%;overflow:hidden}
@@ -1092,7 +1096,7 @@ h4.sec{
    pushed under the `.chart` clip at either edge — hence no offset here. */
 .ctip{
   position:absolute;left:0;top:0;background:var(--surface-2);
-  border-radius:8px;padding:4px 10px;font-size:12px;font-weight:500;white-space:nowrap;
+  border-radius:8px;padding:4px 10px;font-size:calc(12px * var(--fs));font-weight:500;white-space:nowrap;
   max-width:calc(100% - 8px);overflow:hidden;text-overflow:ellipsis;
   pointer-events:none;box-shadow:0 6px 18px -4px rgba(0,0,0,.4);
 }
@@ -1101,10 +1105,10 @@ h4.sec{
 .hm-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
 .hm-wrap::-webkit-scrollbar{display:none}
 .hm-months{display:flex;margin-left:28px;margin-bottom:5px}
-.hm-months span{flex:none;width:14px;font-size:11px;color:var(--label-3);white-space:nowrap;overflow:visible}
+.hm-months span{flex:none;width:14px;font-size:calc(11px * var(--fs));color:var(--label-3);white-space:nowrap;overflow:visible}
 .hm-body{display:flex}
 .hm-days{display:flex;flex-direction:column;gap:3px;flex:none;width:28px}
-.hm-days span{height:11px;font-size:10px;color:var(--label-2);line-height:11px}
+.hm-days span{height:11px;font-size:calc(10px * var(--fs));color:var(--label-2);line-height:11px}
 .hm-grid{display:flex;gap:3px}
 .hm-col{display:flex;flex-direction:column;gap:3px}
 .hm-c{width:11px;height:11px;border-radius:3px;background:var(--surface-2);flex:none}
@@ -1116,7 +1120,7 @@ h4.sec{
 .hm-c.future{opacity:.3}
 .hm-legend{
   display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:9px;
-  font-size:11px;color:var(--label-3);
+  font-size:calc(11px * var(--fs));color:var(--label-3);
 }
 .hm-legend .hm-c{width:10px;height:10px}
 
@@ -1129,7 +1133,7 @@ h4.sec{
   display:flex;gap:6px;justify-content:center;align-items:flex-start;
   --bm-base:color-mix(in srgb,var(--label) 11%,var(--surface));
 }
-.bm-v{flex:1;min-width:0;height:auto;max-height:min(46vh,340px)}
+.bm-v{flex:1;min-width:0;height:auto;max-height:min(calc(46 * var(--vh)),340px)}
 .bm-ph{height:200px}                       /* holds the space while the geometry loads */
 .bm-sil{fill:color-mix(in srgb,var(--label) 18%,var(--surface))}
 .bm-m{fill:var(--bm-base);transition:fill var(--med) var(--ease)}
@@ -1157,27 +1161,27 @@ h4.sec{
 .bm-v path{stroke:var(--surface);stroke-width:2.5;stroke-linejoin:round}
 
 .mrow{display:flex;align-items:center;gap:9px;padding:5px 0}
-.mrow .nm{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow .nm{flex:1;min-width:0;font-size:calc(14px * var(--fs));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mrow .bar{width:74px;height:5px;border-radius:3px;background:var(--surface-2);flex:none;overflow:hidden}
 .mrow .bar i{display:block;height:100%;background:var(--acc);border-radius:3px}
-.mrow .v{font-size:12px;color:var(--label-2);min-width:52px;text-align:right;flex:none}
+.mrow .v{font-size:calc(12px * var(--fs));color:var(--label-2);min-width:52px;text-align:right;flex:none}
 /* A headline number inside a card — tile weight without a tile around it, for the pair of
    readings at the top of the effort card. */
-.stat-v{font-size:26px;font-weight:600;letter-spacing:-.026em;line-height:1.1}
+.stat-v{font-size:calc(26px * var(--fs));font-weight:600;letter-spacing:-.026em;line-height:1.1}
 .mchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
-.mchip{font-size:12px;padding:4px 9px;border-radius:99px;background:var(--surface-2);color:var(--label-2)}
+.mchip{font-size:calc(12px * var(--fs));padding:4px 9px;border-radius:99px;background:var(--surface-2);color:var(--label-2)}
 .mchip.miss{background:color-mix(in srgb,var(--orange) 16%,transparent);color:var(--orange)}
 
 /* --- home volume panel (effective sets per microcycle) --- */
 .vol-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .vol-cell{background:var(--surface-2);border-radius:12px;padding:9px 11px 5px;min-width:0}
 .vol-cell .top{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
-.vol-cell .nm{font-size:12.5px;color:var(--label-2);font-weight:500;letter-spacing:-.006em;
+.vol-cell .nm{font-size:calc(12.5px * var(--fs));color:var(--label-2);font-weight:500;letter-spacing:-.006em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vol-cell .val{font-size:17px;font-weight:650;letter-spacing:-.02em;line-height:1;flex:none}
+.vol-cell .val{font-size:calc(17px * var(--fs));font-weight:650;letter-spacing:-.02em;line-height:1;flex:none}
 .vol-spark{margin-top:3px}
 .vol-spark svg{display:block;width:100%;height:38px}
-.vol-spark .empty{font-size:11px;padding:10px 0;text-align:center}
+.vol-spark .empty{font-size:calc(11px * var(--fs));padding:10px 0;text-align:center}
 /* effective-set bars per group: name + figures on one line, the bar alone on the next */
 .vol-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;margin-bottom:4px}
 .vol-hd .sec{margin:0}
@@ -1190,14 +1194,14 @@ h4.sec{
 .vol-legend i.plan,.vol-legend i.gap{width:18px;height:8px;border-radius:4px}
 .vol-bars{display:flex;flex-direction:column;gap:11px;padding:4px 0}
 .vol-bar-row{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:baseline;column-gap:8px;row-gap:5px}
-.vol-bars .nm{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+.vol-bars .nm{font-size:calc(14px * var(--fs));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .vol-bars .bar{grid-column:1/-1;position:relative;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
 .vol-bars .bar i{position:absolute;left:0;top:0;display:block;height:100%;border-radius:4px}
 .vol-bars .bar i.plan,.vol-legend i.plan{background:repeating-linear-gradient(-45deg,var(--label-3) 0 2px,transparent 2px 5px);opacity:.75}
 .vol-bars .bar i.plan.over{background:repeating-linear-gradient(-45deg,var(--red) 0 2px,transparent 2px 5px);opacity:.9}
 .vol-legend i.gap{background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--sep)}
-.vol-bars .v{font-size:12px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--label-2);
+.vol-bars .v{font-size:calc(12px * var(--fs));text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--label-2);
   overflow:hidden;max-width:240px;transform-origin:right center;
   transition:max-width .32s cubic-bezier(.2,.8,.2,1),opacity .2s,transform .32s cubic-bezier(.2,.8,.2,1)}
 /* held name (VolumeGroupBars' usePeek): the figures fold away to the right and the name slides out */
@@ -1207,34 +1211,34 @@ h4.sec{
 @media (prefers-reduced-motion:reduce){.vol-bars .v{transition:none}.vol-bar-row.peek .nm{animation:none}}
 .vol-bars .v b{font-weight:600}
 .vol-bars .v .pct{margin-left:6px;color:var(--label);font-weight:600}
-.vol-bars .v .rng{margin-left:8px;font-size:11px;color:var(--label-3)}
+.vol-bars .v .rng{margin-left:8px;font-size:calc(11px * var(--fs));color:var(--label-3)}
 .vol-exec{margin-bottom:6px;color:var(--label-2)}
 .vol-exec b{color:var(--label);font-variant-numeric:tabular-nums}
 /* A split Back / Legs: the parts sit under the whole group's name, indented behind a rail. */
-.vol-group-h{font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+.vol-group-h{font-size:calc(11.5px * var(--fs));font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:var(--label-2);margin-top:4px;margin-bottom:-6px}
 .vol-bar-row.sub{padding-left:10px;border-left:2px solid var(--surface-2)}
-.vol-bar-row.sub .nm{font-size:13.5px}
+.vol-bar-row.sub .nm{font-size:calc(13.5px * var(--fs))}
 .vol-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
-.vol-legend span{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--label-2)}
+.vol-legend span{display:inline-flex;align-items:center;gap:5px;font-size:calc(11.5px * var(--fs));color:var(--label-2)}
 .vol-legend i{width:9px;height:9px;border-radius:99px;display:inline-block}
 
 /* --- calendar programming sheet --- */
 .prog-seq{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
 .prog-step{display:flex;align-items:center;gap:8px;background:var(--surface-2);border-radius:10px;padding:6px 8px}
 .prog-step.rest{opacity:.82}
-.prog-step .n{width:16px;text-align:center;color:var(--label-3);font-size:12px;font-weight:600;flex:none}
-.prog-step .lrow-i{width:30px;height:30px;font-size:15px;flex:none}
-.prog-step .tt{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog-step .n{width:16px;text-align:center;color:var(--label-3);font-size:calc(12px * var(--fs));font-weight:600;flex:none}
+.prog-step .lrow-i{width:30px;height:30px;font-size:calc(15px * var(--fs));flex:none}
+.prog-step .tt{font-size:calc(14px * var(--fs));font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .prog-add{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
 .prog-add .chip{display:inline-flex;align-items:center;gap:5px}
 .prog-prev{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
 .prog-day{display:flex;flex-direction:column;align-items:center;gap:3px;flex:none;
   background:var(--surface-2);border-radius:10px;padding:7px 7px 6px;min-width:46px}
 .prog-day.today{box-shadow:inset 0 0 0 1.5px var(--acc)}
-.prog-day .wd{font-size:10px;color:var(--label-3);text-transform:uppercase;letter-spacing:.02em}
-.prog-day .dn{font-size:14px;font-weight:600;line-height:1}
-.prog-day .lrow-i.sm{width:26px;height:26px;font-size:13px;margin-top:1px}
+.prog-day .wd{font-size:calc(10px * var(--fs));color:var(--label-3);text-transform:uppercase;letter-spacing:.02em}
+.prog-day .dn{font-size:calc(14px * var(--fs));font-weight:600;line-height:1}
+.prog-day .lrow-i.sm{width:26px;height:26px;font-size:calc(13px * var(--fs));margin-top:1px}
 /* Home's microcycle card: one week, the seven days share the width instead of scrolling. */
 .prog-prev.week7{overflow:visible;gap:4px;padding-bottom:0}
 .prog-prev.week7 .prog-day{flex:1 1 0;min-width:0;padding:7px 2px 6px}
@@ -1246,20 +1250,20 @@ h4.sec{
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .tile{background:var(--surface);border-radius:var(--r-card);padding:14px}
 .tile .l{
-  color:var(--label-2);font-size:13px;font-weight:400;letter-spacing:-.004em;
+  color:var(--label-2);font-size:calc(13px * var(--fs));font-weight:400;letter-spacing:-.004em;
   text-transform:none;display:flex;align-items:center;gap:5px;
 }
-.tile .l .icn{font-size:14px;color:var(--label)}
-.tile .v{font-size:26px;font-weight:600;letter-spacing:-.026em;margin-top:5px;line-height:1.1}
+.tile .l .icn{font-size:calc(14px * var(--fs));color:var(--label)}
+.tile .v{font-size:calc(26px * var(--fs));font-weight:600;letter-spacing:-.026em;margin-top:5px;line-height:1.1}
 .tile.tappable:active{background:var(--surface-2)}
 
 /* --- PR badge --- */
 .pr{
   display:inline-flex;align-items:center;gap:4px;
   background:color-mix(in srgb,var(--yellow) 18%,transparent);color:var(--yellow);
-  border-radius:6px;padding:3px 8px;font-size:12px;font-weight:500;
+  border-radius:6px;padding:3px 8px;font-size:calc(12px * var(--fs));font-weight:500;
 }
-.pr .icn{font-size:13px}
+.pr .icn{font-size:calc(13px * var(--fs))}
 
 /* --- toast --- */
 #toast{
@@ -1267,7 +1271,7 @@ h4.sec{
   bottom:calc(96px + var(--sab));z-index:200;
   background:color-mix(in srgb,var(--surface-2) 88%,transparent);
   -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
-  border-radius:99px;padding:11px 20px;font-size:15px;font-weight:500;
+  border-radius:99px;padding:11px 20px;font-size:calc(15px * var(--fs));font-weight:500;
   box-shadow:0 10px 30px -6px rgba(0,0,0,.5);
   opacity:0;pointer-events:none;transition:opacity var(--med),transform var(--med) var(--ease);
   max-width:88vw;text-align:center;
@@ -1275,21 +1279,21 @@ h4.sec{
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ---------------------------------------------------------------- misc --- */
-.empty{text-align:center;color:var(--label-2);padding:44px 20px;font-size:15px;line-height:1.45}
-.empty .ico{font-size:34px;color:var(--label-2);margin-bottom:12px;display:flex;justify-content:center}
+.empty{text-align:center;color:var(--label-2);padding:44px 20px;font-size:calc(15px * var(--fs));line-height:1.45}
+.empty .ico{font-size:calc(34px * var(--fs));color:var(--label-2);margin-bottom:12px;display:flex;justify-content:center}
 .steps-list{
-  padding-left:18px;color:var(--label-2);font-size:15px;line-height:1.5;
+  padding-left:18px;color:var(--label-2);font-size:calc(15px * var(--fs));line-height:1.5;
   display:flex;flex-direction:column;gap:9px;
 }
 .steps-list::marker{color:var(--label-3)}
 
 /* --- month calendar --- */
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px}
-.cal-h{text-align:center;font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;padding:2px 0}
+.cal-h{text-align:center;font-size:calc(11px * var(--fs));color:var(--label-3);font-weight:500;text-transform:uppercase;padding:2px 0}
 .cal-d{
   aspect-ratio:1;border-radius:10px;background:var(--surface);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  font-weight:400;font-size:15px;color:var(--label);transition:background var(--fast);
+  font-weight:400;font-size:calc(15px * var(--fs));color:var(--label);transition:background var(--fast);
 }
 .cal-d:active{background:var(--surface-2)}
 .cal-d.has{background:var(--acc-soft);color:var(--acc)}
@@ -1298,7 +1302,7 @@ h4.sec{
 .cal-d i.done{background:var(--acc)}
 .cal-d i.plan{background:var(--label-3)}
 .cal-d i.ovr{background:var(--orange)}
-.cal-legend{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:12px;color:var(--label-3)}
+.cal-legend{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:calc(12px * var(--fs));color:var(--label-3)}
 .cal-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px}
 
 /* --- accent swatches --- */
@@ -1349,14 +1353,14 @@ h4.sec{
 .wdock-check{
   position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  background:var(--acc);color:var(--on-acc);font-size:11px;
+  background:var(--acc);color:var(--on-acc);font-size:calc(11px * var(--fs));
   box-shadow:0 0 0 2px var(--bg);
 }
 /* the empty slot the "+" fills, drawn as an outline so it never competes with an exercise */
 .wdock-add{
   flex:none;width:54px;height:54px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  color:var(--label-3);font-size:20px;
+  color:var(--label-3);font-size:calc(20px * var(--fs));
   box-shadow:inset 0 0 0 1.5px var(--sep);
   transition:color var(--fast),box-shadow var(--fast),transform var(--fast);
 }
@@ -1370,10 +1374,10 @@ h4.sec{
 
 /* --- supersets --- */
 .ss-label{
-  font-size:12px;font-weight:600;letter-spacing:-.004em;text-transform:none;
+  font-size:calc(12px * var(--fs));font-weight:600;letter-spacing:-.004em;text-transform:none;
   color:var(--acc);margin:8px 0 5px 4px;display:flex;align-items:center;gap:5px;
 }
-.ss-label .icn{font-size:13px}
+.ss-label .icn{font-size:calc(13px * var(--fs))}
 .item.in-ss{box-shadow:inset 3px 0 0 var(--acc)}
 /* in the plan editor each superset wears its capsule's own colour, as on the dock */
 .routine-drag-row .ss-label{color:var(--ss,var(--acc))}
@@ -1417,7 +1421,7 @@ h4.sec{
 .wtop-name span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wtop-name .icn{flex:none;font-size:.8em;color:var(--label-2)}
 .wtop-tg .sub{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.wtop.slim .wtop-tg .sub{font-size:13px;margin-top:2px}
+.wtop.slim .wtop-tg .sub{font-size:calc(13px * var(--fs));margin-top:2px}
 /* A superset nests a card inside the page's own gutter, so its inset is paid twice. On a
    narrow phone that left the weight and reps steppers too tight to show a three-digit
    number — reported as "the reps textbox becomes too small when superset on mobile". The
@@ -1426,11 +1430,11 @@ h4.sec{
   .ss-card{padding:10px 8px}
 }
 .ss-hd{
-  font-size:12px;font-weight:600;color:var(--acc);margin-bottom:12px;
+  font-size:calc(12px * var(--fs));font-weight:600;color:var(--acc);margin-bottom:12px;
   text-align:center;display:flex;align-items:center;justify-content:center;gap:5px;
 }
 .ss-ex{position:relative}
-.ss-amp{text-align:center;font-size:15px;font-weight:600;color:var(--acc);margin:14px 0 8px}
+.ss-amp{text-align:center;font-size:calc(15px * var(--fs));font-weight:600;color:var(--acc);margin:14px 0 8px}
 
 /* --- microcycle actions (components/MicrocycleActions.jsx) ---
    Deload · close · programming, three equal columns with the icon over the label so the
@@ -1445,7 +1449,7 @@ h4.sec{
   min-height:76px;padding:10px 6px;border-radius:var(--r);
   background:color-mix(in srgb,var(--c) 15%,var(--surface));
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 28%,transparent);
-  color:var(--label);font-size:12px;font-weight:600;line-height:1.15;
+  color:var(--label);font-size:calc(12px * var(--fs));font-weight:600;line-height:1.15;
   letter-spacing:-.005em;text-align:center;
   transition:background var(--fast),transform var(--fast);
 }
@@ -1455,7 +1459,7 @@ h4.sec{
 .micro-btn .disc{
   width:30px;height:30px;border-radius:50%;flex:none;
   display:flex;align-items:center;justify-content:center;
-  background:var(--c);color:#fff;font-size:17px;
+  background:var(--c);color:#fff;font-size:calc(17px * var(--fs));
 }
 .micro-btn span.t{max-width:100%;overflow-wrap:anywhere}
 .micro-btn:active{background:color-mix(in srgb,var(--c) 26%,var(--surface));transform:scale(.97)}
@@ -1469,9 +1473,9 @@ h4.sec{
   transition:background var(--fast);width:100%;text-align:left;cursor:pointer;
 }
 .today-row:active{background:var(--surface-3)}
-.today-row .lbl2{font-size:11px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:var(--label-3)}
+.today-row .lbl2{font-size:calc(11px * var(--fs));font-weight:500;letter-spacing:.03em;text-transform:uppercase;color:var(--label-3)}
 .today-row .ttl{
-  font-weight:500;font-size:17px;line-height:1.25;text-transform:capitalize;
+  font-weight:500;font-size:calc(17px * var(--fs));line-height:1.25;text-transform:capitalize;
   letter-spacing:-.012em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;
 }
 
@@ -1532,15 +1536,15 @@ h4.sec{
 /* double progression tracking — where each set sits in the rep range (lib/double-progress.js) */
 .dpm{--dp:var(--blue);position:relative;padding:10px 0 12px}
 .dpm-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.dpm-w{font-size:17px;font-weight:600;letter-spacing:-.02em}
-.dpm-range{font-size:12px;color:var(--label-2)}
-.dpm-state{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;
+.dpm-w{font-size:calc(17px * var(--fs));font-weight:600;letter-spacing:-.02em}
+.dpm-range{font-size:calc(12px * var(--fs));color:var(--label-2)}
+.dpm-state{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:calc(12px * var(--fs));font-weight:600;
   color:var(--dp);background:color-mix(in srgb,var(--dp) 14%,transparent);padding:2px 8px;border-radius:999px}
-.dpm-state svg{font-size:12px}
+.dpm-state svg{font-size:calc(12px * var(--fs))}
 .dpm-bars{display:flex;flex-direction:column;gap:5px}
 .dpm-row{display:grid;grid-template-columns:16px 1fr 26px;align-items:center;gap:8px}
 .dpm-row.extra{opacity:.6}
-.dpm-n{font-size:11px;color:var(--label-3);text-align:right}
+.dpm-n{font-size:calc(11px * var(--fs));color:var(--label-3);text-align:right}
 .dpm-track{position:relative;height:12px;border-radius:6px;overflow:hidden;background:
   repeating-linear-gradient(90deg,transparent 0 calc(100% / var(--segs) - 2px),var(--bg) calc(100% / var(--segs) - 2px) calc(100% / var(--segs))),
   var(--surface-2)}
@@ -1548,7 +1552,7 @@ h4.sec{
   -webkit-mask:repeating-linear-gradient(90deg,#000 0 calc(100% / var(--segs) - 2px),transparent calc(100% / var(--segs) - 2px) calc(100% / var(--segs)));
   transition:width var(--fast,.2s)}
 .dpm.compact .dpm-track{height:9px}
-.dpm-r{font-size:13px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.dpm-r{font-size:calc(13px * var(--fs));font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
 .dpm-r.top{color:var(--green)}
 .dpm-r.under{color:var(--red)}
 .dpm-foot{margin-top:8px;color:var(--label-2)}
@@ -1558,22 +1562,22 @@ h4.sec{
 .dpm-colbar{flex:1;width:100%;max-width:26px;background:var(--surface-2);border-radius:4px;display:flex;align-items:flex-end;overflow:hidden}
 .dpm-colfill{width:100%;background:color-mix(in srgb,var(--dp) 70%,transparent);border-radius:4px}
 .dpm-colfill.fat{background:var(--orange)}
-.dpm-cold{font-size:9px;color:var(--label-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.dpm-cold{font-size:calc(9px * var(--fs));color:var(--label-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .dpm-prog{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--surface-2);border-radius:1px;overflow:hidden}
 .dpm-prog>div{height:100%;background:var(--dp)}
 .dpm-list .dpm-item{border-bottom:var(--hair) solid var(--sep);padding-top:10px}
 .dpm-list .dpm-item:last-child{border-bottom:0}
-.dpm-name{font-weight:600;text-transform:capitalize;font-size:15px}
+.dpm-name{font-weight:600;text-transform:capitalize;font-size:calc(15px * var(--fs))}
 
 /* the semi-automatic step, asked in the session it becomes due */
 .dpchoice{margin:8px 0 4px;padding:12px;border-radius:14px;border:1px solid color-mix(in srgb,var(--green) 55%,transparent);
   background:color-mix(in srgb,var(--green) 9%,transparent)}
 .dpchoice-t{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--green);margin-bottom:2px}
-.dpchoice-prev{font-size:13px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.dpchoice-prev{font-size:calc(13px * var(--fs));font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
 .dpchoice .grow{flex:1}
 
 /* "time to progress" window — pops in with a bounce, confetti over everything */
-.confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:200}
+.confetti{position:fixed;inset:0;width:100vw;height:calc(100 * var(--vh));pointer-events:none;z-index:200}
 .center:has(.dpcele){width:min(92vw,360px);overflow:visible;animation:dp-pop .55s cubic-bezier(.18,1.35,.4,1)}
 @keyframes dp-pop{
   0%{transform:translate(-50%,-50%) scale(.55) rotate(-4deg);opacity:0}
@@ -1584,7 +1588,7 @@ h4.sec{
 .dpcele-badge{
   position:absolute;left:50%;top:-46px;transform:translateX(-50%);
   width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:28px;color:var(--on-acc,#000);background:var(--green);
+  font-size:calc(28px * var(--fs));color:var(--on-acc,#000);background:var(--green);
   box-shadow:0 0 0 6px color-mix(in srgb,var(--green) 25%,transparent),0 10px 30px -6px color-mix(in srgb,var(--green) 70%,transparent);
   animation:dp-badge 1.6s var(--ease,ease) .35s both;
 }
@@ -1595,13 +1599,13 @@ h4.sec{
   75%,100%{transform:translateX(-50%) scale(1) rotate(0)}
 }
 .dpcele .dpchoice{margin:0;padding:0;border:0;background:none}
-.dpcele .dpchoice-t{justify-content:center;font-size:21px;letter-spacing:-.02em;margin-bottom:4px;animation:dp-title .6s var(--ease,ease) .2s both}
+.dpcele .dpchoice-t{justify-content:center;font-size:calc(21px * var(--fs));letter-spacing:-.02em;margin-bottom:4px;animation:dp-title .6s var(--ease,ease) .2s both}
 .dpcele .dpchoice-t svg{display:none}
 .dpcele .dpchoice > .small{text-align:center}
 @keyframes dp-title{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
 /* the inline reminder on the exercise, for when the window was put off */
 .dpask{width:100%;display:flex;align-items:center;gap:8px;margin:8px 0 4px;padding:10px 12px;border-radius:12px;
-  color:var(--green);font-weight:600;font-size:14px;text-align:left;
+  color:var(--green);font-weight:600;font-size:calc(14px * var(--fs));text-align:left;
   background:color-mix(in srgb,var(--green) 12%,transparent);border:1px solid color-mix(in srgb,var(--green) 45%,transparent)}
 /* active workout: the exercise name doubles as the fold toggle for its header details */
 .exhead-tg{flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:0;text-align:left;
@@ -1618,7 +1622,7 @@ h4.sec{
   background:rgba(0,0,0,.55);color:#fff}
 .exthumb.on{box-shadow:0 0 0 2px var(--acc)}
 /* a note folded to its first line in the drum; tapping it opens the header to read it whole */
-.exnote.fold{display:block;width:100%;text-align:left;padding:7px 12px;font-size:13px;margin-bottom:6px;
+.exnote.fold{display:block;width:100%;text-align:left;padding:7px 12px;font-size:calc(13px * var(--fs));margin-bottom:6px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .dpask svg{flex:none}
 .dpask span{flex:1}
@@ -1635,18 +1639,18 @@ h4.sec{
   background:var(--deload-soft);box-shadow:inset 0 0 0 1.5px var(--deload-line);color:var(--label);
 }
 .deload-band.soft{background:transparent;box-shadow:inset 0 0 0 1px var(--deload-line)}
-.deload-band-hd{display:flex;align-items:center;gap:7px;margin-bottom:3px;color:var(--deload);text-transform:uppercase;letter-spacing:.04em;font-size:13px}
+.deload-band-hd{display:flex;align-items:center;gap:7px;margin-bottom:3px;color:var(--deload);text-transform:uppercase;letter-spacing:.04em;font-size:calc(13px * var(--fs))}
 .deload-band-hd b{font-weight:700}
 .deload-band .small{color:var(--label-2)}
-.deload-pct{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;background:var(--deload);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;letter-spacing:0}
-.deload-link{margin-top:6px;background:none;border:0;padding:0;color:var(--deload);font-weight:600;font-size:13px;cursor:pointer}
+.deload-pct{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;background:var(--deload);color:#fff;border-radius:999px;padding:1px 8px;font-size:calc(12px * var(--fs));letter-spacing:0}
+.deload-link{margin-top:6px;background:none;border:0;padding:0;color:var(--deload);font-weight:600;font-size:calc(13px * var(--fs));cursor:pointer}
 .card.deload{box-shadow:inset 0 0 0 1.5px var(--deload-line)}
 .wday.deload .num{color:var(--deload)}
 .wday.deload .dot{background:var(--deload)}
 .wday.deload .lbl{color:var(--deload);font-weight:700}
 .wday.today.deload .num{background:var(--deload);color:#fff}
 .btn.deload-btn,.btn.primary.deload-btn{background:var(--deload);color:#fff}
-.deload-hero{width:56px;height:56px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--deload);color:#fff;font-size:26px}
+.deload-hero{width:56px;height:56px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--deload);color:#fff;font-size:calc(26px * var(--fs))}
 .item.deload{box-shadow:inset 3px 0 0 var(--deload)}
 .wtop.deload .wprog i{background:var(--deload)}
 .tabicn{position:relative;display:inline-flex}
@@ -1655,9 +1659,9 @@ h4.sec{
   background:var(--deload);color:#fff;display:flex;align-items:center;justify-content:center;
   box-shadow:0 0 0 2px var(--bg-el);
 }
-#tabbar button .tab-deload .icn{font-size:11px;color:#fff;--icon-stroke:2.4}
-.sub .tag.deload{margin-left:6px;vertical-align:1px;font-size:11px;padding:2px 8px}
-.wday-dl{display:flex;justify-content:center;color:var(--deload);font-size:11px;line-height:1;height:6px;align-items:center;--icon-stroke:2.6}
+#tabbar button .tab-deload .icn{font-size:calc(11px * var(--fs));color:#fff;--icon-stroke:2.4}
+.sub .tag.deload{margin-left:6px;vertical-align:1px;font-size:calc(11px * var(--fs));padding:2px 8px}
+.wday-dl{display:flex;justify-content:center;color:var(--deload);font-size:calc(11px * var(--fs));line-height:1;height:6px;align-items:center;--icon-stroke:2.6}
 
 /* ------------------------------------------------------------ set drum --- */
 /* The revolver drum (components/SetDrum.jsx, lib/drum.js): the set being worked drawn as large
@@ -1678,17 +1682,17 @@ h4.sec{
 .drum-tabs{display:flex;flex-direction:column;gap:4px;margin:8px 0 2px}
 .drum-tab{
   width:100%;min-width:0;display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:10px;
-  background:var(--surface-2);color:var(--label-2);font-size:12.5px;
+  background:var(--surface-2);color:var(--label-2);font-size:calc(12.5px * var(--fs));
   transition:background var(--med) var(--ease),box-shadow var(--med) var(--ease),color var(--fast);
 }
-.drum-tab b{width:20px;height:20px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:11px;
+.drum-tab b{width:20px;height:20px;border-radius:6px;flex:none;display:grid;place-items:center;font-size:calc(11px * var(--fs));
   background:color-mix(in srgb,var(--mc) 22%,transparent);color:var(--mc)}
 .drum-tab span{flex:1;min-width:0;line-height:1.25;overflow-wrap:anywhere;text-align:left;text-transform:capitalize}
-.drum-tab i{font-style:normal;font-variant-numeric:tabular-nums;color:var(--label-3);font-size:12px;display:inline-flex}
+.drum-tab i{font-style:normal;font-variant-numeric:tabular-nums;color:var(--label-3);font-size:calc(12px * var(--fs));display:inline-flex}
 .drum-tab.on{color:var(--label);background:color-mix(in srgb,var(--mc) 13%,var(--surface));
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--mc) 55%,transparent)}
 /* the box on screen is its exercise's header toggle; what it unfolds hangs right under it */
-.drum-tab-chev{flex:none;font-size:14px;color:var(--label-2)}
+.drum-tab-chev{flex:none;font-size:calc(14px * var(--fs));color:var(--label-2)}
 .drum-tab-chev.off{visibility:hidden}
 .drum-tabs .drum-head{margin:2px 0 4px}
 .drum-tabs .drum-head:empty{display:none}
@@ -1779,17 +1783,17 @@ h4.sec{
 
 .drum-strip{
   height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;border-radius:15px;
-  background:var(--surface);box-shadow:inset 0 0 0 var(--hair) var(--sep);color:var(--label-2);font-size:14px;
+  background:var(--surface);box-shadow:inset 0 0 0 var(--hair) var(--sep);color:var(--label-2);font-size:calc(14px * var(--fs));
   transition:box-shadow var(--fast),background var(--fast);
 }
-.drum-strip .ds-k{display:flex;align-items:center;gap:4px;flex:none;min-width:70px;font-size:11px;font-weight:500;
+.drum-strip .ds-k{display:flex;align-items:center;gap:4px;flex:none;min-width:70px;font-size:calc(11px * var(--fs));font-weight:500;
   letter-spacing:.06em;text-transform:uppercase;color:var(--label-3)}
-.drum-strip .ds-k .icn{font-size:12px}
+.drum-strip .ds-k .icn{font-size:calc(12px * var(--fs))}
 .drum-strip .ds-v{flex:1;min-width:0;font-weight:500;color:var(--label);font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .drum-strip.done .ds-v{color:var(--label-2)}
 .drum-strip.warm .ds-k{color:var(--orange)}
-.drum-strip .ds-ok{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;
+.drum-strip .ds-ok{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:calc(12px * var(--fs));
   background:var(--acc);color:var(--on-acc);--icon-stroke:2.8}
 .drum-strip .ds-go{color:var(--label-3);flex:none}
 .drum-ch.armed .drum-strip{
@@ -1810,63 +1814,63 @@ h4.sec{
 .dh > *{position:relative}
 .dh{container-type:inline-size}
 .dh .dh-wm{
-  position:absolute;right:-4px;top:-34px;font-size:178px;font-weight:800;line-height:1;letter-spacing:-.07em;
+  position:absolute;right:-4px;top:-34px;font-size:calc(178px * var(--fs));font-weight:800;line-height:1;letter-spacing:-.07em;
   color:transparent;-webkit-text-stroke:1.5px color-mix(in srgb,var(--hc) 24%,transparent);
   pointer-events:none;font-variant-numeric:tabular-nums;user-select:none;
 }
 .dh .dh-stamp{
   position:absolute;right:16px;top:44px;z-index:1;padding:3px 10px;border:2px solid var(--acc);border-radius:8px;
-  color:var(--acc);font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--acc);font-size:calc(13px * var(--fs));font-weight:800;letter-spacing:.14em;text-transform:uppercase;
   transform:rotate(-11deg);opacity:.85;pointer-events:none;animation:stampIn 380ms cubic-bezier(.2,1.6,.4,1);
 }
 @keyframes stampIn{from{opacity:0;transform:rotate(-11deg) scale(2.2)}}
 .dh-top{display:flex;align-items:center;gap:8px;min-height:32px}
-.dh-kind{display:flex;align-items:center;gap:5px;flex:none;font-size:13px;font-weight:700;letter-spacing:.09em;
+.dh-kind{display:flex;align-items:center;gap:5px;flex:none;font-size:calc(13px * var(--fs));font-weight:700;letter-spacing:.09em;
   text-transform:uppercase;color:var(--hc)}
-.dh-kind small{font-size:13px;font-weight:500;color:var(--label-3);letter-spacing:.02em}
-.dh-ex{flex:1;min-width:0;font-size:13px;color:var(--label-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:capitalize}
-.dh-let{width:24px;height:24px;border-radius:7px;flex:none;display:grid;place-items:center;font-size:13px;font-weight:700;
+.dh-kind small{font-size:calc(13px * var(--fs));font-weight:500;color:var(--label-3);letter-spacing:.02em}
+.dh-ex{flex:1;min-width:0;font-size:calc(13px * var(--fs));color:var(--label-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:capitalize}
+.dh-let{width:24px;height:24px;border-radius:7px;flex:none;display:grid;place-items:center;font-size:calc(13px * var(--fs));font-weight:700;
   background:color-mix(in srgb,var(--mc) 22%,transparent);color:var(--mc)}
-.dh-let.sm{width:20px;height:20px;border-radius:6px;font-size:11px}
-.dh-ref{display:flex;flex-direction:column;gap:4px;margin:6px 0 2px;font-size:13px;color:var(--label-2)}
+.dh-let.sm{width:20px;height:20px;border-radius:6px;font-size:calc(11px * var(--fs))}
+.dh-ref{display:flex;flex-direction:column;gap:4px;margin:6px 0 2px;font-size:calc(13px * var(--fs));color:var(--label-2)}
 .dh-line{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap;min-height:26px}
 .dh-line b{font-weight:500;font-variant-numeric:tabular-nums}
-.dh-tag{display:inline-flex;align-items:center;gap:4px;min-width:84px;font-size:11px;font-weight:600;letter-spacing:.08em;
+.dh-tag{display:inline-flex;align-items:center;gap:4px;min-width:84px;font-size:calc(11px * var(--fs));font-weight:600;letter-spacing:.08em;
   text-transform:uppercase;color:var(--label-3)}
 .dh-line.prev b{color:var(--label-2)}
-.dh-delta{padding:1px 7px;border-radius:999px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;
+.dh-delta{padding:1px 7px;border-radius:999px;font-size:calc(12px * var(--fs));font-weight:600;font-variant-numeric:tabular-nums;
   color:var(--acc);background:color-mix(in srgb,var(--acc) 16%,transparent)}
 .dh-delta.none{color:var(--yellow);background:color-mix(in srgb,var(--yellow) 16%,transparent)}
-.dh-apply{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:4px 11px;font-size:12px;font-weight:600;color:var(--acc)}
+.dh-apply{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:4px 11px;font-size:calc(12px * var(--fs));font-weight:600;color:var(--acc)}
 .dh-apply svg{width:12px;height:12px}
 .dh-cols{display:flex;gap:10px;margin-top:10px}
 .dh-col{flex:1;min-width:0;display:flex;flex-direction:column;border-radius:17px;overflow:hidden;container-type:inline-size;
   background:color-mix(in srgb,var(--surface-2) 88%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep)}
 .dh-col.eff{flex:.78}
-.dh-l{padding:9px 4px 0;font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--label-3);
+.dh-l{padding:9px 4px 0;font-size:calc(10.5px * var(--fs));font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--label-3);
   text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* The hero grows with the screen it has: the steppers get taller (easier to hit mid-set) and the
    numbers as large as the column allows for how many characters they have (--chars, set by
    DrumHero) — "10" can fill it, "102.5" has to fit in it. */
-.dh-b{height:clamp(42px,6.6vh,60px);display:grid;place-items:center;color:var(--label-2);font-size:clamp(19px,2.7vh,24px);--icon-stroke:2.2;
+.dh-b{height:clamp(42px,calc(6.6 * var(--vh)),60px);display:grid;place-items:center;color:var(--label-2);font-size:clamp(19px,calc(2.7 * var(--vh)),24px);--icon-stroke:2.2;
   transition:background var(--fast),color var(--fast)}
 .dh-b:active{background:var(--surface-3);color:var(--hc)}
 .dh-v{display:flex}
 .dh-v .num{
   width:100%;min-width:0;min-height:56px;padding:0;background:none;border:none;outline:none;text-align:center;
-  color:var(--label);font-size:48px;font-weight:600;line-height:1;letter-spacing:-.045em;font-variant-numeric:tabular-nums;
+  color:var(--label);font-size:calc(48px * var(--fs));font-weight:600;line-height:1;letter-spacing:-.045em;font-variant-numeric:tabular-nums;
   -moz-appearance:textfield;appearance:textfield;cursor:text;transition:color var(--fast);
 }
-.dh.n1 .dh-v .num{font-size:62px;min-height:68px}
-.dh.n3 .dh-v .num{font-size:34px;min-height:48px}
+.dh.n1 .dh-v .num{font-size:calc(62px * var(--fs));min-height:68px}
+.dh.n3 .dh-v .num{font-size:calc(34px * var(--fs));min-height:48px}
 @supports (width:1cqi){
   /* The number's box is --nh tall (it follows the screen's height) and as wide as its column
      (a container, so cqi is the column's width). The figure is the largest that fits BOTH — as
      tall as the box allows and as wide as the box allows for the characters it has — so it
      always fills its box and never leaves it, whatever the device or the thumbnail beside. */
-  .dh{--nh:clamp(56px,9.6vh,92px)}
-  .dh.n1{--nh:clamp(68px,13vh,120px)}
-  .dh.n3{--nh:clamp(48px,7.4vh,70px)}
+  .dh{--nh:clamp(56px,calc(9.6 * var(--vh)),92px)}
+  .dh.n1{--nh:clamp(68px,calc(13 * var(--vh)),120px)}
+  .dh.n3{--nh:clamp(48px,calc(7.4 * var(--vh)),70px)}
   .dh-v .num{min-height:var(--nh);
     font-size:clamp(14px,min(calc(var(--nh) * .86),calc(94cqi / (var(--chars,3) * .47 + .15))),120px)}
 }
@@ -1879,10 +1883,10 @@ h4.sec{
 .dh-bar,.wtools{display:flex;align-items:stretch;margin-top:10px;border-radius:14px;overflow:hidden;
   background:color-mix(in srgb,var(--surface-2) 70%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep)}
 .dh-tool,.wtool{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  padding:8px 2px 7px;color:var(--label-2);font-size:10.5px;font-weight:600;letter-spacing:.01em;
+  padding:8px 2px 7px;color:var(--label-2);font-size:calc(10.5px * var(--fs));font-weight:600;letter-spacing:.01em;
   transition:background var(--fast),color var(--fast)}
 .dh-tool + .dh-tool,.wtool + .wtool{box-shadow:inset var(--hair) 0 0 var(--sep)}
-.dh-tool .icn,.wtool .icn{font-size:17px;color:var(--hc,var(--acc));--icon-stroke:2.2}
+.dh-tool .icn,.wtool .icn{font-size:calc(17px * var(--fs));color:var(--hc,var(--acc));--icon-stroke:2.2}
 .dh-tool span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dh-tool:active:not(:disabled),.wtool:active:not(:disabled){background:var(--surface-3);color:var(--label)}
 .dh-tool:disabled,.wtool:disabled{opacity:.32}
@@ -1892,8 +1896,8 @@ h4.sec{
    (data-fit on the page): 0 two rows, the tools with their labels; 1 one row, the tools as icons; 2 the
    same, tighter; 3 and 4 keep that and shrink the set in front. */
 .wtools{border-radius:var(--r);margin-top:10px}
-.wtool{padding:10px 4px 9px;font-size:11.5px;justify-content:flex-start}
-.wtool .icn{font-size:19px}
+.wtool{padding:10px 4px 9px;font-size:calc(11.5px * var(--fs));justify-content:flex-start}
+.wtool .icn{font-size:calc(19px * var(--fs))}
 .wtool span{max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere}
 .wfoot{margin-top:12px}
 /* the workout ends with its foot, and a session in progress hides the tab bar (TabBar.jsx), so
@@ -1907,33 +1911,33 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .wnav .btn:disabled{opacity:.35}
 .narrow:not([data-fit="0"]) .wfoot{display:flex;align-items:stretch;gap:8px;margin-top:8px}
 .narrow:not([data-fit="0"]) .wnav{flex:1;min-width:0;gap:8px}
-.narrow:not([data-fit="0"]) .wnav .btn{padding:11px 10px;font-size:16px}
+.narrow:not([data-fit="0"]) .wnav .btn{padding:11px 10px;font-size:calc(16px * var(--fs))}
 .narrow:not([data-fit="0"]) .wtools{flex:none;margin-top:0}
 .narrow:not([data-fit="0"]) .wtool{flex:none;flex-direction:row;justify-content:center;padding:0 15px}
 .narrow:not([data-fit="0"]) .wtool span{display:none}
 .narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wfoot{margin-top:6px}
-.narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wnav .btn{padding:7px 8px;font-size:15px;border-radius:12px}
+.narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wnav .btn{padding:7px 8px;font-size:calc(15px * var(--fs));border-radius:12px}
 .narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wtool{padding:0 12px}
-.narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wtool .icn{font-size:17px}
+.narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wtool .icn{font-size:calc(17px * var(--fs))}
 /* 3 and 4: the set in front gives up room too — the same set, every part a little smaller */
 .narrow:is([data-fit="3"],[data-fit="4"]) .drum-head .exhead-drum{margin-bottom:2px!important}
 .narrow:is([data-fit="3"],[data-fit="4"]) .exthumb{width:36px;height:36px}
 .narrow:is([data-fit="3"],[data-fit="4"]) .drum-body{margin-top:2px}
-.narrow:is([data-fit="3"],[data-fit="4"]) .dh{padding:10px 12px 9px;--nh:clamp(44px,7.2vh,72px)}
-.narrow:is([data-fit="3"],[data-fit="4"]) .dh.n1{--nh:clamp(54px,10vh,96px)}
-.narrow:is([data-fit="3"],[data-fit="4"]) .dh.n3{--nh:clamp(38px,5.6vh,56px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh{padding:10px 12px 9px;--nh:clamp(44px,calc(7.2 * var(--vh)),72px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh.n1{--nh:clamp(54px,calc(10 * var(--vh)),96px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh.n3{--nh:clamp(38px,calc(5.6 * var(--vh)),56px)}
 .narrow:is([data-fit="3"],[data-fit="4"]) .dh-top{min-height:24px}
 .narrow:is([data-fit="3"],[data-fit="4"]) .dh-ref{margin:3px 0 0}
 .narrow:is([data-fit="3"],[data-fit="4"]) .dh-cols,.narrow:is([data-fit="3"],[data-fit="4"]) .dh-bar,.narrow:is([data-fit="3"],[data-fit="4"]) .dh-act{margin-top:6px}
 .narrow:is([data-fit="3"],[data-fit="4"]) .dh-l{padding-top:6px}
-.narrow:is([data-fit="3"],[data-fit="4"]) .dh-b{height:clamp(30px,5vh,46px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-b{height:clamp(30px,calc(5 * var(--vh)),46px)}
 .narrow:is([data-fit="3"],[data-fit="4"]) .dh-tool{padding:5px 2px 4px}
-.narrow:is([data-fit="3"],[data-fit="4"]) .dh-go,.narrow:is([data-fit="3"],[data-fit="4"]) .dh-play{height:clamp(44px,6vh,54px)}
-.narrow:is([data-fit="3"],[data-fit="4"]) .dh-play{width:clamp(44px,6vh,54px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-go,.narrow:is([data-fit="3"],[data-fit="4"]) .dh-play{height:clamp(44px,calc(6 * var(--vh)),54px)}
+.narrow:is([data-fit="3"],[data-fit="4"]) .dh-play{width:clamp(44px,calc(6 * var(--vh)),54px)}
 .narrow[data-fit="4"] .dh{padding:8px 10px 8px}
 .narrow[data-fit="4"] .dh-top{min-height:20px}
-.narrow[data-fit="4"] .dh-l{padding-top:4px;font-size:9.5px}
-.narrow[data-fit="4"] .dh-b{height:26px;font-size:17px}
+.narrow[data-fit="4"] .dh-l{padding-top:4px;font-size:calc(9.5px * var(--fs))}
+.narrow[data-fit="4"] .dh-b{height:26px;font-size:calc(17px * var(--fs))}
 .narrow[data-fit="4"] .dh{--nh:44px}
 .narrow[data-fit="4"] .dh.n1{--nh:52px}
 .narrow[data-fit="4"] .dh.n3{--nh:38px}
@@ -1941,21 +1945,21 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .narrow[data-fit="4"] .dh-go,.narrow[data-fit="4"] .dh-play{height:40px}
 .narrow[data-fit="4"] .dh-play{width:40px}
 .narrow[data-fit="4"] .dh-tool{padding:4px 2px 3px}
-.narrow[data-fit="4"] .dh-tool .icn{font-size:15px}
+.narrow[data-fit="4"] .dh-tool .icn{font-size:calc(15px * var(--fs))}
 /* the intensifiers act on this set, the rest on the list: a wider seam between the two groups */
 .dh-bar-sep{flex:none;width:3px;background:var(--sep)}
 .dh-act{display:flex;gap:10px;margin-top:10px}
 .dh-go{
-  flex:1;height:clamp(56px,7.4vh,68px);border-radius:17px;display:flex;align-items:center;justify-content:center;gap:10px;
-  font-size:16px;font-weight:600;letter-spacing:-.01em;background:var(--hc);color:var(--on-acc);
+  flex:1;height:clamp(56px,calc(7.4 * var(--vh)),68px);border-radius:17px;display:flex;align-items:center;justify-content:center;gap:10px;
+  font-size:calc(16px * var(--fs));font-weight:600;letter-spacing:-.01em;background:var(--hc);color:var(--on-acc);
   box-shadow:0 12px 26px -14px var(--hc);transition:transform var(--fast),background var(--med),color var(--med);
 }
 .dh-go:active{transform:scale(.97)}
-.dh-go-ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:15px;
+.dh-go-ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:calc(15px * var(--fs));
   background:rgba(0,0,0,.18);--icon-stroke:2.8}
-.dh-go.on{background:var(--surface-2);color:var(--label-2);box-shadow:none;font-weight:500;font-size:14px}
+.dh-go.on{background:var(--surface-2);color:var(--label-2);box-shadow:none;font-weight:500;font-size:calc(14px * var(--fs))}
 .dh-go.on .dh-go-ic{background:var(--acc);color:var(--on-acc)}
-.dh-play{width:clamp(56px,7.4vh,68px);height:clamp(56px,7.4vh,68px);flex:none;border-radius:17px;display:grid;place-items:center;font-size:21px;
+.dh-play{width:clamp(56px,calc(7.4 * var(--vh)),68px);height:clamp(56px,calc(7.4 * var(--vh)),68px);flex:none;border-radius:17px;display:grid;place-items:center;font-size:calc(21px * var(--fs));
   background:var(--surface-2);color:var(--hc)}
 .dh-play:disabled{opacity:.4}
 .dh-go{min-width:0}
@@ -1964,18 +1968,18 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
    round the numbers gives up a few pixels rather than cutting its labels. */
 @container (max-width:290px){
   .dh-cols{gap:6px}
-  .dh-l{font-size:9.5px;letter-spacing:.04em;padding-top:7px}
-  .dh-tool{font-size:9.5px;letter-spacing:0}
-  .dh-tool .icn{font-size:15px}
-  .dh-go{gap:7px;font-size:14px}
-  .dh-go.on{font-size:13px}
-  .dh-go-ic{width:24px;height:24px;font-size:13px}
+  .dh-l{font-size:calc(9.5px * var(--fs));letter-spacing:.04em;padding-top:7px}
+  .dh-tool{font-size:calc(9.5px * var(--fs));letter-spacing:0}
+  .dh-tool .icn{font-size:calc(15px * var(--fs))}
+  .dh-go{gap:7px;font-size:calc(14px * var(--fs))}
+  .dh-go.on{font-size:calc(13px * var(--fs))}
+  .dh-go-ic{width:24px;height:24px;font-size:calc(13px * var(--fs))}
   .dh-tag{min-width:0}
 }
 @container (min-width:420px){
-  .dh-tool{font-size:12px}
-  .dh-tool .icn{font-size:19px}
-  .dh-l{font-size:11.5px}
+  .dh-tool{font-size:calc(12px * var(--fs))}
+  .dh-tool .icn{font-size:calc(19px * var(--fs))}
+  .dh-l{font-size:calc(11.5px * var(--fs))}
 }
 
 .ss-card.drum-ss .drum-head .exmedia.compact img{height:110px}
@@ -1984,7 +1988,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .deload-exit{
   display:inline-flex;align-items:center;gap:4px;flex:none;cursor:pointer;
   background:var(--surface-2);color:var(--label);border:0;border-radius:99px;
-  padding:4px 11px;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;
+  padding:4px 11px;font-size:calc(12px * var(--fs));font-weight:600;text-transform:none;letter-spacing:0;
 }
 .deload-exit svg{width:11px;height:11px}
 .deload-band-hd .deload-exit{margin-left:auto}
@@ -1996,12 +2000,12 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .settable{margin-top:10px}
 .st-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .st-card{background:var(--surface-2);border-radius:12px;padding:9px 12px;text-align:left;min-width:0}
-.st-k{font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
+.st-k{font-size:calc(11px * var(--fs));color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
   display:flex;align-items:center;gap:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .st-k span{text-transform:none;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
 .st-k svg{width:12px;height:12px;color:var(--acc);flex:none}
-.st-v{font-size:17px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.st-v small{font-size:12px;color:var(--label-2);font-weight:500}
+.st-v{font-size:calc(17px * var(--fs));font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-v small{font-size:calc(12px * var(--fs));color:var(--label-2);font-weight:500}
 .st-card.aim .st-v{color:var(--acc)}
 .st-card.aim:active{transform:scale(.98)}
 .st-row{display:grid;align-items:center;gap:8px;grid-template-columns:30px minmax(0,1.3fr) 42px}
@@ -2009,7 +2013,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .st-row.c3{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 42px}
 .st-row.timed.c1{grid-template-columns:30px minmax(0,1.3fr) 36px 42px}
 .st-row.timed.c2{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) 36px 42px}
-.st-hd{font-size:11px;color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
+.st-hd{font-size:calc(11px * var(--fs));color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
   padding:0 8px 6px;text-align:center}
 .st-hd>span:first-child{text-align:center}
 .setswipe>.st-row:not(.st-hd){
@@ -2028,13 +2032,13 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .setswipe.dragging>.st-row.st-drop{background:var(--surface)}
 .st-row.done .st-cell{background:color-mix(in srgb,var(--surface-2) 60%,transparent)}
 .st-row.warm .st-n{color:var(--orange)}
-.st-n{font-size:15px;font-weight:600;color:var(--label-2);height:40px;display:flex;align-items:center;justify-content:center}
+.st-n{font-size:calc(15px * var(--fs));font-weight:600;color:var(--label-2);height:40px;display:flex;align-items:center;justify-content:center}
 .st-n svg{width:15px;height:15px}
 .st-row.done .st-n{color:var(--acc)}
 .st-cell{position:relative;background:var(--surface-2);border-radius:10px;min-width:0}
 .st-cell .num{
   width:100%;min-width:0;height:42px;text-align:center;background:none;border:none;outline:none;
-  font-size:17px;font-weight:600;padding:0;-moz-appearance:textfield;appearance:textfield;color:var(--label);
+  font-size:calc(17px * var(--fs));font-weight:600;padding:0;-moz-appearance:textfield;appearance:textfield;color:var(--label);
 }
 .st-cell .num::placeholder{color:var(--label-4)}
 .st-cell .num::-webkit-inner-spin-button{display:none}
@@ -2043,14 +2047,14 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .st-cell.off{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 45%,transparent)}
 .st-aim{
   position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);
-  font-size:10px;font-weight:600;line-height:1;padding:2px 5px;border-radius:6px;
+  font-size:calc(10px * var(--fs));font-weight:600;line-height:1;padding:2px 5px;border-radius:6px;
   background:var(--acc);color:var(--on-acc);white-space:nowrap;
 }
 .st-row .chk.st-ck{width:42px;height:40px;border-radius:10px;background:var(--surface-2);box-shadow:none;color:var(--label-3)}
 .st-row .chk.st-ck.on{background:var(--acc);color:var(--on-acc)}
 /* a set's own tools: the foot's buttons, a size down — tighter top and bottom */
 .st-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px;margin:0 0 8px 38px}
-.st-add.sm{height:34px;border-radius:10px;font-size:13px;gap:5px}
+.st-add.sm{height:34px;border-radius:10px;font-size:calc(13px * var(--fs));gap:5px}
 .st-add.sm svg{width:13px;height:13px}
 .st-add.burst{color:var(--blue);background:color-mix(in srgb,var(--blue) 16%,var(--surface))}
 .st-add.danger{color:var(--red);background:color-mix(in srgb,var(--red) 14%,var(--surface))}
@@ -2058,16 +2062,16 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
    quiet grey — it is only there to read, not to tap */
 .st-prev{
   position:absolute;left:50%;top:-7px;transform:translateX(-50%);pointer-events:none;
-  font-size:10px;font-weight:600;line-height:1;padding:2px 5px;border-radius:6px;
+  font-size:calc(10px * var(--fs));font-weight:600;line-height:1;padding:2px 5px;border-radius:6px;
   background:var(--surface-3,var(--surface));color:var(--label-3);white-space:nowrap;
   box-shadow:inset 0 0 0 1px var(--sep);
 }
 .st-row:has(.st-prev){padding-top:9px}
-.st-count{text-align:right;font-size:12px;color:var(--label-3);margin-top:2px}
+.st-count{text-align:right;font-size:calc(12px * var(--fs));color:var(--label-3);margin-top:2px}
 .st-foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;margin-top:8px}
 .st-add{
   display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:12px;
-  font-size:15px;font-weight:600;color:var(--label);background:var(--surface-2);
+  font-size:calc(15px * var(--fs));font-weight:600;color:var(--label);background:var(--surface-2);
 }
 .st-add svg{width:15px;height:15px}
 .st-add.drop{color:var(--purple);background:color-mix(in srgb,var(--purple) 16%,var(--surface))}
@@ -2076,7 +2080,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .st-add:active:not(:disabled){transform:scale(.97)}
 .st-addex{
   display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;margin-top:14px;
-  border-radius:14px;border:1.5px dashed var(--label-4);font-size:15px;font-weight:500;color:var(--label-2);
+  border-radius:14px;border:1.5px dashed var(--label-4);font-size:calc(15px * var(--fs));font-weight:500;color:var(--label-2);
 }
 .st-addex svg{width:16px;height:16px}
 .st-addex:active{transform:scale(.98)}
@@ -2087,7 +2091,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
    its weight where last time's number rides on a set's */
 .st-dropswipe{margin-top:4px}
 .st-badge{touch-action:manipulation;-webkit-user-select:none;user-select:none}
-.st-row.st-drop .st-n{gap:1px;font-size:12px;font-weight:700;color:var(--purple)}
+.st-row.st-drop .st-n{gap:1px;font-size:calc(12px * var(--fs));font-weight:700;color:var(--purple)}
 .st-row.st-drop .st-n svg{width:11px;height:11px;color:var(--label-3)}
 .st-row.st-drop .st-n{background:none}
 .st-drop .st-cell.cut{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--purple) 70%,transparent)}
@@ -2107,12 +2111,12 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .st-del.burst{background:color-mix(in srgb,var(--blue) 24%,var(--surface))}
 .st-del:active{transform:scale(.92)}
 /* a rest-pause burst: the drop's line in blue — R-P badge, its reps ringed, the pause on top */
-.st-row.st-burst .st-n{color:var(--blue);font-size:11px;gap:0;white-space:nowrap}
+.st-row.st-burst .st-n{color:var(--blue);font-size:calc(11px * var(--fs));gap:0;white-space:nowrap}
 .st-burst .st-cell.cut{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--blue) 70%,transparent)}
 .st-burst .st-cell.cut .num{color:var(--blue)}
 .st-burst .st-cell.rest{background:none}
 .st-burst .st-cell.rest .st-prev{color:var(--blue)}
-.st-ro{display:flex;align-items:center;justify-content:center;height:42px;font-size:15px;font-weight:600;color:var(--label-4)}
+.st-ro{display:flex;align-items:center;justify-content:center;height:42px;font-size:calc(15px * var(--fs));font-weight:600;color:var(--label-4)}
 .st-n{touch-action:manipulation}
 
 /* the set sheet: a sheet you can see the table through, three wheels under a kind bar */
@@ -2124,14 +2128,14 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .ss-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
 .ss-title{flex:1;min-width:0}
 .ss-head h3{margin-bottom:2px}
-.ss-sub{font-size:13px;color:var(--label-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ss-done{flex:none;height:36px;padding:0 18px;border-radius:99px;background:var(--acc);color:var(--on-acc);font-size:15px;font-weight:600}
+.ss-sub{font-size:calc(13px * var(--fs));color:var(--label-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ss-done{flex:none;height:36px;padding:0 18px;border-radius:99px;background:var(--acc);color:var(--on-acc);font-size:calc(15px * var(--fs));font-weight:600}
 .ss-done:active{transform:scale(.97)}
 .ss-kind{margin-bottom:16px}
 .ss-wheels{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr))}
 .ss-wheels.n2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .ss-wheels.n1{grid-template-columns:minmax(0,1fr)}
-.ss-hd{text-align:center;font-size:12px;font-weight:500;color:var(--label-3);text-transform:uppercase;letter-spacing:.045em;margin-bottom:6px}
+.ss-hd{text-align:center;font-size:calc(12px * var(--fs));font-weight:500;color:var(--label-3);text-transform:uppercase;letter-spacing:.045em;margin-bottom:6px}
 .wheel{position:relative;height:200px}
 .wheel-band{position:absolute;left:0;right:0;top:80px;height:40px;border-radius:12px;background:var(--surface-2);pointer-events:none}
 .wheel-scroll{
@@ -2146,13 +2150,13 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
    sitting high in the band — trimming the box to cap height centres them on the glyphs. */
 .wheel-it{
   height:40px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;
-  font-size:22px;font-variant-numeric:tabular-nums;color:var(--label-3);cursor:pointer;
+  font-size:calc(22px * var(--fs));font-variant-numeric:tabular-nums;color:var(--label-3);cursor:pointer;
   transition:color .15s;
 }
 .wheel-it>span{text-box:trim-both cap alphabetic;backface-visibility:hidden;will-change:transform}
 .wheel-it.on{font-weight:600;color:var(--label)}
-.ss-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;font-size:13px;color:var(--label-3)}
-.ss-del{color:var(--red);font-size:15px;font-weight:500;flex:none}
+.ss-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;font-size:calc(13px * var(--fs));color:var(--label-3)}
+.ss-del{color:var(--red);font-size:calc(15px * var(--fs));font-weight:500;flex:none}
 .ss-del:disabled{opacity:.4}
 /* in the drum's narrower hero the hanging lines tighten up so their fields keep their room */
 .dh-int .setswipe>.st-row.st-sub{padding:2px 0;gap:5px}
@@ -2161,3 +2165,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .dh-int .st-row.st-sub.c3{grid-template-columns:28px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 32px 30px}
 .dh-int .st-row.st-drop .chk.st-ck{width:28px;height:28px}
 .dh-int .st-del{width:30px;height:30px}
+/* Settings ▸ Appearance: − 100% + for the interface and text size */
+.scale-ctl{display:inline-flex;align-items:center;gap:4px}
+.scale-ctl b{min-width:48px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.scale-ctl .iconbtn:disabled{opacity:.35}

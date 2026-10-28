@@ -20,6 +20,7 @@ import { playClips, stopClips } from '../lib/sound.js'
 import { REST_EX_PRESETS, restExLabel, settingChoice } from '../lib/rest-between.js'
 import { DEFAULT_SECONDARY, normalizeSecondaryWeight } from '../lib/muscles.js'
 import { VOLUME_TARGET, normalizeVolumeSplit } from '../lib/volume.js'
+import { UI_SCALE, TEXT_SCALE, DEFAULT_DISPLAY, loadDisplay, saveDisplay, clampScale } from '../lib/display.js'
 
 /* A stored sound — the rest-end bell, the exercise-end bells or the "time to progress" celebration —
    or a file from this device (lib/custom-sound.js). The file is checked before it is kept — a clip
@@ -310,6 +311,7 @@ export default function Settings() {
           onChange={v => update(s => { s.body = v })}
         />
       </Row>
+      <DisplaySizeRows />
       <div className="lrow" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12, paddingTop: 13, paddingBottom: 14 }}>
         <span className="lrow-t">{t('Accent color')}</span>
         <div className="swatches">
@@ -564,6 +566,34 @@ function PushCard({ S, update, toast }) {
       )}
     </Section>
     {on && <div style={{ marginTop: -12, marginBottom: 22 }}><Button size="sm" icon="bell" onClick={test}>{t('Send test notification')}</Button></div>}
+  </>
+}
+
+// Interface and text size, for this device only (lib/display.js): each tap redraws the app at
+// the new size straight away, so the setting is judged on the screen it changes.
+function ScaleRow({ icon, title, value, range, onChange }) {
+  return <Row icon={icon} iconTint="var(--blue)" title={title}>
+    <span className="scale-ctl">
+      <button className="iconbtn" aria-label={t('Smaller')} disabled={value <= range.min}
+        onClick={() => onChange(clampScale(value - range.step, range))}><Icon name="minus" /></button>
+      <b>{value}%</b>
+      <button className="iconbtn" aria-label={t('Larger')} disabled={value >= range.max}
+        onClick={() => onChange(clampScale(value + range.step, range))}><Icon name="plus" /></button>
+    </span>
+  </Row>
+}
+
+function DisplaySizeRows() {
+  const [d, setD] = useState(loadDisplay)
+  const set = patch => setD(saveDisplay({ ...d, ...patch }))
+  const changed = d.ui !== DEFAULT_DISPLAY.ui || d.text !== DEFAULT_DISPLAY.text
+  return <>
+    <ScaleRow icon="expand" title={t('Interface size')} value={d.ui} range={UI_SCALE} onChange={ui => set({ ui })} />
+    <ScaleRow icon="textSize" title={t('Text size')} value={d.text} range={TEXT_SCALE} onChange={text => set({ text })} />
+    <Row icon="phone" iconTint="var(--label-3)" title={t('Sizes apply to this device only')}
+      subtitle={changed ? undefined : t('Make the whole app or just its text larger or smaller.')}>
+      {changed && <Button size="sm" onClick={() => setD(saveDisplay(DEFAULT_DISPLAY))}>{t('Reset')}</Button>}
+    </Row>
   </>
 }
 

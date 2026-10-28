@@ -3,7 +3,11 @@ import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import { MOBILE } from './lib/mobile.js'
 import { applyOrientationLock } from './lib/orientation-lock.js'
+import { applyDisplay, loadDisplay } from './lib/display.js'
 import './index.css'
+
+// This device's interface and text size (Settings ▸ Appearance), before anything is drawn.
+applyDisplay(loadDisplay())
 
 // App.jsx restores per-route scroll itself; the browser's own attempt races it.
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual'

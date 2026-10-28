@@ -22,7 +22,7 @@ export default class ErrorBoundary extends Component {
     const active = useStore.getState().S.active
     return (
       <div className="narrow">
-        <div className="empty" style={{ marginTop: '18vh' }}>
+        <div className="empty" style={{ marginTop: 'calc(18 * var(--vh))' }}>
           <div className="ico"><Icon name="info" /></div>
           <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('Something went wrong')}</div>
           {t('This screen could not be drawn. Your data is safe on this device.')}
