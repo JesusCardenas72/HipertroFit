@@ -19,7 +19,7 @@ import { starterRoutines } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
-import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, MultiSelectRow, NumberField } from './components/ui.jsx'
+import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, MultiSelectRow, NumberField, DateField } from './components/ui.jsx'
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
 import BodyMap from './components/BodyMap.jsx'
 import { exerciseMuscleSnapshot, loadOfWorkouts, MUSCLE_CHOICES, muscleLabel, muscleChoiceOf } from './lib/muscles.js'
@@ -1864,7 +1864,8 @@ function ProgramSheet({ close }) {
     </div>
 
     <h4 className="sec" style={{ marginTop: 18 }}>{t('Microcycle start')}</h4>
-    <input type="date" className="field" value={anchor} onChange={e => setAnchor(e.target.value)} />
+    {/* Typed by hand, or picked on the calendar. */}
+    <DateField value={anchor} onChange={setAnchor} />
     <div className="muted small" style={{ marginTop: 6 }}>
       {t('Sessions are counted from this day. The end of each microcycle follows from the count.')}
     </div>

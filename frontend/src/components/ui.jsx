@@ -15,7 +15,8 @@
 
 import { useRef, useState, useEffect, useCallback, forwardRef } from 'react'
 import Icon from './Icon.jsx'
-import { t } from '../lib/i18n.js'
+import { t, dateLocale } from '../lib/i18n.js'
+import { dateOrder, formatDay, parseDay } from '../lib/date-input.js'
 import { stepLoad } from '../lib/load-scale.js'
 
 /* ============================ text ============================ */
@@ -51,6 +52,46 @@ export function NumberField({ value, onChange, decimal = true, nullable = false,
       {...rest}
     />
   )
+}
+
+// A day you can type or pick: the text is the date as the language writes it (21/10/2026), read
+// back as you go (lib/date-input.js), and the calendar button opens the system's date picker on
+// a hidden date input. A native date field alone can't be typed into on Android — tapping it
+// only opens the picker — and on desktop it offers no clear way to the calendar. `value` and
+// `onChange` are ISO days (YYYY-MM-DD); a half-typed or impossible date is held as a draft until
+// it is a real day (an impossible whole one, like 31/02, is marked), and dropped on blur.
+export function DateField({ value, onChange, min, max, className = '' }) {
+  const fmt = dateOrder(dateLocale())
+  const [draft, setDraft] = useState(null)
+  const pickRef = useRef(null)
+  const parsed = draft == null ? value : parseDay(draft, fmt)
+  const out = parsed && ((min && parsed < min) || (max && parsed > max))
+  // Red only once it reads as a whole date (three numbers, a year begun) that still isn't one —
+  // not while the year is still being typed.
+  const whole = draft != null && draft.split(/\D+/).filter(Boolean).length === 3 && draft.replace(/\D/g, '').length >= 6
+  const invalid = whole && (!parsed || out)
+  const type = text => {
+    setDraft(text)
+    const iso = parseDay(text, fmt)
+    if (iso && !(min && iso < min) && !(max && iso > max) && iso !== value) onChange(iso)
+  }
+  const openPicker = () => {
+    const el = pickRef.current
+    if (!el) return
+    try { el.showPicker() } catch { el.focus(); el.click() }
+  }
+  const placeholder = fmt.order.map(k => t(k === 'day' ? 'dd' : k === 'month' ? 'mm' : 'yyyy')).join(fmt.sep)
+  return <div className={'datef ' + className}>
+    <input type="text" inputMode="numeric" className="field" placeholder={placeholder} autoComplete="off"
+      value={draft ?? formatDay(value, fmt)} aria-invalid={invalid ? 'true' : undefined}
+      onChange={e => type(e.target.value)} onBlur={() => setDraft(null)}
+      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} />
+    <button type="button" className="datef-cal" aria-label={t('Pick on the calendar')} title={t('Pick on the calendar')} onClick={openPicker}>
+      <Icon name="calendar" />
+    </button>
+    <input ref={pickRef} type="date" className="datef-pick" tabIndex={-1} aria-hidden="true" value={value || ''} min={min} max={max}
+      onChange={e => { setDraft(null); if (e.target.value) onChange(e.target.value) }} />
+  </div>
 }
 
 // forwardRef so callers can focus it or read its value imperatively

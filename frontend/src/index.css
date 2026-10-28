@@ -2176,3 +2176,12 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .item.free .lrow-i{--tint:var(--blue)}
 .item.free .tt{color:var(--blue);font-weight:500}
 .item.free .tag{background:color-mix(in srgb,var(--blue) 22%,transparent);color:var(--blue)}
+/* DateField (components/ui.jsx): a typed date with a calendar button at its end, and the hidden
+   native date input the button opens, sat under the button so the picker appears there. */
+.datef{position:relative}
+.datef .field{padding-right:52px;font-variant-numeric:tabular-nums}
+.datef .field[aria-invalid="true"]{box-shadow:inset 0 0 0 2px var(--red)}
+.datef-cal{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:10px;
+  display:grid;place-items:center;font-size:calc(21px * var(--fs));color:var(--acc)}
+.datef-cal:active{background:var(--surface-2)}
+.datef-pick{position:absolute;right:4px;bottom:0;width:42px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
