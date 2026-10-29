@@ -41,13 +41,14 @@ function renderWorkout({ setView = 'session', cur = 0 } = {}) {
   act(() => root.render(<MemoryRouter><Workout /></MemoryRouter>))
 }
 
-const rows = () => [...container.querySelectorAll('.sf-row')]
+const tabs = () => [...container.querySelectorAll('.sf-tab')]
+const cards = () => [...container.querySelectorAll('.sf-panel .sf-card')]
 const click = node => act(() => node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })))
 const active = () => useStore.getState().S.active
 
 beforeEach(() => {
   localStorage.clear()
-  useUI.setState({ sheets: [], toastMsg: '', timer: null, work: null })
+  useUI.setState({ sheets: [], toastMsg: '', timer: null, work: null, sessionRepMaxOpen: false })
   useStore.setState({ S: clone(DEF), user: null })
 })
 
@@ -59,21 +60,21 @@ afterEach(() => {
 })
 
 describe('the session view', () => {
-  it('lists every exercise, with each superset joined on the rail', () => {
+  it('has a tab for every exercise, with each superset joined on the rail', () => {
     renderWorkout()
-    expect(rows().map(r => r.dataset.exidx)).toEqual(['0', '1', '2', '3', '4'])
-    expect(rows().map(r => ['first', 'mid', 'last', 'solo'].find(c => r.classList.contains(c)))).toEqual(['first', 'last', 'first', 'last', 'solo'])
+    expect(tabs().map(r => r.dataset.exidx)).toEqual(['0', '1', '2', '3', '4'])
+    expect(tabs().map(r => ['first', 'mid', 'last', 'solo'].find(c => r.classList.contains(c)))).toEqual(['first', 'last', 'first', 'last', 'solo'])
     const hue = r => r.style.getPropertyValue('--ss')
-    expect(hue(rows()[0])).toBe(hue(rows()[1]))
-    expect(hue(rows()[0])).not.toBe(hue(rows()[2]))
-    expect(hue(rows()[4])).toBe('')
+    expect(hue(tabs()[0])).toBe(hue(tabs()[1]))
+    expect(hue(tabs()[0])).not.toBe(hue(tabs()[2]))
+    expect(hue(tabs()[4])).toBe('')
   })
 
-  it('opens the superset being worked and folds the rest', () => {
+  it('opens the panel of the superset being worked, joined to its tabs', () => {
     renderWorkout()
-    expect(rows().map(r => r.classList.contains('open'))).toEqual([true, true, false, false, false])
-    expect(container.querySelectorAll('.settable')).toHaveLength(2)
-    expect(rows()[2].querySelector('.sf-meta').textContent).toContain('0/2')
+    expect(tabs().map(r => r.classList.contains('on'))).toEqual([true, true, false, false, false])
+    expect(cards().map(c => c.dataset.exidx)).toEqual(['0', '1'])
+    expect(container.querySelectorAll('.sf-panel .settable')).toHaveLength(2)
   })
 
   it('takes the place of the dock and of prev / next', () => {
@@ -82,30 +83,57 @@ describe('the session view', () => {
     expect(container.querySelector('.wnav')).toBeNull()
   })
 
-  it('moves the session to an exercise tapped on the rail', () => {
+  it('moves the session to the exercise whose tab is tapped', () => {
     renderWorkout()
-    click(rows()[4].querySelector('.sf-rail'))
+    click(tabs()[4])
     expect(active().cur).toBe(4)
-    expect(rows().map(r => r.classList.contains('open'))).toEqual([false, false, false, false, true])
+    expect(tabs().map(r => r.classList.contains('on'))).toEqual([false, false, false, false, true])
+    expect(cards().map(c => c.dataset.exidx)).toEqual(['4'])
+    // the panel comes in from below, moving on through the session
+    expect(container.querySelector('.sf-panel').dataset.dir).toBe('1')
+    click(tabs()[2])
+    expect(container.querySelector('.sf-panel').dataset.dir).toBe('-1')
   })
 
   it('logs a set through the same path as the table, then hands over to the partner', () => {
     renderWorkout()
-    click(rows()[0].querySelector('.settable .st-ck'))
+    click(cards()[0].querySelector('.settable .st-ck'))
     expect(active().entries[0].sets.map(s => s.done)).toEqual([true, false])
     // the superset flow moves on to the linked exercise, as in every other view
     expect(active().cur).toBe(1)
+    expect(tabs()[1].classList.contains('cur')).toBe(true)
   })
 
   it('shows the records of the exercise you are on, from history', () => {
     renderWorkout()
-    const recs = rows()[0].querySelectorAll('.sf-rec')
+    const recs = cards()[0].querySelectorAll('.sf-rec')
     expect(recs).toHaveLength(2)
     expect(recs[0].textContent).toContain('12')
     expect(recs[1].textContent).toContain('20')
-    expect(rows()[0].querySelector('.sf-rm')).not.toBeNull()
+    expect(cards()[0].querySelector('.sf-rm')).not.toBeNull()
     // the partner keeps only its sets
-    expect(rows()[1].querySelector('.sf-rec')).toBeNull()
+    expect(cards()[1].querySelector('.sf-rec')).toBeNull()
+  })
+
+  it('keeps the rep-max table folded on its title until it is tapped, then open from one exercise to the next', () => {
+    renderWorkout()
+    const title = () => cards()[0].querySelector('.sf-rm .k')
+    expect(title().getAttribute('aria-expanded')).toBe('false')
+    expect(cards()[0].querySelector('.sf-rm .g')).toBeNull()
+    click(title())
+    expect(cards()[0].querySelector('.sf-rm .g').textContent).toContain('1 @')
+    click(tabs()[4])
+    click(tabs()[0])
+    expect(cards()[0].querySelector('.sf-rm .g')).not.toBeNull()
+    click(title())
+    expect(cards()[0].querySelector('.sf-rm .g')).toBeNull()
+  })
+
+  it('ticks off the tab of a finished exercise', () => {
+    renderWorkout()
+    act(() => useStore.getState().update(s => { s.active.entries[4].sets.forEach(x => { x.done = true }) }))
+    expect(tabs()[4].querySelector('.sf-ok')).not.toBeNull()
+    expect(tabs()[0].querySelector('.sf-ok')).toBeNull()
   })
 
   it('leaves the other views as they were', () => {

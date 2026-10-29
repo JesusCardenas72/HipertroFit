@@ -2211,35 +2211,55 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .datef-pick{position:absolute;right:4px;bottom:0;width:42px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
 
 /* --- the "Session" view of a running workout (components/SessionFlow.jsx) ---
-   Every exercise down one column: a rail of thumbnails on the left, and down its edge a bar in
-   the dock's colour for each superset, unbroken across the members of one group. The unit being
-   worked is open with all its sets; the rest fold to a line you tap to move there. */
-.sflow{display:flex;flex-direction:column}
-.sf-row{position:relative;display:grid;grid-template-columns:56px minmax(0,1fr);gap:10px;padding-left:9px}
-.sf-row:is(.first,.solo){margin-top:10px}
-.sf-row:first-child{margin-top:0}
-.sf-row:is(.mid,.last){padding-top:6px}
-.sf-row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--ss,transparent)}
-.sf-row.first::before{top:4px;border-radius:4px 4px 0 0}
-.sf-row.last::before{bottom:4px;border-radius:0 0 4px 4px}
-.sf-row.solo::before{top:4px;bottom:4px;border-radius:4px}
-.sf-row.solo.open::before{background:var(--acc)}
-.sf-row.open::before{width:5px}
-.sf-rail{position:relative;align-self:start;width:56px;height:56px;padding:0;border:0;border-radius:12px;overflow:hidden;
-  background:#fff;box-shadow:inset 0 0 0 var(--hair) var(--sep);cursor:pointer;transition:box-shadow var(--fast)}
-.sf-rail .thumb{display:block;width:100%;height:100%;border-radius:0;pointer-events:none}
-.sf-row.cur .sf-rail{box-shadow:0 0 0 2.5px var(--ss,var(--acc))}
-.sf-row.done:not(.open) .sf-rail{opacity:.55}
-.sf-ok{position:absolute;right:3px;bottom:3px;width:18px;height:18px;display:grid;place-items:center;border-radius:50%;
+   Every exercise is a tab down the left — its thumbnail, with a bar in the dock's colour down
+   the edge of each superset, unbroken across the members of one group — and the panel of the
+   unit being worked sits beside them, joined to its tabs like a folder's. The tabs stick under
+   the session header (--sf-top, measured) so all of them stay in reach while the sets scroll. */
+.sflow{display:grid;grid-template-columns:74px minmax(0,1fr);align-items:start}
+.sf-tabs{position:sticky;top:var(--sf-top,0px);z-index:1;display:flex;flex-direction:column;padding:2px 0 14px;
+  max-height:calc(100dvh - var(--sf-top,0px) - 96px);overflow-y:auto;scrollbar-width:none;overscroll-behavior:contain}
+.sf-tabs::-webkit-scrollbar{display:none}
+/* A tab waiting its turn: a smaller, quieter thumbnail on the page's own black, standing off the
+   panel, its superset's bar dimmed and set in from the edge. */
+.sf-tab{position:relative;flex:none;width:74px;height:60px;padding:0 0 0 20px;border:0;background:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:flex-start}
+.sf-tab:is(.first,.solo){margin-top:8px}
+.sf-tab:first-child{margin-top:0}
+.sf-tab::before{content:"";position:absolute;left:12px;top:0;bottom:0;width:4px;background:var(--ss,transparent);opacity:.5;
+  transition:left var(--med) var(--ease),width var(--fast),opacity var(--fast)}
+.sf-tab.first::before{top:6px;border-radius:4px 4px 0 0}
+.sf-tab.last::before{bottom:6px;border-radius:0 0 4px 4px}
+.sf-th{position:relative;z-index:1;display:block;width:46px;height:46px;border-radius:11px;overflow:hidden;background:#fff;
+  opacity:.6;box-shadow:inset 0 0 0 var(--hair) var(--sep);
+  transition:width var(--med) var(--ease),height var(--med) var(--ease),opacity var(--fast),box-shadow var(--fast)}
+.sf-th .thumb{display:block;width:100%;height:100%;border-radius:0;pointer-events:none}
+.sf-tab.done:not(.on) .sf-th{opacity:.35}
+/* The unit being worked — the exercise, or every exercise linked in its superset — is laid over
+   the rest: a band in the panel's own fill (the sets' background) reaching further out to the
+   left than the other tabs, its bar out at that edge and bright, rounded off at the ends of the
+   group and curving into the panel's edge above and below it, like a folder's tab. */
+.sf-tab.on{z-index:2;height:72px;padding-left:12px;background:var(--surface);margin-right:-1px}
+.sf-tab.on-top{border-top-left-radius:16px}
+.sf-tab.on-bot{border-bottom-left-radius:16px}
+.sf-tab.on::before{left:3px;width:5px;opacity:1}
+.sf-tab.on-top::before{top:10px;border-top-left-radius:4px;border-top-right-radius:4px}
+.sf-tab.on-bot::before{bottom:10px;border-bottom-left-radius:4px;border-bottom-right-radius:4px}
+.sf-tab.solo.on::before{background:var(--acc)}
+.sf-tab.on .sf-th{width:56px;height:56px;border-radius:13px;opacity:1;
+  box-shadow:0 0 0 3px var(--ss,var(--acc)),0 6px 16px rgba(0,0,0,.5)}
+.sf-cn{position:absolute;right:0;width:14px;height:14px;pointer-events:none}
+.sf-cn.t{bottom:100%;background:radial-gradient(circle at 0 0,transparent 13.5px,var(--surface) 14px)}
+.sf-cn.b{top:100%;background:radial-gradient(circle at 0 100%,transparent 13.5px,var(--surface) 14px)}
+.sf-ok{position:absolute;z-index:2;left:52px;bottom:6px;width:18px;height:18px;display:grid;place-items:center;border-radius:50%;
   background:var(--green);color:#fff}
 .sf-ok .icn{width:12px;height:12px}
-.sf-body{min-width:0}
-.sf-sum{width:100%;min-height:56px;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:6px 12px;border:0;
-  border-radius:var(--r);background:var(--surface);color:var(--label);text-align:left;cursor:pointer}
-.sf-name{font-weight:600;font-size:calc(15px * var(--fs));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sf-meta{font-size:calc(13px * var(--fs));color:var(--label-2)}
-.sf-row.done .sf-sum .sf-name{color:var(--label-2)}
-.sf-card{border-radius:var(--r-lg);padding:12px;background:var(--surface)}
+.sf-panel{min-width:0;min-height:calc(var(--sf-rail,0px) + 16px);padding:12px;border-radius:var(--r-lg);background:var(--surface)}
+.sf-panel.flush{border-top-left-radius:0}
+.sf-panel[data-dir="1"]{animation:sfIn var(--med) var(--ease)}
+.sf-panel[data-dir="-1"]{animation:sfBack var(--med) var(--ease)}
+@keyframes sfIn{from{opacity:0;transform:translateY(18px)}}
+@keyframes sfBack{from{opacity:0;transform:translateY(-18px)}}
+.sf-card + .sf-card{margin-top:14px;padding-top:14px;box-shadow:inset 0 var(--hair) 0 var(--sep)}
 .sf-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .sf-head .exhead-tg{flex:1;min-width:0;font-size:calc(17px * var(--fs))}
 .sf-link{flex:none;width:18px;height:18px;color:var(--ss,var(--acc))}
@@ -2250,8 +2270,12 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .sf-rec .d{font-size:calc(11px * var(--fs));color:var(--label-3);margin-top:1px}
 .sf-rec .v{font-weight:700;font-size:calc(14px * var(--fs));margin-top:6px}
 .sf-rec .v small{font-weight:400;color:var(--label-2)}
-.sf-rm{padding:8px 10px;border-radius:var(--r);box-shadow:inset 0 0 0 var(--hair) var(--sep);margin-bottom:10px}
-.sf-rm .k{font-size:calc(12px * var(--fs));color:var(--label-2);text-align:right;margin-bottom:4px}
+.sf-rm{border-radius:var(--r);box-shadow:inset 0 0 0 var(--hair) var(--sep);margin-bottom:10px}
+/* folded to its title until tapped: the numbers are for when you want them */
+.sf-rm .k{width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border:0;background:none;
+  color:var(--label-2);font:inherit;font-size:calc(12px * var(--fs));cursor:pointer}
+.sf-rm .k .icn{width:14px;height:14px}
+.sf-rm .g{padding:0 10px 8px}
 .sf-rm .g{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 8px;font-size:calc(13px * var(--fs));font-variant-numeric:tabular-nums}
 .sf-rm .g b{color:var(--acc)}
 .sf-rm .g .rough{opacity:.5}
