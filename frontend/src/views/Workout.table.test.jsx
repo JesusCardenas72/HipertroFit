@@ -196,11 +196,14 @@ describe('the set table', () => {
     expect(tags('mus-s')).toEqual(['Lower back', 'Adductors'])
   })
 
-  it('is the third stop of the header toggle: list → table → drum', () => {
+  it('is the third stop of the header toggle: list → table → session → drum', () => {
     renderWorkout({ setView: 'list' })
     click(container.querySelector('[data-testid="set-view"]'))
     expect(useStore.getState().S.setView).toBe('table')
     expect(container.querySelector('.settable')).not.toBeNull()
+    click(container.querySelector('[data-testid="set-view"]'))
+    expect(useStore.getState().S.setView).toBe('session')
+    expect(container.querySelector('[data-testid="session-flow"]')).not.toBeNull()
     click(container.querySelector('[data-testid="set-view"]'))
     expect(useStore.getState().S.setView).toBe('drum')
     expect(container.querySelector('.settable')).toBeNull()

@@ -35,6 +35,8 @@ import { workIndexOf, referenceSet, suggestionFor, targetFor, overloadOf, extraS
 import { swipeLock, rowOffset, rowArmed, navDirection, navCommit } from '../lib/swipe.js'
 import { edgeOffset } from '../lib/slide.js'
 import SlideDeck from '../components/SlideDeck.jsx'
+import SessionFlow from '../components/SessionFlow.jsx'
+import { estimateSessionSec } from '../lib/session-view.js'
 import SetDrum from '../components/SetDrum.jsx'
 import { drumChambers } from '../lib/drum.js'
 
@@ -736,11 +738,12 @@ function SetSheetBody({ entryIdx, i, close, onField, onKind, onRemoveSetAt }) {
 
 /* ---------- the drum's front chamber: one set, drawn as large as the screen allows ---------- */
 const DRUM_LETTERS = 'ABCDEFGH'
-const SET_VIEWS = ['drum', 'list', 'table']
+const SET_VIEWS = ['drum', 'list', 'table', 'session']
 const SET_VIEW_COPY = {
   drum: { label: 'Drum', aria: 'Show sets as a drum', icon: 'target' },
   list: { label: 'List', aria: 'Show sets as a list', icon: 'list' },
   table: { label: 'Table', aria: 'Show sets as a table', icon: 'table' },
+  session: { label: 'Session', aria: 'Show the whole session', icon: 'clipboard' },
 }
 const FIT_STEPS = 5    // how many sizes the drum screen comes in (.narrow[data-fit] in index.css)
 const FOOT_STEPS = 3   // the first of them, which only shrink the foot (prev / next and its tools)
@@ -1612,23 +1615,46 @@ function ActiveWorkout() {
   // defaults (useStore DEF).
   const drumView = S.setView === 'drum'
   const tableView = S.setView === 'table'
+  // The whole session down one column (components/SessionFlow.jsx): its rail stands in for the
+  // dock and its rows for paging, so neither is drawn there.
+  const sessionView = S.setView === 'session'
+  // How long the session should take in all, beside the clock — only where the view asks for
+  // it, and never for a past workout, which has no timers.
+  const estSec = sessionView && !A.backfill ? estimateSessionSec(A.entries, units, {
+    restSec: S.restSec, warmupRestSec: S.warmupRestSec, restExSec: S.restExSec, workoutRestEx: A.restExSec,
+  }) : 0
   // The toggle walks drum → list → table → drum and names the view it leads to.
   const nextView = SET_VIEWS[(SET_VIEWS.indexOf(S.setView) + 1) % SET_VIEWS.length] || 'drum'
   const slimTop = !(topOpen ?? !drumView)
   const position = isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)
+  // The set to do next is marked on the exercise you are on, never on a neighbour's preview.
+  const blockFor = (idx, preview, extra) => <ExerciseBlock entryIdx={idx}
+    nextSet={!preview && idx === cur ? A.entries[idx].sets.findIndex(s => !s.done) : -1}
+    swipeSet={!preview && rowDrag?.entry === idx ? rowDrag.set : null} swipeDrop={rowDrag?.drop ?? null} swipeBurst={rowDrag?.burst ?? null} swipeDx={rowDrag?.dx || 0}
+    onToggle={i => toggle(idx, i)} onToggleDrop={(i, di) => toggleDrop(idx, i, di)} onOpenSet={preview ? undefined : i => openSet(idx, i)} onField={(i, f, v) => setField(idx, i, f, v)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onAddWarmup={() => addWarmup(idx)} onRemoveSetAt={i => removeSetAt(idx, i)} onStartTimed={i => startTimed(idx, i)} onProgressionSettings={() => openProgressionSettings(idx)}
+    onAddExercise={preview ? undefined : () => addExercise(idx)}
+    onOpenProgression={preview ? undefined : () => openProgression(idx, { celebrate: false })}
+    onSwap={preview ? undefined : () => swapActiveWorkoutExercise(idx)} onRemove={preview ? undefined : () => confirmRemoveExercise(idx)}
+    open={!!openHeads[idx]} onToggleHead={() => toggleHead(idx)} table={tableView}
+    {...extra} />
+  // The session view's open exercises: the table's rows under the view's own name line, wired
+  // like the list (row refs for the superset flow's scroll, pairing from the tools row).
+  const sessionBlock = idx => {
+    const entry = A.entries[idx]
+    const linked = unitOf(units, idx).length > 1
+    return blockFor(idx, false, {
+      compact: true, table: true, nameless: true,
+      onSetRowRef: (setIdx, el) => bindSetRef(entry, setIdx, el),
+      ...(linked ? { onUnpair: () => unpairAt(idx) } : {
+        onPairPrev: idx > 0 ? () => pairAt(idx - 1, idx) : null,
+        onPairNext: idx < A.entries.length - 1 ? () => pairAt(idx, idx + 1) : null,
+      }),
+    })
+  }
   const renderUnit = (index, preview) => {
     const members = units[index]
     if (!members || !members.length) return null
-    // The set to do next is marked on the exercise you are on, never on a neighbour's preview.
-    const block = (idx, extra) => <ExerciseBlock entryIdx={idx}
-      nextSet={!preview && idx === cur ? A.entries[idx].sets.findIndex(s => !s.done) : -1}
-      swipeSet={!preview && rowDrag?.entry === idx ? rowDrag.set : null} swipeDrop={rowDrag?.drop ?? null} swipeBurst={rowDrag?.burst ?? null} swipeDx={rowDrag?.dx || 0}
-      onToggle={i => toggle(idx, i)} onToggleDrop={(i, di) => toggleDrop(idx, i, di)} onOpenSet={preview ? undefined : i => openSet(idx, i)} onField={(i, f, v) => setField(idx, i, f, v)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onAddWarmup={() => addWarmup(idx)} onRemoveSetAt={i => removeSetAt(idx, i)} onStartTimed={i => startTimed(idx, i)} onProgressionSettings={() => openProgressionSettings(idx)}
-      onAddExercise={preview ? undefined : () => addExercise(idx)}
-      onOpenProgression={preview ? undefined : () => openProgression(idx, { celebrate: false })}
-      onSwap={preview ? undefined : () => swapActiveWorkoutExercise(idx)} onRemove={preview ? undefined : () => confirmRemoveExercise(idx)}
-      open={!!openHeads[idx]} onToggleHead={() => toggleHead(idx)} table={tableView}
-      {...extra} />
+    const block = (idx, extra) => blockFor(idx, preview, extra)
     // The drum: the same sets, one at a time at full size, on a cylinder you turn with a thumb.
     if (drumView) {
       const chambers = drumChambers(A.entries, members)
@@ -1755,7 +1781,7 @@ function ActiveWorkout() {
         <button type="button" className="wtop-tg" data-testid="workout-top" aria-expanded={!slimTop}
           aria-label={slimTop ? t('Show workout details') : t('Hide workout details')} onClick={() => setTopOpen(!slimTop ? false : true)}>
           <div className="wtop-name"><span>{A.name}</span><Icon name={slimTop ? 'chevronDown' : 'chevronUp'} /></div>
-          <div className="sub">{A.backfill ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}{slimTop && !!A.entries.length && <> · {position}</>}</div>
+          <div className="sub">{A.backfill ? fmtDate(A.d, true) : <Elapsed start={A.start} />}{estSec > 0 && <> / {t('~{0} min', Math.round(estSec / 60))}</>} ·{t('{0} sets', done + '/' + total)}{slimTop && !!A.entries.length && <> · {position}</>}</div>
         </button>
         <button className="iconbtn" style={{ color: 'var(--acc)' }} aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
       </div>
@@ -1764,8 +1790,8 @@ function ActiveWorkout() {
           exercise (or its whole superset capsule) somewhere else in the session. The buttons
           below do the same two things without a pointer, so nothing here is the only way in.
           It stays when the header folds: it is how you get around the session. */}
-      <WorkoutDock entries={A.entries} cur={cur} disabled={!!work}
-        onSelect={selectExercise} onReorder={dropEntry} onAdd={addExercise} />
+      {!sessionView && <WorkoutDock entries={A.entries} cur={cur} disabled={!!work}
+        onSelect={selectExercise} onReorder={dropEntry} onAdd={addExercise} />}
       {!slimTop && <>
       <DeloadSessionBand active={A} />
       {A.backfill && <div className="muted small" style={{ marginBottom: 8 }}>{t('Logging a past workout — no rest timers.')}</div>}
@@ -1816,8 +1842,11 @@ function ActiveWorkout() {
           event.preventDefault()
           event.stopPropagation()
         }}>
-      <SlideDeck current={unitIdx} peek={unitDrag?.target ?? null} dir={unitDrag?.dir ?? 0} dx={unitDrag?.dx ?? 0}
-        directionOf={(from, to) => (to > from ? 1 : -1)} render={renderUnit} turn />
+      {sessionView
+        ? <SessionFlow entries={A.entries} cur={cur} renderBlock={sessionBlock} onSelect={selectExercise}
+          headOpen={idx => !!openHeads[idx]} onToggleHead={toggleHead} bindExRef={bindExRef} />
+        : <SlideDeck current={unitIdx} peek={unitDrag?.target ?? null} dir={unitDrag?.dir ?? 0} dx={unitDrag?.dx ?? 0}
+          directionOf={(from, to) => (to > from ? 1 : -1)} render={renderUnit} turn />}
       </div>
     </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
 
@@ -1825,10 +1854,10 @@ function ActiveWorkout() {
         Finishing (✓), swapping an exercise (its header) and the session note (the header's
         details) are all up top, so none of them is repeated down here. */}
     <div className="wfoot" ref={footEl}>
-      <div className="wnav">
+      {!sessionView && <div className="wnav">
         <Button variant="tinted" icon="chevronLeft" disabled={unitIdx <= 0} onClick={() => navigateUnit(-1)}>{t('Prev')}</Button>
         <Button variant="tinted" trailingIcon="chevronRight" disabled={unitIdx < 0 || unitIdx >= units.length - 1} onClick={() => navigateUnit(1)}>{t('Next')}</Button>
-      </div>
+      </div>}
       {A.entries.length
         ? <div className="wtools" role="toolbar" aria-label={t('Exercises')}>
           <button type="button" className="wtool" aria-label={t('Add exercise')} onClick={addExercise}>
