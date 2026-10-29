@@ -1249,6 +1249,10 @@ h4.sec{
 .prog-step .tt{font-size:calc(14px * var(--fs));font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .prog-step .grow{flex:1;min-width:0}
 .prog-step.is-dragging{z-index:2;pointer-events:none;box-shadow:0 10px 28px rgba(0,0,0,.22);background:var(--surface-2)}
+.prog-step.is-drop{box-shadow:0 0 0 2px var(--acc),0 0 12px var(--acc)}
+.prog-ghost{position:absolute;pointer-events:none;z-index:3}
+.prog-ghost .chip{display:inline-flex;align-items:center;gap:5px;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.chip.is-origin{opacity:.35}
 .prog-seq.is-reordering .prog-step:not(.is-dragging){opacity:.8}
 .prog-add{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
 .prog-group{width:100%;margin-bottom:4px}

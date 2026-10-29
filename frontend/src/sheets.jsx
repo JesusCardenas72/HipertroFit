@@ -1846,7 +1846,49 @@ export function ProgramSheet({ close = () => {} }) {
 
   const { loose, folders } = groupRoutines(st)
   const folderGroups = folders.filter(g => g.routines.length)
-  const addChip = r => <button key={r.id} className="chip" disabled={mode === SEQ_WEEK && !seq.includes(REST)} onClick={() => addStep(r.id)}><Icon name={glyphOf(r.emoji)} />{r.name}</button>
+  // Week mode: a routine chip dragged onto a weekday takes that day, replacing its workout. A plain
+  // tap still places it on the first free day.
+  const chipGestureRef = useRef(null)
+  const chipDroppedRef = useRef(false)
+  const [chipDrag, setChipDrag] = useState(null)
+  const dayIndexAt = (x, y) => {
+    const row = document.elementFromPoint(x, y)?.closest('[data-routine-row]')
+    return row ? Number(row.dataset.exIndex) : null
+  }
+  const setDay = (i, v) => mut(p => { p.seq = p.seq.map((step, j) => j === i ? v : step) })
+  const chipGesture = r => ({
+    onPointerDown: e => {
+      chipDroppedRef.current = false
+      if (mode !== SEQ_WEEK || e.button > 0) return
+      // The grab point inside the chip: the carried chip keeps it under the finger.
+      const box = e.currentTarget.getBoundingClientRect()
+      chipGestureRef.current = { id: r.id, pointerId: e.pointerId, x: e.clientX, y: e.clientY, moved: false,
+        ox: e.clientX - box.left, oy: e.clientY - box.top }
+      try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* pointer no longer active */ }
+    },
+    onPointerMove: e => {
+      const g = chipGestureRef.current
+      if (!g || g.pointerId !== e.pointerId) return
+      if (!g.moved && Math.hypot(e.clientX - g.x, e.clientY - g.y) < 8) return
+      g.moved = true
+      setChipDrag({ id: g.id, x: e.clientX, y: e.clientY, left: e.clientX - g.ox, top: e.clientY - g.oy,
+        over: dayIndexAt(e.clientX, e.clientY) })
+    },
+    onPointerUp: e => {
+      const g = chipGestureRef.current
+      if (!g || g.pointerId !== e.pointerId) return
+      chipGestureRef.current = null
+      setChipDrag(null)
+      if (!g.moved) return
+      chipDroppedRef.current = true
+      const day = dayIndexAt(e.clientX, e.clientY)
+      if (day != null) setDay(day, g.id)
+    },
+    onPointerCancel: () => { chipGestureRef.current = null; setChipDrag(null) },
+  })
+  const addChip = r => <button key={r.id} className={'chip' + (chipDrag?.id === r.id ? ' is-origin' : '')} style={mode === SEQ_WEEK ? { touchAction: 'none' } : null} {...chipGesture(r)}
+    onClick={() => { if (chipDroppedRef.current) { chipDroppedRef.current = false; return } addStep(r.id) }}>
+    <Icon name={glyphOf(r.emoji)} />{r.name}</button>
 
   // The sequence is drag-to-reorder like the routine editor's rows. A step can repeat, so each
   // one's id counts its occurrences; the drop itself is a plain move (no supersets here).
@@ -1863,6 +1905,24 @@ export function ProgramSheet({ close = () => {} }) {
     if (!dropActiveWorkoutEntry({ entries: copy, cur: 0 }, index, { slot: intent.slot })) return
     mut(p => { p.seq = copy.map(item => item.step) })
   })
+  // While a chip is carried over the week, the day under it leans toward the finger on the same
+  // springs the rows use; the rest of the week keeps its places until it lets go.
+  useEffect(() => {
+    const engine = reorder.engineRef.current
+    const list = reorder.listRef.current
+    if (!engine || !list) return
+    if (!chipDrag) { engine.release(); return }
+    const pointerY = chipDrag.y - list.getBoundingClientRect().top
+    // Measure the rows as they are drawn now: the list may have re-rendered since the last measure.
+    engine.relayout()
+    engine.drive((base, restOf) => new Map(base.rows.map(row => {
+      const target = restOf(row)
+      if (row.index !== chipDrag.over) return [row.key, target]
+      return [row.key, { ...target, y: Math.max(-14, Math.min(14, (pointerY - row.cy) * 0.3)), s: 1.04 }]
+    })))
+  }, [chipDrag])
+  // The carried chip is placed in the list's own frame, so the sheet's transforms do not move it.
+  const listBox = reorder.listRef.current?.getBoundingClientRect() || { left: 0, top: 0 }
 
   return <>
     <h3>{t('Programming')}</h3>
@@ -1872,7 +1932,7 @@ export function ProgramSheet({ close = () => {} }) {
         the same bars as the Home/Stats volume card, fed by the plan instead of the log. */}
     <div className="card" style={{ marginBottom: 14 }}>
       <div className="row between" style={{ marginBottom: 8 }}>
-        <h2 style={{ margin: 0 }}>{t('Volume')}</h2>
+        <h2 style={{ margin: 0 }}>{t('Planned microcycle volume')}</h2>
         <span className="small muted">{t('{0} sessions / microcycle', planned.sessions)}</span>
       </div>
       {planned.total
@@ -1896,13 +1956,19 @@ export function ProgramSheet({ close = () => {} }) {
     {seq.length ? <div ref={reorder.listRef} onClickCapture={reorder.onClickCapture}
       className={'prog-seq routine-list' + (reorder.drag ? ' is-reordering' : '')}>
       {items.map(({ id, step }, i) => <div key={id} data-routine-row data-ex-index={i}
-        className={'prog-step routine-drag-row' + (step === REST ? ' rest' : '') + (reorder.drag && i >= reorder.drag.first && i <= reorder.drag.last ? ' is-dragging' : '')}>
+        className={'prog-step routine-drag-row' + (step === REST ? ' rest' : '') + (reorder.drag && i >= reorder.drag.first && i <= reorder.drag.last ? ' is-dragging' : '') + (chipDrag?.over === i ? ' is-drop' : '')}>
         <span className="n" style={mode === SEQ_WEEK ? { width: 'auto', minWidth: 16, whiteSpace: 'nowrap' } : null}>{mode === SEQ_WEEK ? t(DAYN[(i + 1) % 7]) : i + 1}</span>
         <span className="lrow-i" style={step === REST ? { background: 'var(--surface-3)' } : null}><Icon name={glyphFor(step)} /></span>
         <span className="grow tt">{labelFor(step)}</span>
         <button className="iconbtn danger" style={{ width: 28, height: 28, fontSize: 12, flex: 'none' }} onClick={() => removeStep(i)} aria-label={t('Remove')}><Icon name="xmark" /></button>
       </div>)}
       {reorder.drag && <div className="routine-drop-indicator" aria-hidden="true" style={{ top: `${reorder.drag.indicatorTop}px` }} />}
+      {chipDrag && <div className="prog-ghost" aria-hidden="true"
+        style={{ left: `${chipDrag.left - listBox.left}px`, top: `${chipDrag.top - listBox.top}px` }}>
+        <span className="chip">
+          <Icon name={glyphOf(st.routines.find(r => r.id === chipDrag.id)?.emoji)} />{st.routines.find(r => r.id === chipDrag.id)?.name}
+        </span>
+      </div>}
     </div> :<div className="empty small" style={{ padding: '10px 0' }}>{t('Add routines and rest days below to build the sequence.')}</div>}
 
     {/* Routines grouped under their folders when there are any; loose ones follow. */}
