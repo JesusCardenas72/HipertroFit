@@ -4,7 +4,7 @@ import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, matchExercise, exOr, normalizeStr, muscleTagsOf, catalogueRow, imgSrc, gifSrc } from './lib/exercises.js'
 import { activeProfile, exAvailable, ALL_EQUIPMENT, ADJUSTABLE, newProfile, adjustableOf, adjustableFor } from './lib/equipment.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount, DAYN, DAYS, MONTHS_LONG, ACCENTS } from './lib/format.js'
-import { programActive, emptyProgram, sessionsPerRound, REST } from './lib/program.js'
+import { programActive, programMode, emptyProgram, sessionsPerRound, mondayOf, weekSequence, SEQ_CYCLE, SEQ_WEEK, REST } from './lib/program.js'
 import { STRATEGIES, microcycleLen, strategyOf, cyclePosition } from './lib/microcycle.js'
 import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
@@ -25,7 +25,9 @@ import BodyMap from './components/BodyMap.jsx'
 import { exerciseMuscleSnapshot, loadOfWorkouts, MUSCLE_CHOICES, muscleLabel, muscleChoiceOf } from './lib/muscles.js'
 import { parseImport, mergeImport } from './lib/import-csv.js'
 import { importHevyData, HevyApiError, HEVY_DEV_SETTINGS, mergeHevyRoutines } from './lib/import-hevy.js'
-import { addFolder, renameFolder, moveFolder, deleteFolder, FOLDER_NAME_MAX } from './lib/folders.js'
+import { addFolder, renameFolder, moveFolder, deleteFolder, groupRoutines, FOLDER_NAME_MAX } from './lib/folders.js'
+import { dropActiveWorkoutEntry } from './lib/active-workout-order.js'
+import { useRoutineReorder } from './views/RoutineEdit.jsx'
 import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-share.js'
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
@@ -1791,7 +1793,7 @@ export const folderSheet = folder => ui().openSheet(close => <FolderSheet folder
 // Build the microcycle as a repeating sequence of training/rest days and project it onto the
 // calendar. Every mutation writes straight to S.program so the week strip, the calendar and the
 // volume window all update live. See lib/program.js.
-function ProgramSheet({ close }) {
+export function ProgramSheet({ close = () => {} }) {
   const st = useStore(s => s.S)
   const prog = st.program
   const seq = (prog && prog.seq) || []
@@ -1803,12 +1805,15 @@ function ProgramSheet({ close }) {
   const planned = plannedVolume(st)
 
   const mut = fn => update(s => { if (!s.program) s.program = emptyProgram(todayISO()); fn(s.program) })
-  const addStep = v => mut(p => { p.seq = [...p.seq, v] })
-  const removeStep = i => mut(p => { p.seq = p.seq.filter((_, j) => j !== i) })
-  const moveStep = (i, dir) => mut(p => {
-    const j = i + dir
-    if (j < 0 || j >= p.seq.length) return
-    const s2 = [...p.seq]; [s2[i], s2[j]] = [s2[j], s2[i]]; p.seq = s2
+  // A weekday program keeps seven fixed slots: adding fills the first free day, removing frees it.
+  const addStep = v => mut(p => {
+    if (programMode(p) !== SEQ_WEEK) { p.seq = [...p.seq, v]; return }
+    const free = p.seq.indexOf(REST)
+    if (free >= 0) p.seq = p.seq.map((step, j) => j === free ? v : step)
+  })
+  const removeStep = i => mut(p => {
+    if (programMode(p) === SEQ_WEEK) p.seq = p.seq.map((step, j) => j === i ? REST : step)
+    else p.seq = p.seq.filter((_, j) => j !== i)
   })
   // One date for both jobs: where the calendar projection starts drawing, and where the
   // session count starts counting. "The start of a microcycle" is exactly that day.
@@ -1816,6 +1821,21 @@ function ProgramSheet({ close }) {
   const setOn = v => mut(p => { p.on = v })
   const setStrategy = v => mut(p => { p.strategy = v })
   const setMicro = n => update(s => { s.microcycleSessions = Math.max(1, Math.round(n) || 1) })
+  // Switching keeps each layout's own sequence and anchor, so going back restores the cycle.
+  // A weekday program is seven steps taken from the weekly plan, anchored on this week's Monday.
+  const setMode = v => mut(p => {
+    if (programMode(p) === v) return
+    if (v === SEQ_WEEK) {
+      p.cycleSeq = p.seq; p.cycleAnchor = p.anchor
+      p.seq = weekSequence(st.week); p.mode = SEQ_WEEK
+      p.anchor = mondayOf(todayISO()); p.cycleStart = p.anchor
+    } else {
+      p.seq = p.cycleSeq || []; p.mode = SEQ_CYCLE
+      p.anchor = p.cycleAnchor || todayISO(); p.cycleStart = p.anchor
+      delete p.cycleSeq; delete p.cycleAnchor
+    }
+  })
+  const mode = programMode(prog)
 
   const glyphFor = step => step === REST ? 'moon' : glyphOf((routine(step) || {}).emoji)
   const labelFor = step => step === REST ? t('Rest day') : (routine(step) ? routine(step).name : t('Deleted routine'))
@@ -1823,6 +1843,26 @@ function ProgramSheet({ close }) {
   // Next 14 days as the app will actually schedule them — program, per-day overrides and the
   // weekly plan all folded in — so the strip is the real projection.
   const preview = upcomingDays(st, 14)
+
+  const { loose, folders } = groupRoutines(st)
+  const folderGroups = folders.filter(g => g.routines.length)
+  const addChip = r => <button key={r.id} className="chip" disabled={mode === SEQ_WEEK && !seq.includes(REST)} onClick={() => addStep(r.id)}><Icon name={glyphOf(r.emoji)} />{r.name}</button>
+
+  // The sequence is drag-to-reorder like the routine editor's rows. A step can repeat, so each
+  // one's id counts its occurrences; the drop itself is a plain move (no supersets here).
+  const items = useMemo(() => {
+    const seen = new Map()
+    return seq.map(step => {
+      const n = (seen.get(step) || 0) + 1
+      seen.set(step, n)
+      return { id: step + '#' + n, step }
+    })
+  }, [seq])
+  const reorder = useRoutineReorder('program-sequence', items, (index, intent) => {
+    const copy = items.map(item => ({ ...item }))
+    if (!dropActiveWorkoutEntry({ entries: copy, cur: 0 }, index, { slot: intent.slot })) return
+    mut(p => { p.seq = copy.map(item => item.step) })
+  })
 
   return <>
     <h3>{t('Programming')}</h3>
@@ -1847,28 +1887,43 @@ function ProgramSheet({ close }) {
     </div>
 
     <h4 className="sec">{t('Day sequence')}</h4>
-    {seq.length ? <div className="prog-seq">
-      {seq.map((step, i) => <div key={i} className={'prog-step' + (step === REST ? ' rest' : '')}>
-        <span className="n">{i + 1}</span>
+    <Segmented className="seg-mode" value={mode} onChange={setMode}
+      options={[{ value: SEQ_CYCLE, label: t('Numeric cycle') }, { value: SEQ_WEEK, label: t('Weekdays') }]} />
+    <div className="muted small" style={{ margin: '8px 0 10px' }}>
+      {mode === SEQ_WEEK ? t('Drag a routine to another weekday to move it. Each day has a fixed slot and the week starts on Monday.') : t('The sequence repeats from the start date, one step per day.')}
+    </div>
+    <>
+    {seq.length ? <div ref={reorder.listRef} onClickCapture={reorder.onClickCapture}
+      className={'prog-seq routine-list' + (reorder.drag ? ' is-reordering' : '')}>
+      {items.map(({ id, step }, i) => <div key={id} data-routine-row data-ex-index={i}
+        className={'prog-step routine-drag-row' + (step === REST ? ' rest' : '') + (reorder.drag && i >= reorder.drag.first && i <= reorder.drag.last ? ' is-dragging' : '')}>
+        <span className="n" style={mode === SEQ_WEEK ? { width: 'auto', minWidth: 16, whiteSpace: 'nowrap' } : null}>{mode === SEQ_WEEK ? t(DAYN[(i + 1) % 7]) : i + 1}</span>
         <span className="lrow-i" style={step === REST ? { background: 'var(--surface-3)' } : null}><Icon name={glyphFor(step)} /></span>
         <span className="grow tt">{labelFor(step)}</span>
-        <button className="iconbtn" style={{ width: 28, height: 28, fontSize: 12, flex: 'none' }} onClick={() => moveStep(i, -1)} disabled={i === 0} aria-label={t('Move up')}><Icon name="chevronUp" /></button>
-        <button className="iconbtn" style={{ width: 28, height: 28, fontSize: 12, flex: 'none' }} onClick={() => moveStep(i, 1)} disabled={i === seq.length - 1} aria-label={t('Move down')}><Icon name="chevronDown" /></button>
         <button className="iconbtn danger" style={{ width: 28, height: 28, fontSize: 12, flex: 'none' }} onClick={() => removeStep(i)} aria-label={t('Remove')}><Icon name="xmark" /></button>
       </div>)}
-    </div> : <div className="empty small" style={{ padding: '10px 0' }}>{t('Add routines and rest days below to build the sequence.')}</div>}
+      {reorder.drag && <div className="routine-drop-indicator" aria-hidden="true" style={{ top: `${reorder.drag.indicatorTop}px` }} />}
+    </div> :<div className="empty small" style={{ padding: '10px 0' }}>{t('Add routines and rest days below to build the sequence.')}</div>}
 
+    {/* Routines grouped under their folders when there are any; loose ones follow. */}
     <div className="prog-add">
-      {st.routines.map(r => <button key={r.id} className="chip" onClick={() => addStep(r.id)}><Icon name={glyphOf(r.emoji)} />{r.name}</button>)}
-      <button className="chip" onClick={() => addStep(REST)}><Icon name="moon" />{t('Rest')}</button>
+      {folderGroups.map(({ folder, routines }) => <div key={folder.id} className="prog-group">
+        <div className="prog-group-name"><Icon name="folder" />{folder.name}</div>
+        <div className="prog-add">{routines.map(addChip)}</div>
+      </div>)}
+      {loose.map(addChip)}
+      {mode !== SEQ_WEEK && <button className="chip" onClick={() => addStep(REST)}><Icon name="moon" />{t('Rest')}</button>}
     </div>
+    </>
 
+    {mode === SEQ_CYCLE && <>
     <h4 className="sec" style={{ marginTop: 18 }}>{t('Microcycle start')}</h4>
     {/* Typed by hand, or picked on the calendar. */}
     <DateField value={anchor} onChange={setAnchor} />
     <div className="muted small" style={{ marginTop: 6 }}>
       {t('Sessions are counted from this day. The end of each microcycle follows from the count.')}
     </div>
+    </>}
 
     <div className="list" style={{ marginTop: 14 }}>
       <SelectRow icon="target" title={t('Training strategy')} value={strategy}

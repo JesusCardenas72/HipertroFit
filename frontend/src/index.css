@@ -1247,7 +1247,13 @@ h4.sec{
 .prog-step .n{width:16px;text-align:center;color:var(--label-3);font-size:calc(12px * var(--fs));font-weight:600;flex:none}
 .prog-step .lrow-i{width:30px;height:30px;font-size:calc(15px * var(--fs));flex:none}
 .prog-step .tt{font-size:calc(14px * var(--fs));font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog-step .grow{flex:1;min-width:0}
+.prog-step.is-dragging{z-index:2;pointer-events:none;box-shadow:0 10px 28px rgba(0,0,0,.22);background:var(--surface-2)}
+.prog-seq.is-reordering .prog-step:not(.is-dragging){opacity:.8}
 .prog-add{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.prog-group{width:100%;margin-bottom:4px}
+.prog-group-name{display:flex;align-items:center;gap:6px;font-size:calc(12px * var(--fs));color:var(--label-3);margin:4px 0 6px}
+.prog-group-name .icn{font-size:14px}
 .prog-add .chip{display:inline-flex;align-items:center;gap:5px}
 .prog-prev{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
 .prog-day{display:flex;flex-direction:column;align-items:center;gap:3px;flex:none;

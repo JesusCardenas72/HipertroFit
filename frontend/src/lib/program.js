@@ -64,3 +64,20 @@ export const sessionsPerRound = program =>
 
 /** A fresh program shell anchored today, off until the user turns it on. */
 export const emptyProgram = (anchor = isoOf(new Date())) => ({ on: false, seq: [], anchor })
+
+// Two ways to lay the sequence out. `cycle` repeats it every seq.length days from the anchor.
+// `week` keeps seven steps, Monday first, and anchors on a Monday, so programStep's day count
+// from the anchor lands on the weekday with no special case.
+export const SEQ_CYCLE = 'cycle'
+export const SEQ_WEEK = 'week'
+export const programMode = program => program?.mode === SEQ_WEEK ? SEQ_WEEK : SEQ_CYCLE
+
+/** The Monday (ISO) of the week that holds `iso`. */
+export function mondayOf(iso) {
+  const d = new Date(iso + 'T12:00:00')
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return isoOf(d)
+}
+
+/** The seven steps of a weekday program from the weekly plan, Monday first (week[0] is Sunday). */
+export const weekSequence = week => Array.from({ length: 7 }, (_, i) => (week && week[(i + 1) % 7]) || REST)

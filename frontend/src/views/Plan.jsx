@@ -2,11 +2,10 @@ import { useNavigate } from 'react-router-dom'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { DAYN, uid, exCount } from '../lib/format.js'
+import { uid, exCount } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
-import { dayAssignSheet, folderSheet, loadStarterPlan, planToolsSheet, programSheet, startFlow } from '../sheets.jsx'
+import { folderSheet, loadStarterPlan, planToolsSheet, ProgramSheet, startFlow } from '../sheets.jsx'
 import { dropRoutine, groupRoutines, planDropIntent, planRows, toggleFolder } from '../lib/folders.js'
-import { programActive } from '../lib/program.js'
 import Icon from '../components/Icon.jsx'
 import MicrocycleActions from '../components/MicrocycleActions.jsx'
 
@@ -340,29 +339,9 @@ export default function Plan() {
           </div>
           <Icon name="chevronRight" className="chev" />
         </div>
-        <div className="item" {...tappable(programSheet)}>
-          <span className="lrow-i"><Icon name="calendar" /></span>
-          <div className="grow">
-            <div className="tt">{t('Day sequence')}</div>
-            <div className="ss">{programActive(S.program)
-              ? t('{0}-day cycle · active', S.program.seq.length)
-              : t('Off — using weekly schedule')}</div>
-          </div>
-          <Icon name="chevronRight" className="chev" />
-        </div>
       </div>
 
-      <h4 className="sec">{t('Week schedule')}</h4>
-      {programActive(S.program) && <div className="small dim" style={{ margin: '-2px 0 8px' }}>{t('Overridden by the program while it is on.')}</div>}
-      <div className="list" style={{ display: 'flex', flexDirection: 'column' }}>
-        {[1, 2, 3, 4, 5, 6, 0].map(d => {
-          const r = S.routines.find(x => x.id === S.week[d])
-          return <div key={d} className="item" {...tappable(() => dayAssignSheet(d))}>
-            <div className="grow"><div className="tt">{t(DAYN[d])}</div></div>
-            {r ? <span className="tag acc"><Icon name={glyphOf(r.emoji)} />{r.name}</span> : <span className="tag">{t('Rest')}</span>}
-            <Icon name="chevronRight" className="chev" /></div>
-        })}
-      </div>
+      <ProgramSheet />
     </div><div>
       <div className="row between" style={{ marginTop: 22, marginBottom: 10 }}>
         <h4 className="sec" style={{ margin: 0 }}>{t('Routines')}</h4>

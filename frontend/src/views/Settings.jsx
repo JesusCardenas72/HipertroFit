@@ -20,7 +20,7 @@ import { playClips, stopClips } from '../lib/sound.js'
 import { REST_EX_PRESETS, restExLabel, settingChoice } from '../lib/rest-between.js'
 import { DEFAULT_SECONDARY, normalizeSecondaryWeight } from '../lib/muscles.js'
 import { VOLUME_TARGET, normalizeVolumeSplit } from '../lib/volume.js'
-import { UI_SCALE, TEXT_SCALE, DEFAULT_DISPLAY, loadDisplay, saveDisplay, clampScale, dragScale } from '../lib/display.js'
+import { UI_SCALE, DEFAULT_DISPLAY, loadDisplay, saveDisplay, clampScale, dragScale } from '../lib/display.js'
 
 /* A stored sound — the rest-end bell, the exercise-end bells or the "time to progress" celebration —
    or a file from this device (lib/custom-sound.js). The file is checked before it is kept — a clip
@@ -609,15 +609,15 @@ function ScaleRow({ icon, title, value, range, onChange }) {
   </Row>
 }
 
+// One size for both: the interface and its text are scaled together by the same percentage.
 function DisplaySizeRows() {
   const [d, setD] = useState(loadDisplay)
-  const set = patch => setD(saveDisplay({ ...d, ...patch }))
+  const set = v => setD(saveDisplay({ ui: v, text: v }))
   const changed = d.ui !== DEFAULT_DISPLAY.ui || d.text !== DEFAULT_DISPLAY.text
   return <>
-    <ScaleRow icon="expand" title={t('Interface size')} value={d.ui} range={UI_SCALE} onChange={ui => set({ ui })} />
-    <ScaleRow icon="textSize" title={t('Text size')} value={d.text} range={TEXT_SCALE} onChange={text => set({ text })} />
+    <ScaleRow icon="expand" title={t('Interface and text size')} value={d.ui} range={UI_SCALE} onChange={set} />
     <Row icon="phone" iconTint="var(--label-3)" title={t('Sizes apply to this device only')}
-      subtitle={changed ? undefined : t('Make the whole app or just its text larger or smaller.')}>
+      subtitle={changed ? undefined : t('Make the whole app and its text larger or smaller.')}>
       {changed && <Button size="sm" onClick={() => setD(saveDisplay(DEFAULT_DISPLAY))}>{t('Reset')}</Button>}
     </Row>
   </>

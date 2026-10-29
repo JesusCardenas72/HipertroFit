@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   REST, daysBetween, programActive, programStep, projectProgram, sessionsPerRound, emptyProgram,
+  SEQ_WEEK, programMode, mondayOf, weekSequence,
 } from './program.js'
 
 // Legs, rest, Push, Pull, rest — the user's own example, a 5-day loop.
@@ -68,5 +69,31 @@ describe('sessionsPerRound & emptyProgram', () => {
   })
   it('starts off, empty, anchored to the given day', () => {
     expect(emptyProgram('2026-09-07')).toEqual({ on: false, seq: [], anchor: '2026-09-07' })
+  })
+})
+
+describe('weekday mode', () => {
+  it('defaults to the numeric cycle', () => {
+    expect(programMode(prog)).toBe('cycle')
+    expect(programMode({ ...prog, mode: SEQ_WEEK })).toBe(SEQ_WEEK)
+  })
+
+  it('finds the Monday of any date in its week', () => {
+    expect(mondayOf('2026-10-29')).toBe('2026-10-26')   // a Thursday
+    expect(mondayOf('2026-10-26')).toBe('2026-10-26')   // already a Monday
+    expect(mondayOf('2026-11-01')).toBe('2026-10-26')   // a Sunday closes the week
+  })
+
+  it('builds seven steps Monday first from the weekly plan', () => {
+    const week = { 0: 'sun', 1: 'mon', 3: 'wed' }
+    expect(weekSequence(week)).toEqual(['mon', REST, 'wed', REST, REST, REST, 'sun'])
+  })
+
+  it('lands each weekday on its own step when anchored on a Monday', () => {
+    const wk = { on: true, mode: SEQ_WEEK, anchor: '2026-10-26', seq: ['mon', REST, 'wed', REST, REST, REST, 'sun'] }
+    expect(programStep(wk, '2026-10-26')).toBe('mon')
+    expect(programStep(wk, '2026-10-28')).toBe('wed')
+    expect(programStep(wk, '2026-11-01')).toBe('sun')
+    expect(programStep(wk, '2026-11-02')).toBe('mon')   // next week repeats
   })
 })
