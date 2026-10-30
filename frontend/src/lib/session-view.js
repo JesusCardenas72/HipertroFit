@@ -1,0 +1,127 @@
+import { dockItems } from './workout-dock.js'
+import { isWarmupRow } from './workout-model.js'
+import { FORMULAS, DEFAULT_FORMULA, REP_CAP, best1RM } from './onerm.js'
+import { restSecFor, restSecAfterSet } from './supersetFlow.js'
+import { restBetweenExercisesSec, exerciseRestChoice } from './rest-between.js'
+
+/**
+ * The "Session" view of a running workout: every exercise in one column, with a rail of
+ * thumbnails down the side and a coloured bar joining the members of each superset.
+ *
+ * Everything here only reads — the view logs sets through the same handlers as the drum, the
+ * list and the table, so choosing it changes how the session looks, never what it does.
+ */
+
+/**
+ * One rail cell per entry, in session order: `{ idx, unit, hue, pos, done, current }`.
+ * `pos` places the entry inside its superset's bar ('first' | 'mid' | 'last'), or 'solo' when
+ * it is not linked; `hue` is the dock's colour for that superset (null when solo), so the rail
+ * and the dock always agree on which group is which.
+ */
+export function railItems(entries, cur) {
+  const list = Array.isArray(entries) ? entries : []
+  const out = []
+  dockItems(list).forEach(item => {
+    const n = item.indices.length
+    item.indices.forEach((idx, k) => {
+      const sets = list[idx]?.sets || []
+      out.push({
+        idx,
+        unit: item.position,
+        hue: item.hue,
+        pos: n < 2 ? 'solo' : k === 0 ? 'first' : k === n - 1 ? 'last' : 'mid',
+        done: sets.length > 0 && sets.every(s => s.done),
+        current: item.indices.includes(cur),
+      })
+    })
+  })
+  return out
+}
+
+/**
+ * The two records the session card shows for an exercise, each with the set and the day it
+ * came from: the heaviest work set (ties go to the one with more reps) and the most reps in
+ * one work set (ties go to the heavier one). Only finished work sets with a rep count count —
+ * warm-ups, cardio and timed holds drop out. Null for a record there is nothing to show for.
+ */
+export function exerciseRecords(S, exId) {
+  let maxWeight = null, maxReps = null
+  ;(S?.workouts || []).forEach(w => {
+    ;(w.entries || []).forEach(e => {
+      if (e.id !== exId) return
+      ;(e.sets || []).forEach(s => {
+        if (!s.done || isWarmupRow(s)) return
+        const weight = Number(s.w) || 0
+        const reps = Math.round(Number(s.r) || 0)
+        if (reps < 1) return
+        if (weight > 0 && (!maxWeight || weight > maxWeight.w || (weight === maxWeight.w && reps > maxWeight.r))) {
+          maxWeight = { w: weight, r: reps, d: w.d }
+        }
+        if (!maxReps || reps > maxReps.r || (reps === maxReps.r && weight > maxReps.w)) {
+          maxReps = { r: reps, w: weight, d: w.d }
+        }
+      })
+    })
+  })
+  return { maxWeight, maxReps }
+}
+
+export const REP_MAX_REPS = [1, 3, 5, 6, 8, 10, 12, 15, 20]
+
+/**
+ * The weight an estimated 1RM points to for each rep count — the formula of onerm.js run
+ * backwards. Every formula there is the load times a factor of the reps, so the weight for
+ * `r` reps is the 1RM over that factor. Rows past REP_CAP come back marked `rough`: onerm.js
+ * will not estimate from them, and the view shows them dimmed rather than as a firm number.
+ */
+export function repMaxTable(e1rm, reps = REP_MAX_REPS, formula = DEFAULT_FORMULA) {
+  const max = Number(e1rm)
+  if (!isFinite(max) || max <= 0) return []
+  const fn = FORMULAS[formula] || FORMULAS[DEFAULT_FORMULA]
+  return reps.map(r => {
+    const factor = r === 1 ? 1 : fn(1, r)
+    const w = factor > 0 && isFinite(factor) ? Math.round(max / factor * 10) / 10 : null
+    return { r, w, rough: r > REP_CAP }
+  }).filter(row => row.w != null && row.w > 0)
+}
+
+/** repMaxTable from the exercise's all-time best estimate; empty without one. */
+export function repMaxFor(S, exId, formula = DEFAULT_FORMULA) {
+  const best = best1RM(S, exId, formula)
+  return best ? repMaxTable(best.est, REP_MAX_REPS, formula) : []
+}
+
+// How long a set takes to do when nothing says otherwise.
+export const WORK_SEC = 40
+
+/**
+ * A rough length for the whole session, in seconds, for the header's "elapsed / estimated".
+ * Each set costs its own time (a timed set's `sec`, a cardio set's `min`, else WORK_SEC), and
+ * the rests are the ones the session itself would start: the group's rest between rounds of a
+ * superset or sets of an exercise (warm-ups on their own clock), then the break between
+ * exercises — the same helpers the session's timer reads, with `opts` the app's settings
+ * (`restSec`, `warmupRestSec`, `restExSec`) and the running workout's override (`workoutRestEx`).
+ */
+export function estimateSessionSec(entries, units, opts = {}) {
+  const list = Array.isArray(entries) ? entries : []
+  const groups = Array.isArray(units) ? units : []
+  let total = 0
+  groups.forEach((unit, u) => {
+    const restSec = restSecFor(list, unit, opts.restSec)
+    const rounds = Math.max(0, ...unit.map(i => list[i]?.sets?.length || 0))
+    for (let k = 0; k < rounds; k++) {
+      let last = null
+      unit.forEach(i => {
+        const s = list[i]?.sets?.[k]
+        if (!s) return
+        total += s.sec > 0 ? s.sec : s.min > 0 ? s.min * 60 : WORK_SEC
+        last = s
+      })
+      if (last && k < rounds - 1) total += restSecAfterSet(last, restSec, opts.warmupRestSec)
+    }
+    if (u < groups.length - 1) {
+      total += restBetweenExercisesSec(restSec, opts.workoutRestEx, opts.restExSec, exerciseRestChoice(list, unit))
+    }
+  })
+  return total
+}
