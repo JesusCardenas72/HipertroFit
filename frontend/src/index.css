@@ -2025,7 +2025,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
    grid shared by the header and every row, so a label can't drift off the values it names; the
    effort column only exists when the profile logs RIR/RPE (c3 vs c2). ---- */
 .settable{margin-top:10px}
-.st-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.st-cards{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:8px;margin-bottom:12px;align-items:stretch}
 .st-card{background:var(--surface-2);border-radius:12px;padding:9px 12px;text-align:left;min-width:0}
 .st-k{font-size:calc(11px * var(--fs));color:var(--label-3);font-weight:500;text-transform:uppercase;letter-spacing:.045em;
   display:flex;align-items:center;gap:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2034,6 +2034,10 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .st-v{font-size:calc(17px * var(--fs));font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .st-v small{font-size:calc(12px * var(--fs));color:var(--label-2);font-weight:500}
 .st-card.aim .st-v{color:var(--acc)}
+/* The record is only a reference: it keeps to its title and one line, so the overload gets the room. */
+.st-card.rec{align-self:start;padding:5px 10px}
+.st-card.rec .st-v{font-size:calc(14px * var(--fs));margin-top:0}
+.st-card.aim{padding:9px 12px}
 .st-card.aim:active{transform:scale(.98)}
 .st-row{display:grid;align-items:center;gap:8px;grid-template-columns:30px minmax(0,1.3fr) 42px}
 .st-row.c2{grid-template-columns:30px minmax(0,1.3fr) minmax(0,1fr) 42px}
@@ -2251,6 +2255,16 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .sf-tab.solo.on::before{background:var(--acc)}
 .sf-tab.on .sf-th{width:56px;height:56px;border-radius:13px;opacity:1;
   box-shadow:0 0 0 3px var(--ss,var(--acc)),0 6px 16px rgba(0,0,0,.5)}
+/* Reordering the tabs (components/SessionFlow.jsx): a tab lifted under the finger is drawn over the
+   rest, with the dock's magnet ring on the one a drop would join, and a marker on the gap it would take. */
+.sf-tab{transition:transform var(--med) var(--ease);-webkit-touch-callout:none;user-select:none}
+.sf-tab.dragging{transition:none;z-index:5}
+.sf-tab.lifted .sf-th{box-shadow:0 0 0 3px var(--ss,var(--acc)),0 12px 24px rgba(0,0,0,.6)}
+.sf-tab.magnet .sf-th{box-shadow:0 0 0 2.5px var(--acc),0 0 14px var(--acc)}
+.sf-join{position:absolute;left:12px;width:4px;border-radius:4px;background:var(--ss);box-shadow:0 0 10px var(--ss);
+  pointer-events:none;z-index:4;transition:top var(--fast) var(--ease),height var(--fast) var(--ease)}
+.sf-marker{position:absolute;left:6px;right:10px;height:3px;margin-top:-1.5px;border-radius:3px;background:var(--acc);
+  box-shadow:0 0 10px var(--acc);pointer-events:none;z-index:4;transition:top var(--fast) var(--ease)}
 .sf-cn{position:absolute;right:0;width:14px;height:14px;pointer-events:none}
 .sf-cn.t{bottom:100%;background:radial-gradient(circle at 0 0,transparent 13.5px,var(--surface-2) 14px)}
 .sf-cn.b{top:100%;background:radial-gradient(circle at 0 100%,transparent 13.5px,var(--surface-2) 14px)}

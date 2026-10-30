@@ -1221,6 +1221,7 @@ export default {
   'plus 0.1': 'mais 0,1',
   'Table': 'Tabela',
   'Show sets as a table': 'Ver as séries em tabela',
+  'Overload target': 'Objetivo sobrecarga',
   'Session': 'Sessão',
   'Show the whole session': 'Ver a sessão inteira',
   'Max weight': 'Peso máx.',

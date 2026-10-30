@@ -1221,6 +1221,7 @@ export default {
   'plus 0.1': 'плюс 0,1',
   'Table': 'Таблица',
   'Show sets as a table': 'Показать подходы таблицей',
+  'Overload target': 'Цель перегрузки',
   'Session': 'Тренировка',
   'Show the whole session': 'Показать всю тренировку',
   'Max weight': 'Макс. вес',

@@ -1,4 +1,4 @@
-import { dockItems } from './workout-dock.js'
+import { dockItems, dockIntent, dropSlot } from './workout-dock.js'
 import { isWarmupRow } from './workout-model.js'
 import { FORMULAS, DEFAULT_FORMULA, REP_CAP, best1RM } from './onerm.js'
 import { restSecFor, restSecAfterSet } from './supersetFlow.js'
@@ -124,4 +124,49 @@ export function estimateSessionSec(entries, units, opts = {}) {
     }
   })
   return total
+}
+
+// How far a dragged tab's neighbours lean toward the gap it is about to open.
+export const DROP_LEAN = 8
+
+/**
+ * Where a tab dragged to `y` (the list's own coordinates) would land: `spans` are the tabs as
+ * `{ index, top, bottom }`. The rules are the workout dock's (dockIntent): over another tab's
+ * middle it joins that exercise or its superset, in a gap it lands there, near its own superset
+ * it stays with it. Returns the `intent` the reorder takes, the `markerY` of the gap, the `join`
+ * index (or null) and the `leans` the neighbours take on the way.
+ */
+export function tabDropIntent(entries, index, y, spans) {
+  const sg = entries[index]?.sg ?? null
+  const others = spans
+    .filter(span => span.index !== index)
+    .sort((a, b) => a.top - b.top)
+    .map(span => ({ index: span.index, sg: entries[span.index]?.sg ?? null, left: span.top, right: span.bottom }))
+  const intent = dockIntent(others, y, sg)
+  const { slot, join } = intent
+  const markerY = slot <= 0 ? others[0]?.left
+    : slot >= others.length ? others.at(-1)?.right
+      : (others[slot - 1].right + others[slot].left) / 2
+  const leans = {}
+  if (join == null && others[slot - 1]) leans[others[slot - 1].index] = -DROP_LEAN
+  if (join == null && others[slot]) leans[others[slot].index] = DROP_LEAN
+  return { intent, markerY, join, leans }
+}
+
+/**
+ * Where a whole superset (`unitIndices`) dragged to `y` would land among the other units, in the
+ * same numbering `moveActiveWorkoutUnitTo` takes. A superset only changes place; it never joins.
+ */
+export function unitDropIntent(entries, unitIndices, y, spans) {
+  const bands = dockItems(entries)
+    .filter(item => !item.indices.includes(unitIndices[0]))
+    .map(item => {
+      const tabs = spans.filter(span => item.indices.includes(span.index))
+      return { top: Math.min(...tabs.map(span => span.top)), bottom: Math.max(...tabs.map(span => span.bottom)) }
+    })
+  const slot = dropSlot(bands.map(band => (band.top + band.bottom) / 2), y)
+  const markerY = slot <= 0 ? bands[0]?.top
+    : slot >= bands.length ? bands.at(-1)?.bottom
+      : (bands[slot - 1].bottom + bands[slot].top) / 2
+  return { intent: { unit: slot }, markerY, join: null, leans: {} }
 }

@@ -1221,6 +1221,7 @@ export default {
   'plus 0.1': '0.1 बढ़ाएँ',
   'Table': 'तालिका',
   'Show sets as a table': 'सेट तालिका के रूप में दिखाएँ',
+  'Overload target': 'लक्ष्य ओवरलोड',
   'Session': 'सत्र',
   'Show the whole session': 'पूरा सत्र दिखाएँ',
   'Max weight': 'अधिकतम वज़न',

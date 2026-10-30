@@ -833,6 +833,7 @@ export const PT_BR_OVERRIDES = {
   'plus 0.1': 'mais 0,1',
   'Table': 'Tabela',
   'Show sets as a table': 'Ver as séries em tabela',
+  'Overload target': 'Meta de sobrecarga',
   'Session': 'Sessão',
   'Show the whole session': 'Ver a sessão inteira',
   'Max weight': 'Carga máx.',

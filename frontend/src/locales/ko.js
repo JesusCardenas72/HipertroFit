@@ -1221,6 +1221,7 @@ export default {
   'plus 0.1': '0.1 더하기',
   'Table': '표',
   'Show sets as a table': '세트를 표로 보기',
+  'Overload target': '목표 과부하',
   'Session': '운동',
   'Show the whole session': '운동 전체 보기',
   'Max weight': '최대 무게',

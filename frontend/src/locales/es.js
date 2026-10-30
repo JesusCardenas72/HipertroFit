@@ -1264,6 +1264,7 @@ export default {
   'No overload — accumulated fatigue': 'No sobrecarga por fatiga acumulada',
   'Table': 'Tabla',
   'Show sets as a table': 'Ver las series en tabla',
+  'Overload target': 'Objetivo sobrecarga',
   'Session': 'Sesión',
   'Show the whole session': 'Ver la sesión entera',
   'Max weight': 'Peso máx.',
