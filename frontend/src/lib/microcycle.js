@@ -6,13 +6,21 @@
 // nine or ten days, so anything counted per week cuts a microcycle in half.
 //
 // So a microcycle is counted in sessions from an explicit start (`program.cycleStart`).
-// The end needs no marking: session `len` closes the block and session `len + 1` opens the
-// next one. Rest days are free — train Tuesday or train Thursday, either way the session
-// that happens is the next step of the sequence. That is why the routine to propose comes
-// from a *positional* pointer (`nextStepOf`) and not from projecting the sequence onto
-// dates: a sequence like Push A, Pull A, Legs, Push B, Pull B, Legs repeats a routine, and
-// only the position tells the two Legs days apart. A step trained out of turn fills its own
-// position, so Legs done where Pull A was due leaves Pull A as the next session.
+// Rest days are free — train Tuesday or train Thursday, either way the session that happens
+// is the next step of the sequence. That is why the routine to propose comes from a
+// *positional* pointer (`nextStepOf`) and not from projecting the sequence onto dates: a
+// sequence like Push A, Pull A, Legs, Push B, Pull B, Legs repeats a routine, and only the
+// position tells the two Legs days apart. A step trained out of turn fills its own position,
+// so Legs done where Pull A was due leaves Pull A as the next session.
+//
+// Session `len` completes the block but does not close it: a microcycle is also its days,
+// rest days included, so it runs on until those have passed (cycleEndOf) and the next one is
+// opened only once the user says so — when the app asks at the end of its days, when a
+// session that would open the next one is started, or by hand. Closing writes the block to
+// `S.cycleLog` with its dates (lib/cycle-history.js), which is what lets Home and Stats show
+// the microcycles already behind. A profile saved before that log existed has no closings on
+// record: its count is still split every `len` planned sessions (countedBlocks), the next
+// planned session after a full block being the one that opened the next block.
 //
 // See lib/program.js for the calendar projection (which days you intend to train) and
 // lib/volume.js for what the block's volume adds up to.
@@ -85,22 +93,120 @@ export function sessionsSince(S) {
   return sorted(S && S.workouts).filter(w => String(w.d) >= start)
 }
 
+/** `iso` moved by `n` calendar days (negative goes back). */
+export function addDays(iso, n) {
+  const d = new Date(String(iso) + 'T12:00:00')
+  d.setDate(d.getDate() + n)
+  return isoOf(d)
+}
+
+/**
+ * The microcycles closed on record (S.cycleLog), oldest→newest: { start, end, n, sessions,
+ * len, strategy, deload } each, written when the block was closed (lib/cycle-history.js).
+ * Entries without both dates are dropped rather than trusted.
+ */
+export function cycleLogOf(S) {
+  const log = S && S.cycleLog
+  return Array.isArray(log) ? log.filter(c => c && typeof c.start === 'string' && typeof c.end === 'string') : []
+}
+
+/**
+ * The microcycles still counted from the start, oldest→newest — { start, workouts, planned }
+ * each, the last one being the running microcycle.
+ *
+ * With closings on record (S.cycleLog is an array) that is always one block: everything logged
+ * since `cycleStart`, however many planned sessions it holds — the count no longer closes a
+ * block, the user does. Without them, the profile is one saved before closings were recorded
+ * and the count splits it as it always did, every `len` planned sessions; only where the split
+ * falls moved: not at the session that fills a block but at the next planned one, so the rest
+ * days and the off-plan work after a full block stay in it. A block's start is the day that
+ * session was trained (the first block's, the microcycle start).
+ */
+export function countedBlocks(S) {
+  const len = microcycleLen(S)
+  const split = !Array.isArray(S && S.cycleLog)
+  const blocks = [{ start: cycleStartOf(S), workouts: [], planned: 0 }]
+  for (const w of sessionsSince(S)) {
+    const planned = isPlannedSession(S, w)
+    let cur = blocks[blocks.length - 1]
+    if (split && planned && cur.planned >= len) blocks.push(cur = { start: String(w.d), workouts: [], planned: 0 })
+    cur.workouts.push(w)
+    if (planned) cur.planned++
+  }
+  return blocks
+}
+
 /**
  * Where the profile stands in its block: which microcycle, and which session of it comes
- * next. `step` is the zero-based position of the *next* session, so `step === 0` means the
- * previous block just closed and nothing of this one is logged yet.
+ * next. `step` is the zero-based position of the *next* session, so `step === 0` means
+ * nothing of this block is logged yet; it stops at `len` once the block is `complete` — all
+ * its sessions done, its rest days possibly still running. `sessions` is the planned sessions
+ * of this block, which can pass `len` when the user chose to keep training in it.
  */
 export function cyclePosition(S) {
   const len = microcycleLen(S)
-  const sessions = sessionsSince(S).filter(w => isPlannedSession(S, w)).length
+  const blocks = countedBlocks(S)
+  const cur = blocks[blocks.length - 1]
   return {
     len,
-    start: cycleStartOf(S),
-    sessions,
-    cycle: Math.floor(sessions / len),
-    step: sessions % len,
-    remaining: len - (sessions % len),
+    start: cur.start,
+    sessions: cur.planned,
+    cycle: blocks.length - 1,
+    step: Math.min(cur.planned, len),
+    remaining: Math.max(0, len - cur.planned),
+    complete: cur.planned >= len,
   }
+}
+
+/**
+ * How one microcycle lies on the days of the sequence: `days`, from its first step through
+ * the rest days after its last session, and `tail`, those trailing rest days alone. Walked from
+ * the top of the sequence, where every block starts (blockFill); the trailing rests stop at the
+ * next training step or where the sequence starts over, since that is the next block's first
+ * day. Without a sequence there are no rest days to wait for: { days: 0, tail: 0 }.
+ */
+export function cycleLayout(S) {
+  const seq = Array.isArray(S && S.program && S.program.seq) ? S.program.seq : []
+  const len = microcycleLen(S)
+  if (!trainingSteps(S && S.program).length) return { days: 0, tail: 0 }
+  const isRest = i => { const s = seq[i % seq.length]; return !s || s === REST }
+  let i = 0, n = 0
+  while (n < len) { if (!isRest(i)) n++; i++ }
+  let tail = 0
+  while (i % seq.length && isRest(i)) { tail++; i++ }
+  return { days: i, tail }
+}
+
+/**
+ * The last day of the running microcycle, or null while sessions of it are still to do.
+ *
+ * Its days are all of them, rest days included: no earlier than its whole span counted from
+ * its start, and — when sessions slipped past that span — no earlier than the rest days that
+ * follow its last session. Without a sequence it is the day of the last session.
+ */
+export function cycleEndOf(S) {
+  const pos = cyclePosition(S)
+  if (!pos.complete) return null
+  const { days, tail } = cycleLayout(S)
+  const last = cycleWorkouts(S).filter(w => !isExtra(w)).at(-1)
+  const byLast = last ? addDays(last.d, tail) : pos.start
+  const bySpan = addDays(pos.start, Math.max(0, days - 1))
+  return byLast > bySpan ? byLast : bySpan
+}
+
+/** Whether the running microcycle is over: complete, and its last day gone by. */
+export function cycleDue(S, today = todayISO()) {
+  const end = cycleEndOf(S)
+  return !!end && end < today
+}
+
+/**
+ * Whether a session started now would open the next microcycle — and so has to be asked
+ * about first: one the block counts (isPlannedSession), with the running block complete.
+ * A routine id of null is a freestyle session.
+ */
+export function opensNextCycle(S, routineId) {
+  return isPlannedSession(S, { routineId: routineId || null }) && cyclePosition(S).complete
 }
 
 /**
@@ -209,17 +315,9 @@ export function nextStepOf(S) {
  * microcycle's volume.
  */
 export function cycleWorkouts(S) {
-  const len = microcycleLen(S)
-  const done = sessionsSince(S)
-  const planned = []
-  for (let i = 0; i < done.length; i++) if (isPlannedSession(S, done[i])) planned.push(i)
-  const step = planned.length % len
-  // Where the block opened: right after the session that closed the previous one (or at the
-  // start of the count for the first block) — not at its own first planned session, so
-  // off-plan work done between two blocks belongs to the one that is opening and stays in it
-  // once that block's first session is logged.
-  const closing = planned.length - step - 1
-  return done.slice(closing >= 0 ? planned[closing] + 1 : 0)
+  // The running block of countedBlocks: off-plan work after a full block stays in it until
+  // the next one is opened, and once it is, the next one starts with nothing in it.
+  return countedBlocks(S).at(-1).workouts
 }
 
 /**

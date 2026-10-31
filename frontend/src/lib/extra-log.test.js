@@ -116,13 +116,13 @@ describe('what extra work counts toward', () => {
     expect(cycleWorkouts(S).length).toBe(2)
   })
 
-  it('stays in the block it was logged in once that block’s first session is trained', () => {
-    // Block of two closes on the 2nd and 4th; extra on the 5th, next block opens on the 6th.
-    const closed = [planned('2026-01-02', 'a'), planned('2026-01-04', 'b')]
-    const between = fileExtraEntry(closed, entry, { ...opts, iso: '2026-01-05', today: '2026-01-05' })
-    expect(cycleWorkouts(state(between)).map(w => w.d)).toEqual(['2026-01-05'])
+  it('stays in the complete block it was logged after, not in the one opened next', () => {
+    // Block of two complete on the 2nd and 4th; extra on the 5th, next block opens on the 6th.
+    const full = [planned('2026-01-02', 'a'), planned('2026-01-04', 'b')]
+    const between = fileExtraEntry(full, entry, { ...opts, iso: '2026-01-05', today: '2026-01-05' })
+    expect(cycleWorkouts(state(between)).map(w => w.d)).toEqual(['2026-01-02', '2026-01-04', '2026-01-05'])
     const opened = [...between, planned('2026-01-06', 'a')]
-    expect(cycleWorkouts(state(opened)).map(w => w.d)).toEqual(['2026-01-05', '2026-01-06'])
+    expect(cycleWorkouts(state(opened)).map(w => w.d)).toEqual(['2026-01-06'])
   })
 
   it('does not become "last time" for the next planned session', () => {

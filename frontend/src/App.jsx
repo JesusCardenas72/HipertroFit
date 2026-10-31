@@ -17,6 +17,7 @@ import ScreenSlider from './components/ScreenSlider.jsx'
 import Modals from './components/Modals.jsx'
 import Toast from './components/Toast.jsx'
 import { DeloadNotifier } from './components/Deload.jsx'
+import { MicrocycleEndNotifier } from './components/MicrocycleActions.jsx'
 import { UpdateNotifier } from './components/AppUpdate.jsx'
 import { MOBILE } from './lib/mobile.js'
 import RestTimer from './components/RestTimer.jsx'
@@ -161,6 +162,7 @@ function Shell() {
       <Toast />
       <TimerFlash />
       {authed && !needsMobileOnboarding && <DeloadNotifier />}
+      {authed && !needsMobileOnboarding && <MicrocycleEndNotifier />}
       {MOBILE && <UpdateNotifier />}
     </>
   )

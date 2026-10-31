@@ -24,7 +24,8 @@ import { isFavorite } from './favorites.js'
 import { ownsEquipment } from './equipment.js'
 import { plannedVolume, setCredit, VOLUME_GROUPS, targetOf } from './volume.js'
 import { REST } from './program.js'
-import { closeMicrocycle, microcycleLen } from './microcycle.js'
+import { microcycleLen } from './microcycle.js'
+import { closeCycle } from './cycle-history.js'
 import { restartMeso } from './mesocycle.js'
 import { addFolder } from './folders.js'
 import { uid, todayISO } from './format.js'
@@ -267,7 +268,10 @@ export function applyDraft(s, draft, { name, label = x => x, today = todayISO() 
       id: ids[d.key], name: label(d.name), emoji: d.glyph, ...(folder ? { folder: folder.id } : {}), ex,
     })
   }
-  const closed = closeMicrocycle(s, SPLITS[draft.split].strategy, today)
+  // The running microcycle closes into the log, so what was trained before the new plan
+  // stays on record with its dates.
+  const { program: closed, cycleLog } = closeCycle(s, SPLITS[draft.split].strategy, today)
+  s.cycleLog = cycleLog
   s.program = {
     ...closed, on: true, anchor: closed.cycleStart,
     seq: draft.seq.map(k => (k === 'rest' ? REST : ids[k])),

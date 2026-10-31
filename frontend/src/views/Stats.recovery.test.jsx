@@ -247,8 +247,10 @@ describe('Stats muscle recovery view runtime', () => {
 
   it('opens on the microcycle window and reads its volume against the 10-20 target band', async () => {
     await mountStats()
-    // Five completed sessions, all inside the same 6-session microcycle.
-    expect(container.textContent).toContain('Microcycle #1 · Session 6 of 6')
+    // Five completed sessions, all inside the same 6-session microcycle — the running one,
+    // named with its dates on the picker.
+    expect(container.querySelector('.cycle-pick').textContent).toMatch(/^#1.* – today/)
+    expect(container.textContent).toContain('5 of 6 sessions')
     expect(container.textContent).toContain('Effective sets')
     // How to read the bars folds behind the info button.
     expect(container.textContent).not.toContain('Target 10–20 effective sets per muscle group each microcycle')

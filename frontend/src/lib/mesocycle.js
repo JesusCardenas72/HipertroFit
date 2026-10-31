@@ -14,12 +14,13 @@
 // nothing here needs to be recomputed when a session is logged — the count moves on its own.
 //
 // The number the user sees is a different thing: the microcycle's place *in its mesocycle*
-// (microNumber) — #1 after a deload, counting up to the next one. Closing a microcycle by
-// hand restarts the block count from index 0, so the loading microcycles already done in the
-// running mesocycle are carried over in `base`; without it every hand-closed block read #1
+// (microNumber) — #1 after a deload, counting up to the next one. Closing a microcycle
+// restarts the block count from index 0 (the closed ones go to the log, lib/cycle-history.js),
+// so the indices are shifted down with it (shiftMeso) and the loading microcycles already done
+// in the running mesocycle are carried over in `base`; without it every closed block read #1
 // again and the deload streak never built up.
 
-import { cyclePosition } from './microcycle.js'
+import { cyclePosition, cycleWorkouts } from './microcycle.js'
 import { isWarmupRow } from './workout-model.js'
 import { snapLoad, minLoadOf } from './load-scale.js'
 
@@ -60,15 +61,28 @@ export function microNumber(S, cycle = cyclePosition(S).cycle) {
 }
 
 /**
- * The `base` to carry when the running microcycle is closed by hand: the loading microcycles
- * of this mesocycle that will be behind the new block. A closed deload ends the mesocycle
- * (0). A microcycle with nothing logged in it yet is not one done — closing it keeps its
- * number for the block that replaces it.
+ * The `base` to carry when the running microcycle is closed: the loading microcycles of this
+ * mesocycle that will be behind the new block. A closed deload ends the mesocycle (0). A
+ * microcycle with nothing logged in it yet is not one done — closing it keeps its number for
+ * the block that replaces it.
  */
 export function carriedBase(S) {
-  const { cycle, step } = cyclePosition(S)
-  if (step === 0) return microNumber(S, cycle) - 1
-  return isDeloadCycle(S, cycle) ? 0 : microNumber(S, cycle)
+  const { cycle } = cyclePosition(S)
+  return microNumber(S, cycleWorkouts(S).length ? cycle + 1 : cycle) - 1
+}
+
+/**
+ * The mesocycle once the block count drops its first `by` microcycles — closed and written to
+ * the log, so the one that was index `by` is index 0 now. Deloads, postponements and
+ * announcements move down with their microcycles (one marked for the next block stays on it);
+ * those of the closed ones are gone. `base` carries the place in the mesocycle, so the new
+ * index 0 keeps the number it had.
+ */
+export function shiftMeso(S, by) {
+  const meso = mesoOf(S)
+  const n = Math.max(0, Math.round(Number(by) || 0))
+  const move = list => list.map(c => c - n).filter(c => c >= 0)
+  return { ...meso, deloads: move(meso.deloads), postponed: move(meso.postponed), notified: move(meso.notified), base: microNumber(S, n) - 1 }
 }
 
 /** Whether a given microcycle index is (or is planned as) a deload. */
@@ -77,23 +91,26 @@ export const isDeloadCycle = (S, cycle) => mesoOf(S).deloads.includes(cycle)
 /**
  * Where the mesocycle stands.
  *
- * `streak` counts the loading microcycles closed since the last deload — the deload itself
+ * `streak` counts the loading microcycles done since the last deload — the deload itself
  * resets it. `target` is the microcycle an "accept" would mark: the current one when it has
  * not started yet, otherwise the next, since a block already half-trained at full load is
- * not a deload any more.
+ * not a deload any more (and a complete one is not going to be trained again).
  */
 export function mesoState(S) {
-  const { cycle, step, len, remaining } = cyclePosition(S)
+  const { cycle, step, len, remaining, complete } = cyclePosition(S)
   const meso = mesoOf(S)
-  const streak = microNumber(S, cycle) - 1
+  const number = microNumber(S, cycle)
+  // A block whose sessions are all done is behind the user even while its rest days run on:
+  // it already counts toward the streak — or, a deload, has already closed the mesocycle.
+  const streak = complete ? microNumber(S, cycle + 1) - 1 : number - 1
   const current = meso.deloads.includes(cycle)
   const target = step === 0 ? cycle : cycle + 1
   const scheduled = current || meso.deloads.includes(cycle + 1)
   const mandatory = !scheduled && streak >= DELOAD_MAX
   const postponedHere = meso.postponed.includes(cycle)
   return {
-    cycle, step, len, remaining, streak, target,
-    number: streak + 1,              // this microcycle's place in the mesocycle (microNumber)
+    cycle, step, len, remaining, complete, streak, target,
+    number,                          // this microcycle's place in the mesocycle (microNumber)
     deload: current,                 // the microcycle being trained right now is the deload
     next: meso.deloads.includes(cycle + 1), // the one after this is already marked as a deload
     scheduled,                       // this one or the next is already marked
@@ -137,9 +154,11 @@ const addCycle = (meso, c) => (meso.deloads.includes(c) ? meso : { ...meso, delo
  * Force the deload on the microcycle being trained right now — at its start or half-way
  * through. Sessions already logged in it keep the load they were trained at; every session
  * started from here on comes down. No suggestion or streak is needed: it is the user's call.
+ * A complete block has no sessions left to come down, so "now" is the next one.
  */
 export function forceDeloadNow(S) {
-  return addCycle(mesoOf(S), cyclePosition(S).cycle)
+  const { cycle, complete } = cyclePosition(S)
+  return addCycle(mesoOf(S), complete ? cycle + 1 : cycle)
 }
 
 /** Force the deload on the microcycle after this one, whatever the streak says. */

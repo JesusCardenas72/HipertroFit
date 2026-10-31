@@ -1479,6 +1479,14 @@ h4.sec{
 .micro-btn.dl{--c:var(--deload)}
 .micro-btn.close{--c:var(--orange)}
 .micro-btn.prog{--c:var(--blue)}
+.deload-hero.micro-hero{background:var(--orange);color:#fff}
+/* The microcycle a volume card reads (components/CyclePicker): a chip with its number and dates
+   that opens the list of every microcycle. Looking back at one already closed tints it. */
+.cycle-pick{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;height:32px;padding:0 10px;border-radius:16px;
+  background:var(--surface-2);color:var(--label);font-size:calc(13px * var(--fs));white-space:nowrap}
+.cycle-pick .d{color:var(--label-2);overflow:hidden;text-overflow:ellipsis}
+.cycle-pick .icn{flex:none;color:var(--label-2)}
+.cycle-pick.past{background:color-mix(in srgb,var(--orange) 16%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--orange) 35%,transparent)}
 .micro-btn .disc{
   width:30px;height:30px;border-radius:50%;flex:none;
   display:flex;align-items:center;justify-content:center;

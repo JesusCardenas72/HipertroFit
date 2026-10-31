@@ -54,7 +54,7 @@ export function DeloadStatus({ manage = true, style }) {
       <Icon name="arrowDown" />
       <b>{t('Next microcycle is a deload')}</b>
     </div>
-    <div className="small">{t('Microcycle #{0} will come down {1}. This one stays at full load.', meso.cycle + 2, pctLabel(meso.pct))}</div>
+    <div className="small">{t('Microcycle #{0} will come down {1}. This one stays at full load.', meso.number + 1, pctLabel(meso.pct))}</div>
     {manage && <button type="button" className="deload-link" onClick={deloadControlSheet}>{t('Manage deload')}</button>}
   </div>
 }
@@ -98,16 +98,18 @@ function DeloadControl({ close }) {
     </div>
     <div className="small" style={{ marginBottom: 14 }}>
       {meso.deload ? <DeloadBadge pct={meso.pct}>{t('Microcycle #{0} is a deload', meso.number)}</DeloadBadge>
-        : meso.next ? <DeloadBadge>{t('Microcycle #{0} will be a deload', meso.cycle + 2)}</DeloadBadge>
-          : t('Microcycle #{0}, session {1} of {2} — loading.', meso.number, Math.min(meso.step + 1, meso.len), meso.len)}
+        : meso.next ? <DeloadBadge>{t('Microcycle #{0} will be a deload', meso.number + 1)}</DeloadBadge>
+          : meso.complete ? t('Microcycle #{0}, complete — loading.', meso.number)
+            : t('Microcycle #{0}, session {1} of {2} — loading.', meso.number, meso.step + 1, meso.len)}
     </div>
+    {/* A complete block has nothing left to deload: "now" would be the next one anyway. */}
     {!meso.deload && <>
-      <Button variant="primary" icon="arrowDown" className="deload-btn" onClick={() => now(false)}>
-        {meso.step === 0 ? t('Deload this microcycle') : t('Deload now — rest of this microcycle')}</Button>
-      {activeRunning && <><div style={{ height: 8 }} />
+      {!meso.complete && <Button variant="primary" icon="arrowDown" className="deload-btn" onClick={() => now(false)}>
+        {meso.step === 0 ? t('Deload this microcycle') : t('Deload now — rest of this microcycle')}</Button>}
+      {activeRunning && !meso.complete && <><div style={{ height: 8 }} />
         <Button icon="arrowDown" onClick={() => now(true)}>{t('Deload now, including the session in progress')}</Button></>}
-      {!meso.next && <><div style={{ height: 8 }} />
-        <Button icon="calendar" onClick={next}>{t('Deload the next microcycle')}</Button></>}
+      {!meso.next && <>{!meso.complete && <div style={{ height: 8 }} />}
+        <Button variant={meso.complete ? 'primary' : undefined} className={meso.complete ? 'deload-btn' : undefined} icon="calendar" onClick={next}>{t('Deload the next microcycle')}</Button></>}
     </>}
     {meso.deload && <><div style={{ height: 8 }} />
       <Button className="danger" icon="xmark" onClick={() => { close(); exitDeloadFlow() }}>{t('Exit deload')}</Button></>}

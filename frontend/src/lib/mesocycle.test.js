@@ -3,7 +3,7 @@ import {
   DELOAD_AFTER, DELOAD_MAX, DELOAD_PCT, emptyMeso, mesoOf, isDeloadCycle,
   mesoState, acceptDeload, postponeDeload, setDeloadPct, applyDeload,
   forceDeloadNow, forceDeloadNext, cancelDeload, exitDeload, deloadNotice, markDeloadNotified, isDeloadWorkout,
-  restartMeso, microNumber, carriedBase,
+  restartMeso, microNumber, carriedBase, shiftMeso,
 } from './mesocycle.js'
 import { closeMicrocycle } from './microcycle.js'
 import { deloadActiveSession, undeloadActiveSession } from './session-start.js'
@@ -52,9 +52,9 @@ describe('accepting and postponing', () => {
   })
 
   it('holds its tongue for the rest of a postponed microcycle, then asks again', () => {
-    const S = state(9)
+    const S = state(9)                           // block 2 complete, its rest days running
     const meso = postponeDeload(S)
-    expect(meso.postponed).toEqual([3])
+    expect(meso.postponed).toEqual([2])
     expect(mesoState({ ...S, meso }).suggest).toBe(false)
     // Next microcycle opens — same question, one microcycle later.
     expect(mesoState({ ...state(12), meso }).suggest).toBe(true)
@@ -240,15 +240,17 @@ describe('restarting the block count', () => {
 describe('numbering microcycles within the mesocycle', () => {
   it('counts up from #1 while no deload has closed a mesocycle', () => {
     expect(microNumber(state(0))).toBe(1)
-    expect(microNumber(state(3))).toBe(2)
+    expect(microNumber(state(3))).toBe(1)        // complete, still #1 until the next opens
+    expect(microNumber(state(4))).toBe(2)
     expect(microNumber(state(7))).toBe(3)
     expect(mesoState(state(7)).number).toBe(3)
   })
 
   it('makes the deload the last of its mesocycle and starts again at #1 after it', () => {
     const meso = { deloads: [3] }
-    expect(microNumber(state(9, meso))).toBe(4)     // the deload itself: microcycle #4
-    expect(microNumber(state(12, meso))).toBe(1)    // first one after it
+    expect(microNumber(state(10, meso))).toBe(4)    // the deload itself: microcycle #4
+    expect(microNumber(state(12, meso))).toBe(4)    // complete, its rest days running
+    expect(microNumber(state(13, meso))).toBe(1)    // first one after it
     expect(microNumber(state(16, meso))).toBe(2)
   })
 
@@ -262,7 +264,9 @@ describe('numbering microcycles within the mesocycle', () => {
   })
 
   it('does not count a microcycle closed before anything was logged in it', () => {
-    const st = state(6)                             // #3 just opened, nothing in it yet
+    // #3 just opened after two closed ones, nothing in it yet.
+    const st = { ...state(6), cycleLog: [], program: { ...state(6).program, cycleStart: '2026-01-10' }, meso: { base: 2 } }
+    expect(microNumber(st)).toBe(3)
     expect(carriedBase(st)).toBe(2)
     expect(microNumber({ ...st, workouts: [], meso: restartMeso(st, 2) })).toBe(3)
   })
@@ -280,5 +284,39 @@ describe('numbering microcycles within the mesocycle', () => {
   it('reads a missing or broken base as 0', () => {
     expect(mesoOf({ meso: { base: -2 } }).base).toBe(0)
     expect(mesoOf({ meso: { base: 'x' } }).base).toBe(0)
+  })
+})
+
+describe('a complete microcycle, its rest days still running', () => {
+  it('already counts toward the streak and raises the deload on time', () => {
+    const st = mesoState(state(9))                 // three done, the third still open
+    expect(st).toMatchObject({ cycle: 2, complete: true, number: 3, streak: 3, suggest: true, target: 3 })
+  })
+
+  it('closes the mesocycle when it was the deload', () => {
+    expect(mesoState(state(12, { deloads: [3] }))).toMatchObject({ number: 4, streak: 0, deload: true, suggest: false })
+  })
+
+  it('takes "deload now" as the next microcycle, having nothing left to train', () => {
+    expect(forceDeloadNow(state(9)).deloads).toEqual([3])
+    expect(forceDeloadNow(state(10)).deloads).toEqual([3])
+  })
+})
+
+describe('shifting the block count down', () => {
+  it('moves every index with its microcycle and drops the closed ones', () => {
+    const st = state(10, { deloads: [1, 4], postponed: [2, 3], notified: [1, 4], pct: 0.3 })
+    expect(shiftMeso(st, 4)).toEqual({ deloads: [0], postponed: [], notified: [0], pct: 0.3, base: 2 })
+  })
+
+  it('keeps the number of the microcycle that becomes index 0', () => {
+    const st = state(10)                           // block 3, one session in
+    const meso = shiftMeso(st, 4)
+    expect(microNumber({ ...st, workouts: [], meso })).toBe(microNumber(st, 4))
+    expect(meso.base).toBe(4)
+  })
+
+  it('starts the mesocycle over after a closed deload', () => {
+    expect(shiftMeso(state(12, { deloads: [3] }), 4).base).toBe(0)
   })
 })

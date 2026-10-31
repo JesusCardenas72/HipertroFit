@@ -169,7 +169,10 @@ export function buildDigest(S, { now = Date.now(), today = todayISO(), weeks = D
       strategy: strategyOf(S),
       length: pos.len,
       index: pos.cycle,
-      next_session: pos.step + 1,
+      // Complete: all its sessions done, its rest days still running — the next session
+      // opens the next microcycle.
+      next_session: pos.complete ? null : pos.step + 1,
+      complete: pos.complete,
       remaining: pos.remaining,
       next_routine: null,
     },

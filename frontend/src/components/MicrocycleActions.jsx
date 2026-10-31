@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { t } from '../lib/i18n.js'
+import { fmtDate, todayISO } from '../lib/format.js'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { STRATEGIES, cyclePosition, strategyOf, closeMicrocycle, trainingSteps, microcycleLen } from '../lib/microcycle.js'
-import { mesoState, restartMeso, carriedBase, microNumber } from '../lib/mesocycle.js'
+import { STRATEGIES, cyclePosition, strategyOf, trainingSteps, microcycleLen, cycleEndOf } from '../lib/microcycle.js'
+import { closeCycle, askCycleEnd } from '../lib/cycle-history.js'
+import { mesoState, carriedBase } from '../lib/mesocycle.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { deloadControlSheet } from './Deload.jsx'
 import { programSheet } from '../sheets.jsx'
@@ -16,34 +18,33 @@ import { Button } from './ui.jsx'
 
 const STRATEGY_ICON = { 'full-body': 'figureStrength', 'upper-lower': 'legs', ppl: 'pullup', custom: 'wrench' }
 
+// Close the running microcycle and open the next one under `strategy`: the closed block goes
+// to the log with its dates (lib/cycle-history.js) and the mesocycle goes on from it.
+export function openNextCycle(strategy) {
+  const before = strategyOf(useStore.getState().S)
+  useStore.getState().update(s => { Object.assign(s, closeCycle(s, strategy)) })
+  const after = useStore.getState().S
+  useUI.getState().toast(t('New microcycle started — {0}', t(STRATEGIES.find(x => x.key === strategyOf(after)).name)))
+  // A custom block is its own sequence, and a sequence that doesn't divide the new block
+  // evenly would leave the last session of it short: either way the layout needs a look.
+  const steps = trainingSteps(after.program).length
+  if (strategy !== before && (strategy === 'custom' || !steps || microcycleLen(after) % steps)) programSheet()
+}
+
 /* ---------- close the microcycle and pick the strategy of the next one ---------- */
 function CloseMicrocycle({ close }) {
   const S = useStore(s => s.S)
   const pos = cyclePosition(S)
+  const meso = mesoState(S)
   const [pick, setPick] = useState(strategyOf(S))
 
-  const confirm = () => {
-    const strategy = pick
-    useStore.getState().update(s => {
-      // The mesocycle goes on: what is carried is read before the block count restarts.
-      const base = carriedBase(s)
-      s.program = closeMicrocycle(s, strategy)
-      s.meso = restartMeso(s, base)
-    })
-    close()
-    const after = useStore.getState().S
-    useUI.getState().toast(t('New microcycle started — {0}', t(STRATEGIES.find(x => x.key === strategy).name)))
-    // A custom block is its own sequence, and a sequence that doesn't divide the new block
-    // evenly would leave the last session of it short: either way the layout needs a look.
-    const steps = trainingSteps(after.program).length
-    if (strategy === 'custom' || !steps || microcycleLen(after) % steps) programSheet()
-  }
+  const confirm = () => { close(); openNextCycle(pick) }
 
   return <>
     <h3 className="row" style={{ gap: 8 }}><Icon name="flag" />{t('Close microcycle')}</h3>
     <div className="muted small" style={{ marginBottom: 14 }}>
-      {t('Microcycle #{0} ends here — {1} of {2} sessions done. The next one is #{3} of this mesocycle, with its volume at zero. Pick the training strategy it will follow.',
-        microNumber(S, pos.cycle), Math.min(pos.step, pos.len), pos.len, carriedBase(S) + 1)}
+      {t('Microcycle #{0} ({1} – today) ends here — {2} of {3} sessions done. The next one is #{4} of this mesocycle, with its volume at zero. Pick the training strategy it will follow.',
+        meso.number, fmtDate(pos.start), pos.step, pos.len, carriedBase(S) + 1)}
     </div>
     <h4 className="sec">{t('Training strategy')}</h4>
     <div className="list" role="radiogroup" aria-label={t('Training strategy')} style={{ display: 'flex', flexDirection: 'column', marginBottom: 14 }}>
@@ -62,6 +63,51 @@ function CloseMicrocycle({ close }) {
   </>
 }
 export const closeMicrocycleSheet = () => useUI.getState().openSheet(close => <CloseMicrocycle close={close} />)
+
+/* ---------- the end of a microcycle's days: asked whether to open the next one ---------- */
+function MicrocycleOver({ close }) {
+  const S = useStore(s => s.S)
+  const pos = cyclePosition(S)
+  const meso = mesoState(S)
+  const next = carriedBase(S) + 1
+  return <div style={{ textAlign: 'center', padding: '4px 0' }}>
+    <div className="deload-hero micro-hero"><Icon name="flag" /></div>
+    <h3 style={{ marginBottom: 8 }}>{t('Microcycle #{0} is over', meso.number)}</h3>
+    <div className="muted" style={{ marginBottom: 16, lineHeight: 1.5 }}>
+      {t('{0} – {1} · {2} of {3} sessions. All its days, rest days included, have passed. Start microcycle #{4}?',
+        fmtDate(pos.start), fmtDate(cycleEndOf(S) || todayISO()), pos.sessions, pos.len, next)}
+    </div>
+    <Button variant="primary" icon="flag" onClick={() => { close(); openNextCycle(strategyOf(S)) }}>{t('Start microcycle #{0}', next)}</Button>
+    <div style={{ height: 8 }} />
+    <Button icon="target" onClick={() => { close(); closeMicrocycleSheet() }}>{t('Change strategy')}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Not yet')}</Button>
+  </div>
+}
+export const microcycleOverSheet = () => useUI.getState().openSheet(close => <MicrocycleOver close={close} />, { kind: 'center' })
+
+/**
+ * Mounted once by the app shell: when the running microcycle's days are all gone by, asks
+ * whether to open the next one — once a day, never over a session in progress. "Not yet"
+ * leaves it open; the Home card keeps offering it, and so does the next session started.
+ */
+export function MicrocycleEndNotifier() {
+  const S = useStore(s => s.S)
+  const ask = !S.active && askCycleEnd(S)
+  useEffect(() => {
+    if (!ask) return
+    // Not while the launch splash still covers the screen — asked behind it, it is missed.
+    const iv = setInterval(() => {
+      if (document.getElementById('splash')) return
+      clearInterval(iv)
+      // Marked as soon as it is shown: closing it by a swipe must not bring it back today.
+      useStore.getState().update(s => { s.program = { ...s.program, endAsked: todayISO() } })
+      microcycleOverSheet()
+    }, 300)
+    return () => clearInterval(iv)
+  }, [ask])
+  return null
+}
 
 export default function MicrocycleActions() {
   const S = useStore(s => s.S)

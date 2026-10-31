@@ -150,14 +150,14 @@ export function setCredit(entry) {
  * Effective-set volume per muscle group across a set of workouts.
  *
  * `pick` decides which done work sets count toward the volume (defaults to the RIR<=4
- * rule); the rated/unrated coverage counts every done work set regardless, so the UI can
- * report how much of the window was actually rated. Per set, each group is credited with
+ * rule) — `effective` is how many did; the rated/unrated coverage counts every done work set
+ * regardless, so the UI can report how much of the window was actually rated. Per set, each group is credited with
  * the strongest involvement of any of its muscles — never their sum.
  */
 export function groupVolume(workouts, pick = isEffectiveSet) {
   const groups = {}
   for (const g of VOLUME_GROUPS) groups[g.key] = 0
-  let rated = 0, unrated = 0
+  let rated = 0, unrated = 0, effective = 0
   for (const w of workouts || []) {
     for (const e of w.entries || []) {
       const mus = entryMuscles(e)
@@ -165,11 +165,12 @@ export function groupVolume(workouts, pick = isEffectiveSet) {
         if (!s.done || isWarmupRow(s)) continue
         if (rirOf(s) == null) unrated++; else rated++
         if (pick && !pick(s)) continue
+        effective++
         creditSet(groups, mus, 1)
       }
     }
   }
-  return { groups, rated, unrated, total: rated + unrated }
+  return { groups, rated, unrated, total: rated + unrated, effective }
 }
 
 /**

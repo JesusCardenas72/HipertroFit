@@ -60,16 +60,23 @@ describe('where the block starts', () => {
 })
 
 describe('counting sessions, not days', () => {
-  it('closes a block on its last session whatever the rest days did', () => {
-    // Six sessions spread over three weeks still closes exactly one PPL microcycle.
+  it('completes a block on its last session whatever the rest days did', () => {
+    // Six sessions spread over three weeks still complete exactly one PPL microcycle.
     const days = ['2026-01-02', '2026-01-05', '2026-01-09', '2026-01-12', '2026-01-18', '2026-01-21']
     const S = state({ workouts: days.map(d => w(d)) })
     const pos = cyclePosition(S)
     expect(pos.len).toBe(6)
     expect(pos.sessions).toBe(6)
-    expect(pos.cycle).toBe(1)      // block 0 is closed, block 1 opens
-    expect(pos.step).toBe(0)       // nothing of it logged yet
-    expect(pos.remaining).toBe(6)
+    expect(pos.cycle).toBe(0)      // still block 0: complete, not closed
+    expect(pos.step).toBe(6)
+    expect(pos.remaining).toBe(0)
+    expect(pos.complete).toBe(true)
+  })
+
+  it('opens the next block with the next planned session on a profile with no closings on record', () => {
+    const days = ['2026-01-02', '2026-01-03', '2026-01-04', '2026-01-06', '2026-01-07', '2026-01-08', '2026-01-10']
+    const S = state({ workouts: days.map(d => w(d)) })
+    expect(cyclePosition(S)).toMatchObject({ cycle: 1, step: 1, start: '2026-01-10', complete: false })
   })
 
   it('reports the position of the next session inside the block', () => {
@@ -92,7 +99,7 @@ describe('the sequence pointer', () => {
     expect(at(0)).toBe('pushA')
     expect(at(2)).toBe('legs')     // third session of the block
     expect(at(5)).toBe('legs')     // sixth — the other Legs day, same routine id
-    expect(at(6)).toBe('pushA')    // block closed, back to the top
+    expect(at(6)).toBe('pushA')    // block complete, back to the top for the next one
   })
 
   it('does not skip a step when a training day is missed', () => {
@@ -139,7 +146,7 @@ describe('the sequence pointer', () => {
     const seq = ['push', 'pull', 'legs']
     const S = state({ program: { on: true, seq, anchor: '2026-01-01', cycleStart: '2026-01-01', strategy: 'custom' },
       workouts: [w('2026-01-02', 'push'), w('2026-01-03', 'legs'), w('2026-01-04', 'pull')] })
-    expect(cyclePosition(S)).toMatchObject({ cycle: 1, step: 0 })
+    expect(cyclePosition(S)).toMatchObject({ cycle: 0, step: 3, complete: true })
     expect(nextStepOf(S)).toBe('push')
   })
 })
@@ -149,9 +156,11 @@ describe('the block as trained', () => {
 
   it('windows the volume on the current block only', () => {
     expect(cycleWorkouts(S).map(x => x.d)).toEqual(['2026-01-02', '2026-01-04'])
-    // A closed block leaves the next one empty — volume restarts, it does not roll over.
-    const closed = state({ workouts: Array.from({ length: 6 }, (_, i) => w(`2026-01-0${i + 2}`)) })
-    expect(cycleWorkouts(closed)).toEqual([])
+    // A complete block keeps its volume until the next one opens — then it restarts, it does
+    // not roll over.
+    const full = Array.from({ length: 6 }, (_, i) => w(`2026-01-0${i + 2}`))
+    expect(cycleWorkouts(state({ workouts: full })).length).toBe(6)
+    expect(cycleWorkouts(state({ workouts: [...full, w('2026-01-09')] })).map(x => x.d)).toEqual(['2026-01-09'])
   })
 
   it('keeps an off-plan session out of the block count but inside its volume', () => {
@@ -169,8 +178,8 @@ describe('the block as trained', () => {
     const workouts = days.map(d => w(d))
     workouts.splice(3, 0, { id: 'free', d: '2026-01-10', start: 1, routineId: null, entries: [] })
     const T = state({ workouts })
-    expect(cyclePosition(T)).toMatchObject({ cycle: 1, step: 0 })  // six planned: block closed
-    expect(cycleWorkouts(T)).toEqual([])                           // the next one starts empty
+    expect(cyclePosition(T)).toMatchObject({ cycle: 0, step: 6, complete: true })  // six planned
+    expect(cycleWorkouts(T).length).toBe(7)                        // the off-plan one rides along
   })
 
   it('counts every session when there is no plan to be outside of', () => {

@@ -75,8 +75,8 @@ describe('groupVolume', () => {
 })
 
 describe('cycleVolume', () => {
-  // Six sessions close a PPL block, so the seventh opens a new one and the count restarts:
-  // the panel reports the block being built, not a rolling six.
+  // Six sessions complete a PPL block, and the seventh opens a new one where the count
+  // restarts: the panel reports the block being built, not a rolling six.
   const SEQ = ['a', 'b', 'c', 'd', 'e', 'f']
   const S = n => ({
     program: { strategy: 'ppl', seq: SEQ, cycleStart: '2026-09-01' },
@@ -89,8 +89,14 @@ describe('cycleVolume', () => {
     expect(cycleVolume(S(3)).groups.biceps).toBe(3)
   })
 
+  it('counts the work sets that made the cut as effective', () => {
+    const st = S(2)
+    st.workouts[1].entries[0].sets.push(set(6), set(null), set(1, { phase: 'warmup' }))
+    expect(cycleVolume(st)).toMatchObject({ total: 4, effective: 3 })
+  })
+
   it('restarts at the block boundary instead of rolling', () => {
-    expect(cycleVolume(S(6)).sessions).toBe(0)      // block closed, next one empty
+    expect(cycleVolume(S(6)).sessions).toBe(6)      // block complete: its volume stays
     expect(cycleVolume(S(7)).sessions).toBe(1)
     expect(cycleVolume(S(7)).groups.biceps).toBe(1)
   })
@@ -107,19 +113,21 @@ describe('cycleVolume', () => {
   })
 
   it('does not let an off-plan session close the block early', () => {
-    const st = S(6)                                 // six planned sessions: block closed
+    const st = S(6)                                 // six planned sessions: block complete
     st.workouts.splice(3, 0, offPlan('2026-09-03', [curl([set(2)])]))
-    expect(cycleVolume(st).sessions).toBe(0)        // still exactly six, still closed
+    expect(cycleVolume(st).sessions).toBe(7)        // six planned and the extra, one block
+    st.workouts.push({ ...st.workouts[0], id: 'next', d: '2026-09-20' })
+    expect(cycleVolume(st).sessions).toBe(1)        // the next planned one opened the next
     // ...and the last planned session stays inside the block instead of being pushed out.
     const five = S(5)
     five.workouts.splice(2, 0, offPlan('2026-09-02', [curl([set(2)])]))
     expect(cycleVolume(five).groups.biceps).toBe(6) // all five planned + the extra one
   })
 
-  it('opens the next block with an off-plan session trained before it starts', () => {
+  it('keeps an off-plan session trained after a complete block in that block', () => {
     const st = S(6)
     st.workouts.push(offPlan('2026-09-07', [curl([set(2), set(2)])]))
-    expect(cycleVolume(st).groups.biceps).toBe(2)   // the closed block did not take it
+    expect(cycleVolume(st).groups.biceps).toBe(8)   // six planned sets + the two extra ones
   })
 })
 

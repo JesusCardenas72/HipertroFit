@@ -5,10 +5,11 @@ import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipme
 import { activeProfile, exAvailable, ALL_EQUIPMENT, ADJUSTABLE, newProfile, adjustableOf, adjustableFor } from './lib/equipment.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount, DAYN, DAYS, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { programActive, programMode, emptyProgram, sessionsPerRound, mondayOf, weekSequence, SEQ_CYCLE, SEQ_WEEK, REST } from './lib/program.js'
-import { STRATEGIES, microcycleLen, strategyOf, cyclePosition } from './lib/microcycle.js'
+import { STRATEGIES, microcycleLen, strategyOf, cyclePosition, cycleEndOf, opensNextCycle } from './lib/microcycle.js'
+import { closeCycle, keepCycle, closableToday } from './lib/cycle-history.js'
 import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
-import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber } from './lib/mesocycle.js'
+import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber, carriedBase } from './lib/mesocycle.js'
 import { DeloadBadge } from './components/Deload.jsx'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, upcomingDays, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, stepEffort, capEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
 import { seedTargets } from './lib/set-reference.js'
@@ -1921,7 +1922,7 @@ export function ProgramSheet({ close = () => {} }) {
     {/* Typed by hand, or picked on the calendar. */}
     <DateField value={anchor} onChange={setAnchor} />
     <div className="muted small" style={{ marginTop: 6 }}>
-      {t('Sessions are counted from this day. The end of each microcycle follows from the count.')}
+      {t('Sessions are counted from this day. A microcycle is complete with its last session and ends once its rest days have passed.')}
     </div>
     </>}
 
@@ -1934,7 +1935,7 @@ export function ProgramSheet({ close = () => {} }) {
           ? <Stepper value={len} step={1} decimal={false} onChange={setMicro} />
           : <span className="v" style={{ fontWeight: 600 }}>{len}</span>}
       </Row>
-      <Row title={t('Microcycle')} subtitle={t('Session {0} of {1}', pos.step + 1, pos.len)}>
+      <Row title={t('Microcycle')} subtitle={pos.complete ? t('Complete — {0} of {1} sessions', pos.sessions, pos.len) : t('Session {0} of {1}', pos.step + 1, pos.len)}>
         <span className="v" style={{ fontWeight: 600 }}>#{microNumber(st, pos.cycle)}</span>
       </Row>
     </div>
@@ -2093,8 +2094,41 @@ function DeloadSheet({ onStart, close }) {
 }
 const deloadSheet = onStart => ui().openSheet(close => <DeloadSheet onStart={onStart} close={close} />)
 
+/* ---------- a session that would open the next microcycle: asked first ---------- */
+// The running block is complete but stays open until the user says so (lib/microcycle.js):
+// start the next one with this session, or train it inside the one that is ending.
+function ChangeCycle({ onGo, close }) {
+  const st = useStore(s => s.S)
+  const pos = cyclePosition(st)
+  const meso = mesoState(st)
+  const due = cycleEndOf(st)
+  const go = patch => { close(); update(s => { const p = patch(s); if (p) Object.assign(s, p) }); onGo() }
+  return <>
+    <h3 className="row" style={{ gap: 8 }}><Icon name="flag" />{t('Start microcycle #{0}?', carriedBase(st) + 1)}</h3>
+    <div className="muted small" style={{ marginBottom: 14 }}>
+      {t('Microcycle #{0} is complete: {1} of {2} sessions, since {3}.', meso.number, pos.sessions, pos.len, fmtDate(pos.start))}
+      {' '}{due && due >= todayISO() ? t('Its days run until {0}, rest days included.', fmtDate(due, true)) : t('All its days have passed.')}
+    </div>
+    <Button variant="primary" icon="flag" onClick={() => go(s => closeCycle(s))}>{t('Start microcycle #{0}', carriedBase(st) + 1)}</Button>
+    <div style={{ height: 8 }} />
+    <Button icon="plus" onClick={() => go(s => keepCycle(s))}>{t('Train it in microcycle #{0}', meso.number)}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
+  </>
+}
+
 /* ============================ workout lifecycle ============================ */
 export function startFlow(routineId) {
+  const st = S()
+  if (opensNextCycle(st, routineId)) {
+    // A session already logged today keeps the block open today: dates cannot split a day, so
+    // this one goes in it too.
+    if (!closableToday(st)) update(s => { const p = keepCycle(s); if (p) Object.assign(s, p) })
+    else return ui().openSheet(close => <ChangeCycle close={close} onGo={() => sessionFlow(routineId)} />)
+  }
+  sessionFlow(routineId)
+}
+function sessionFlow(routineId) {
   // On a deload microcycle the app proposes the cut and the user sets it, per session — so
   // the sheet sits between weighing in and walking up to the bar. See lib/mesocycle.js.
   bwSheet({ required: true, onDone: bw => {

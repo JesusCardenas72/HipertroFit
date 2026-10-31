@@ -21,10 +21,9 @@ import {
   hasEffort, displayScale, scaleName, toScale, avgRir, effortSummary, effortWeeks,
   effortHistogram, isHardSet, HARD_RIR
 } from '../lib/effort.js'
-import { cycleVolume, plannedVolume } from '../lib/volume.js'
-import { cycleWorkouts, cyclePosition } from '../lib/microcycle.js'
-import { microNumber } from '../lib/mesocycle.js'
+import { cycleVolume, groupVolume, plannedVolume } from '../lib/volume.js'
 import VolumeGroupBars from '../components/VolumeGroupBars.jsx'
+import CyclePicker, { useCycleChoice, CycleStatsLine } from '../components/CyclePicker.jsx'
 import { Button, Segmented, SelectRow } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { isWarmupRow } from '../lib/workout-model.js'
@@ -134,15 +133,18 @@ function MuscleBalance({ S }) {
     return t('Weeks since training: {0}', weeks)
   }
   const toggleSel = m => setSel(s => (s === m ? null : m))
-  // "micro" is not a day count: it is the last N completed sessions (lib/volume.js), which
-  // for a PPL split routinely spans more than a calendar week.
+  // "micro" is not a day count: it is a block of sessions (lib/microcycle.js), which for a
+  // PPL split routinely spans more than a calendar week — the running one, or one already
+  // behind picked with its dates (CyclePicker).
   const micro = win === 'micro'
-  const inWin = micro ? cycleWorkouts(S) : muscleBalanceWindow(S.workouts, win, now)
+  const [cycle, pickCycle, cycles] = useCycleChoice(S)
+  const inWin = micro ? cycle.workouts : muscleBalanceWindow(S.workouts, win, now)
   // Effective-set volume per group over that same microcycle, to read against the target band.
-  const microVol = useMemo(() => (micro ? cycleVolume(S) : null), [micro, S])
-  // What the block plans, so the bars can read the log against the plan and the band's top.
-  const microPlan = useMemo(() => (micro ? plannedVolume(S) : null), [micro, S])
-  const microPos = cyclePosition(S)
+  const microVol = useMemo(() => (!micro ? null : cycle.current ? cycleVolume(S)
+    : { ...groupVolume(cycle.workouts), sessions: cycle.sessions }), [micro, S, cycle])
+  // What the block plans, so the bars can read the log against the plan and the band's top —
+  // the running block only: today's programming says nothing about what an old one planned.
+  const microPlan = useMemo(() => (micro && cycle.current ? plannedVolume(S) : null), [micro, S, cycle])
   // Counting only the sets taken near failure turns the map from "where did the volume go"
   // into "where did the stimulus go" — a muscle can lead on sets and still never be trained
   // hard. Offered only when the window holds ratings at all, since with none the hard map
@@ -170,8 +172,9 @@ function MuscleBalance({ S }) {
       </div>
       <Segmented className="seg-range" value={win} onChange={v => { setWin(v); setSel(null) }}
         options={[{ value: 'micro', label: t('Micro') }, { value: 7, label: t('Wk') }, { value: 30, label: '30d' }, { value: 90, label: '90d' }, { value: 0, label: t('All') }]} />
-      {micro && <div className="muted small" style={{ marginTop: -4, marginBottom: 8 }}>
-        {t('Microcycle')} #{microNumber(S, microPos.cycle)} · {t('Session {0} of {1}', Math.min(microPos.step + 1, microPos.len), microPos.len)}
+      {micro && <div style={{ marginTop: -4, marginBottom: 8 }}>
+        <CyclePicker value={cycle} list={cycles} onPick={id => { pickCycle(id); setSel(null) }} />
+        <CycleStatsLine cycle={cycle} style={{ marginTop: 6 }} />
       </div>}
       {inWin.length ? <>
         <BodyMap className="tappable" load={load} body={S.body} selected={sel}

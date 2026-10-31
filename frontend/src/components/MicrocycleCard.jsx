@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { t } from '../lib/i18n.js'
-import { todayISO, mondayOf, DAYS } from '../lib/format.js'
+import { todayISO, mondayOf, DAYS, fmtDate } from '../lib/format.js'
 import { effectiveRoutine, nextSessionRoutine, upcomingDays } from '../lib/history.js'
-import { cyclePosition, strategyOf, isExtra, STRATEGIES } from '../lib/microcycle.js'
-import { mesoState, acceptDeload, postponeDeload, isDeloadWorkout, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
+import { cyclePosition, strategyOf, isExtra, STRATEGIES, cycleEndOf } from '../lib/microcycle.js'
+import { mesoState, acceptDeload, postponeDeload, isDeloadWorkout, carriedBase, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
+import { openNextCycle, closeMicrocycleSheet } from './MicrocycleActions.jsx'
 import { DeloadBadge, DeloadStatus } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -20,7 +21,8 @@ const STRATEGY_NAME = Object.fromEntries(STRATEGIES.map(s => [s.key, s.name]))
 // The strip is the current week, Monday to Sunday, as the calendar schedules it — the same
 // projection as the Programming sheet's "Next 14 days", cut to this week: weekday, date and the
 // routine (or rest) of each day; a day already gone by without a session shows faded. Where the block stands in sessions is the "Session n of m" line under it, since
-// sessions, not days, are what close a microcycle (lib/microcycle.js). Tapping a day opens its
+// sessions are what complete a microcycle; complete, it runs on through its rest days and, once
+// they are over, asks to open the next one (lib/microcycle.js). Tapping a day opens its
 // reschedule sheet.
 export default function MicrocycleCard() {
   const S = useStore(s => s.S)
@@ -29,6 +31,10 @@ export default function MicrocycleCard() {
   const pos = cyclePosition(S)
   const days = upcomingDays(S, 7, mondayOf(today))
   const meso = mesoState(S)
+  // Complete, the block runs on through its rest days; past its last day it is over and waits
+  // for the user to open the next one (lib/microcycle.js).
+  const end = cycleEndOf(S)
+  const over = !!end && end < today
   const routineOf = id => S.routines.find(r => r.id === id) || null
   // What today offers: the day's own plan when there is one (an override, or a training day
   // of the program), else the next step of the sequence — training a "rest" day just brings
@@ -86,7 +92,9 @@ export default function MicrocycleCard() {
       <Icon name="arrowDown" />{t('Deload session')}
     </div>}
     <div className="muted small" style={{ textAlign: 'center', marginTop: 2 }}>
-      {t('Session {0} of {1}', Math.min(pos.step + 1, pos.len), pos.len)}
+      {pos.complete
+        ? <>{t('Complete — {0} of {1} sessions', pos.sessions, pos.len)}{!over && <> · {t('until {0}', fmtDate(end, true))}</>}</>
+        : t('Session {0} of {1}', pos.step + 1, pos.len)}
       {meso.deload ? <b style={{ color: 'var(--deload)' }}> · {t('Deload')}</b> : ''}
     </div>
 
@@ -111,7 +119,26 @@ export default function MicrocycleCard() {
         : <Icon name="plus" className="chev" />}
     </div>
 
+    {over && <CycleOverBanner S={S} number={meso.number} />}
     {meso.suggest && <DeloadBanner meso={meso} />}
+  </div>
+}
+
+// All the days of the microcycle have gone by: the next one opens when the user says so.
+function CycleOverBanner({ S, number }) {
+  const next = carriedBase(S) + 1
+  return <div style={{ marginTop: 12, borderTop: 'var(--hair) solid var(--sep)', paddingTop: 12 }}>
+    <div className="row" style={{ gap: 8, marginBottom: 4 }}>
+      <Icon name="flag" style={{ color: 'var(--orange)' }} />
+      <b>{t('Microcycle #{0} is over', number)}</b>
+    </div>
+    <div className="muted small" style={{ marginBottom: 10 }}>
+      {t('All its days, rest days included, have passed. Start microcycle #{0}?', next)}
+    </div>
+    <div className="row" style={{ gap: 8 }}>
+      <Button variant="primary" icon="flag" onClick={() => openNextCycle(strategyOf(S))}>{t('Start microcycle #{0}', next)}</Button>
+      <Button icon="target" onClick={closeMicrocycleSheet}>{t('Change strategy')}</Button>
+    </div>
   </div>
 }
 
