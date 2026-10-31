@@ -262,6 +262,13 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 18px}
 .hdr h1{font-size:calc(34px * var(--fs));line-height:1.06;font-weight:700;letter-spacing:-.028em}
 .hdr .sub{color:var(--label-2);font-size:calc(15px * var(--fs));letter-spacing:-.006em;margin-top:4px}
+/* Home's header: the mark sits top right, as tall as the title and date beside it (same --fs units).
+   Where the UI is large there is no room for all three: the mark gives way first (its shrink weight
+   is far above the title's), and only once it is gone does the title truncate, so the words and the
+   settings button stay on screen. */
+.hdr-title{flex:0 1 auto;min-width:0}
+.hdr-title h1,.hdr-title .sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr-brand{flex:0 1000 calc(58px * var(--fs));min-width:0;height:auto;margin-left:auto}
 
 .iconbtn{
   width:36px;height:36px;border-radius:50%;flex:none;

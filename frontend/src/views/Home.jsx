@@ -5,6 +5,7 @@ import MicrocycleCard from '../components/MicrocycleCard.jsx'
 import MuscleVolumeCard from '../components/MuscleVolumeCard.jsx'
 import MicrocycleActions from '../components/MicrocycleActions.jsx'
 import Icon from '../components/Icon.jsx'
+import BrandMark from '../components/BrandMark.jsx'
 import { DeloadTitleTag } from '../components/Deload.jsx'
 
 // Home = what to do now, and how the block is filling up. Two cards and nothing else: the
@@ -20,7 +21,8 @@ export default function Home() {
 
   return <div className="narrow">
     <div className="hdr">
-      <div><h1>{user ? t('Hi {0}', user.name) : 'HipertroFit'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}<DeloadTitleTag /></div></div>
+      <div className="hdr-title"><h1>{user ? t('Hi {0}', user.name) : 'HipertroFit'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}<DeloadTitleTag /></div></div>
+      <BrandMark className="hdr-brand" />
       <button className="iconbtn" onClick={() => nav('/settings')} aria-label={t('Settings')}><Icon name="gear" /></button>
     </div>
 
