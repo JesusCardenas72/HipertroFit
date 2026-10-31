@@ -137,6 +137,14 @@ describe('the session view', () => {
     expect(cards()[0].querySelector('.sf-rm .g')).toBeNull()
   })
 
+  it('badges the thumbnail of an exercise with the muscle group it trains', () => {
+    renderWorkout()
+    // 0025 is the barbell bench press (chest); 'b' is not in the library, so it has no muscle to show
+    act(() => useStore.getState().update(s => { s.active.entries[0].id = '0025' }))
+    expect(tabs()[0].querySelector('.thumb-mus')).not.toBeNull()
+    expect(tabs()[1].querySelector('.thumb-mus')).toBeNull()
+  })
+
   it('ticks off the tab of a finished exercise', () => {
     renderWorkout()
     act(() => useStore.getState().update(s => { s.active.entries[4].sets.forEach(x => { x.done = true }) }))

@@ -285,7 +285,7 @@ function ExerciseBlock({ entryIdx, compact, drum, table, aims = false, nameless,
     {!nameless && <div className={'row' + (slim ? ' exhead-drum' : '')} style={{ marginBottom: 6 }}>
       {thumb && <button type="button" className={'exthumb' + (mediaOpen ? ' on' : '')} aria-expanded={mediaOpen}
         aria-label={mediaOpen ? t('Minimize') : t('Expand')} onClick={() => setMediaOpen(o => !o)}>
-        <Thumb ex={ex} />{ex.gif && <Icon name={mediaOpen ? 'minimize' : 'play'} />}
+        <Thumb ex={ex} muscle />{ex.gif && <Icon name={mediaOpen ? 'minimize' : 'play'} />}
       </button>}
       <button type="button" className="exhead-tg" aria-expanded={open} onClick={onToggleHead}
         style={{ fontSize: compact || slim ? 17 : 20 }}>
@@ -1727,7 +1727,7 @@ function ActiveWorkout() {
         memberLabel={idx => exerciseNameFor(exOr(A.entries[idx].id))}
         renderHead={head}
         headOpen={idx => !!openHeads[idx]} onToggleHead={preview ? undefined : toggleHead}
-        renderThumb={idx => <Thumb ex={exOr(A.entries[idx].id)} />}
+        renderThumb={idx => <Thumb ex={exOr(A.entries[idx].id)} muscle />}
         renderHero={ch => <DrumHero chamber={ch} members={members.length}
           onToggle={toggle} onToggleDrop={toggleDrop} onOpenSet={preview ? undefined : openSet} onField={setField} onStartTimed={startTimed} onRemoveSetAt={removeSetAt}
           onAddWarmup={addWarmup} onAddSet={idx => askAddSet(idx, members)} />}

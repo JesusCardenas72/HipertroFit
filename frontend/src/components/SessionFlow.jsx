@@ -345,7 +345,7 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onReo
           aria-current={item.idx === cur ? 'step' : undefined} style={style}
           onClick={() => onSelect(item.idx)}>
           {top && k > 0 && <i className="sf-cn t" />}
-          <span className="sf-th"><Thumb ex={ex} /></span>
+          <span className="sf-th"><Thumb ex={ex} muscle /></span>
           {item.done && <span className="sf-ok"><Icon name="check" /></span>}
           {bot && <i className="sf-cn b" />}
         </button>

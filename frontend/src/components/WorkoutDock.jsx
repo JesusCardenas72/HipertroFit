@@ -521,7 +521,7 @@ export default function WorkoutDock({ entries, cur, onSelect, onReorder, onAdd, 
                 + (lifted ? ' lifted' : '') + (drag && drag.join === index ? ' magnet' : '')}
               aria-label={name} aria-current={index === cur ? 'true' : undefined} title={name}
               onClick={() => onSelect(index)}>
-              <Thumb ex={ex} />
+              <Thumb ex={ex} muscle />
               {item.done && <span className="wdock-check" aria-hidden="true"><Icon name="check" /></span>}
             </button>
           })}
