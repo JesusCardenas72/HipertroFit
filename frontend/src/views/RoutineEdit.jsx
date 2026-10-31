@@ -358,7 +358,7 @@ export function useRoutineReorder(routineIdentity, exercises, onDrop) {
     window.clearTimeout(suppressTimerRef.current)
     event.preventDefault(); event.stopPropagation()
   }
-  return { listRef, svgRef, gooRef, drag, onClickCapture }
+  return { listRef, svgRef, gooRef, engineRef, drag, onClickCapture }
 }
 
 export default function RoutineEdit() {

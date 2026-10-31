@@ -195,3 +195,36 @@ export function extraSetsWanted(plan, sets, prevSets) {
   const target = plan?.sets > 0 ? plan.sets : prev.length
   return Math.max(0, target - rows.length)
 }
+
+/**
+ * The overload a set should aim at when the progression has nothing to move: one lever past what
+ * was done last time, in the order the engine gives a held load (targetFor) — one more rep while
+ * under the top of the rep range, else one rep closer to failure when the effort was logged,
+ * else the next load step with reps and effort kept. `top` is the rep range's upper end and
+ * `step` the load increment (a number, or a ladder). Null outside reps mode or without a
+ * reference set to beat.
+ */
+export function overloadTargetFor({ mode = 'reps', reference = null, top = null, effort = null, step = 2.5 } = {}) {
+  if (mode !== 'reps' || !reference) return null
+  const rw = num(reference.w), rr = num(reference.r)
+  if (rw == null || rr == null || rr < 1) return null
+  const e = EFFORT_SCALE[effort]
+  const prev = e ? num(reference[e.f]) : null
+  const want = { w: rw, r: rr }
+  if (prev != null) want[e.f] = prev
+  if (top > rr) {
+    want.r = rr + 1
+    return want
+  }
+  if (prev != null) {
+    const next = Math.min(e.max, Math.max(e.min, prev + e.dir))
+    if (next !== prev) {
+      want[e.f] = next
+      return want
+    }
+  }
+  const inc = step && typeof step === 'object' ? step.step : (step > 0 ? step : 2.5)
+  const next = Math.round((rw + inc) * 10) / 10
+  want.w = step && typeof step === 'object' ? snapLoad(next, step) : next
+  return want
+}

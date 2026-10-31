@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { railItems, exerciseRecords, repMaxTable, repMaxFor, estimateSessionSec, sessionRoom, WORK_SEC } from './session-view.js'
+import { railItems, exerciseRecords, repMaxTable, repMaxFor, estimateSessionSec, sessionRoom, WORK_SEC, tabDropIntent, unitDropIntent, DROP_LEAN } from './session-view.js'
 import { supersetUnits } from './history.js'
 import { dockItems } from './workout-dock.js'
 import { estimate1RM } from './onerm.js'
@@ -173,5 +173,48 @@ describe('sessionRoom', () => {
     const room = sessionRoom(page)
     const maxScroll = page.panelBottom + room + page.belowSession - page.viewport
     expect(maxScroll).toBe(page.cardTop - page.header - 12)
+  })
+})
+
+describe('tabDropIntent and unitDropIntent', () => {
+  // Four tabs of 60px in a column: a and b are a superset, c and d stand alone.
+  const entries = [
+    { id: 'a', sg: 'g1', sets: [] }, { id: 'b', sg: 'g1', sets: [] },
+    { id: 'c', sets: [] }, { id: 'd', sets: [] },
+  ]
+  const spans = [0, 1, 2, 3].map(i => ({ index: i, top: i * 60, bottom: i * 60 + 60 }))
+
+  it('lands a tab in a plain gap between two others, with the marker and the lean', () => {
+    // 'a' dragged to the gap between 'c' and 'd' (y=180): not over anyone's middle, and no
+    // superset to stay with, so it takes that slot
+    const r = tabDropIntent(entries, 0, 180, spans)
+    expect(r.join).toBeNull()
+    expect(r.intent.slot).toBe(2)
+    expect(r.markerY).toBe(180)
+    expect(r.leans[2]).toBe(-DROP_LEAN)
+    expect(r.leans[3]).toBe(DROP_LEAN)
+  })
+
+  it('joins the tab it is dropped over, in its middle', () => {
+    const r = tabDropIntent(entries, 2, 30 + 60 * 3, spans)
+    expect(r.join).toBe(3)
+    expect(r.leans).toEqual({})
+  })
+
+  it('keeps a superset member standing by its own mate', () => {
+    const r = tabDropIntent(entries, 0, 80, spans)
+    expect(r.join).toBe(1)
+  })
+
+  it('moves a whole superset to a slot among the other units', () => {
+    const r = unitDropIntent(entries, [0, 1], 250, spans)
+    // the other units are c (centre 150) and d (centre 210)... 250 is past both
+    expect(r.intent).toEqual({ unit: 2 })
+    expect(r.markerY).toBe(240)
+    expect(r.join).toBeNull()
+  })
+
+  it('puts a superset at the top when dropped above everything', () => {
+    expect(unitDropIntent(entries, [0, 1], 5, spans).intent).toEqual({ unit: 0 })
   })
 })

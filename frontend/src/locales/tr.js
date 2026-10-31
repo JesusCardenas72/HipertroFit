@@ -1221,6 +1221,7 @@ export default {
   'plus 0.1': '0,1 artı',
   'Table': 'Tablo',
   'Show sets as a table': 'Setleri tablo olarak göster',
+  'Overload target': 'Aşırı yükleme hedefi',
   'Session': 'Antrenman',
   'Show the whole session': 'Tüm antrenmanı göster',
   'Max weight': 'Maks. ağırlık',

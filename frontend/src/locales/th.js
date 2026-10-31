@@ -1234,6 +1234,7 @@ export default {
   'plus 0.1': 'บวก 0.1',
   'Table': 'ตาราง',
   'Show sets as a table': 'แสดงเซ็ตเป็นตาราง',
+  'Overload target': 'เป้าหมายโอเวอร์โหลด',
   'Session': 'รอบ',
   'Show the whole session': 'แสดงทั้งรอบ',
   'Max weight': 'น้ำหนักสูงสุด',

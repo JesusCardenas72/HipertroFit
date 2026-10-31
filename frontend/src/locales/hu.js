@@ -1226,6 +1226,7 @@ export default {
   'plus 0.1': 'plusz 0,1',
   'Table': 'Táblázat',
   'Show sets as a table': 'Sorozatok megjelenítése táblázatként',
+  'Overload target': 'Cél túlterhelés',
   'Session': 'Edzés',
   'Show the whole session': 'A teljes edzés megjelenítése',
   'Max weight': 'Max. súly',

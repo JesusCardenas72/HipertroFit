@@ -31,7 +31,8 @@ import WorkoutDock from '../components/WorkoutDock.jsx'
 import { exerciseProgressSheet } from '../components/ExerciseProgress.jsx'
 import { DeloadStatus, DeloadSessionBand } from '../components/Deload.jsx'
 import { isDeloadWorkout } from '../lib/mesocycle.js'
-import { workIndexOf, referenceSet, suggestionFor, targetFor, overloadOf, extraSetsWanted, seedTargets, topWeight } from '../lib/set-reference.js'
+import { workIndexOf, referenceSet, suggestionFor, targetFor, overloadOf, overloadTargetFor, extraSetsWanted, seedTargets, topWeight } from '../lib/set-reference.js'
+import { repRangeFor } from '../lib/exercise-class.js'
 import { swipeLock, rowOffset, rowArmed, navDirection, navCommit } from '../lib/swipe.js'
 import { edgeOffset } from '../lib/slide.js'
 import SlideDeck from '../components/SlideDeck.jsx'
@@ -206,7 +207,7 @@ const miniStepper = (value, step, dec, onChange) => (
 )
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1, onToggle, onToggleDrop, onOpenSet, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onUnpair, onSetRowRef, onProgressionSettings, onAddExercise, onOpenProgression, onSwap, onRemove, swipeSet, swipeDrop = null, swipeBurst = null, swipeDx = 0, open = true, onToggleHead, marks = null }) {
+function ExerciseBlock({ entryIdx, compact, drum, table, aims = false, nameless, nextSet = -1, onToggle, onToggleDrop, onOpenSet, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onUnpair, onSetRowRef, onProgressionSettings, onAddExercise, onOpenProgression, onSwap, onRemove, swipeSet, swipeDrop = null, swipeBurst = null, swipeDx = 0, open = true, onToggleHead, marks = null }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -348,6 +349,8 @@ function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1,
       </button>}
     {dpStatus && !folded && dpStatus.state !== 'first' && !entry.decided && <DoubleProgressMeter status={dpStatus} unit={S.unit} compact live />}
     {/* In the drum the sets are the drum's (see SetDrum) — this block is only the exercise's header. */}
+    {/* The list draws its cards here; the drum draws them for the exercise in front (`aims`). */}
+    {(!slim && !table || drum && aims) && <AimCards entryIdx={entryIdx} best={best} onProgressionSettings={onProgressionSettings} onField={onField} />}
     {table && <SetTable entryIdx={entryIdx} best={best} nextSet={nextSet} onToggle={onToggle} onToggleDrop={onToggleDrop} onOpenSet={onOpenSet} onField={onField}
       onAddSet={onAddSet} onAddWarmup={onAddWarmup} onRemoveSetAt={onRemoveSetAt} onStartTimed={onStartTimed}
       onSetRowRef={onSetRowRef} onProgressionSettings={onProgressionSettings} onAddExercise={onAddExercise} swipeSet={swipeSet} swipeDrop={swipeDrop} swipeBurst={swipeBurst} swipeDx={swipeDx} />}
@@ -555,6 +558,38 @@ function IntensifierRows({ entryIdx, i, cols, onBadge, onToggleDrop, swipe = nul
 }
 
 
+/* The record of the exercise and the overload the next work set aims at — the same two cards above
+   the sets in the table and the session view, and above the list and the drum. The overload is what
+   the progression plans when it moves the set, else the next lever past last session's set
+   (overloadTargetFor); a plan that deloads or is mid-decision is followed as it stands. */
+function AimCards({ entryIdx, best, onProgressionSettings, onField }) {
+  const S = useStore(s => s.S)
+  const { entry, mode, cfg, plan, prevSets, prevTop, loadStep, kind, col3 } = useSetColumns(entryIdx, onField)
+  const ni = entry.sets.findIndex(x => !x.done && !isWarmupRow(x))
+  const aimAt = i => {
+    if (isWarmupRow(entry.sets[i])) return null
+    const reference = referenceSet(prevSets, workIndexOf(entry.sets, i))
+    const effortCol = col3 ? kind : null
+    const planned = targetFor({ mode, plan, reference, effort: effortCol, base: prevTop, step: loadStep })
+    const holds = !plan || ['off', 'first', 'hold', 'decide'].includes(plan.kind)
+    if (!holds || !reference || (planned && overloadOf(planned, reference).length)) return planned
+    return overloadTargetFor({ mode, reference, top: repRangeFor(exOr(entry.id)).reps, effort: effortCol, step: loadStep }) || planned
+  }
+  const nextAim = ni >= 0 ? { ...entry.sets[ni], ...(aimAt(ni) || {}) } : null
+  const guidance = progressionGuidance(plan)
+  const dir = plan?.kind === 'up' ? 'arrowUp' : plan?.kind === 'deload' ? 'arrowDown' : null
+  return <div className="st-cards">
+    <div className="st-card rec">
+      <div className="st-k">{t('Record')}</div>
+      <div className="st-v">{best > 0 ? <>{fmtNum(best)} <small>{S.unit}</small></> : '—'}</div>
+    </div>
+    <button type="button" className="st-card aim" onClick={onProgressionSettings} aria-label={t('Open progression settings')}>
+      <div className="st-k">{dir && <Icon name={dir} />}{t('Overload target')}{guidance && <span> · {t(guidance.policyLabel)}</span>}</div>
+      <div className="st-v">{nextAim ? setLabel(entry.id, nextAim, cfg) : t('Done')}</div>
+    </button>
+  </div>
+}
+
 /* ---------- the table: every set on one line, no steppers, today's target in the cells ---------- */
 // The quiet way to draw the sets: number · weight · reps · (effort) · check, each value a field
 // you tap and type into. What the row asks for is the progression's target, not last session —
@@ -587,16 +622,12 @@ function SetTable({ entryIdx, best, nextSet = -1, onToggle, onToggleDrop, onOpen
   const target = i => isWarmupRow(entry.sets[i]) ? null : targetFor({ mode, plan, reference: referenceSet(prevSets, workIndexOf(entry.sets, i)),
     effort: col3 ? kind : null, base: prevTop, step: loadStep })
   const works = entry.sets.filter(x => !isWarmupRow(x)).length
-  // The card beside the record names the next set to do as the plan wants it.
   const ni = entry.sets.findIndex(x => !x.done && !isWarmupRow(x))
-  const nextAim = ni >= 0 ? { ...entry.sets[ni], ...(target(ni) || {}) } : null
-  const guidance = progressionGuidance(plan)
   // The foot's "+ Drop" strips the set just done — the last work set ticked off — or, before any,
   // the next one to do. A rest-pause set takes bursts, not drops, so it has none to give.
   const lastDone = entry.sets.findLastIndex(x => x.done && !isWarmupRow(x))
   const dropFor = lastDone >= 0 ? lastDone : ni
   const dropAt = dropFor >= 0 && !isRestPauseSet(entry.sets[dropFor]) ? dropFor : -1
-  const dir = plan?.kind === 'up' ? 'arrowUp' : plan?.kind === 'deload' ? 'arrowDown' : null
   const grid = 'st-row c' + cols.length + (timed ? ' timed' : '')
   const cell = (s, i, col, sug, ref) => {
     const aim = sug && sug[col.f] != null ? sug[col.f] : null
@@ -613,16 +644,7 @@ function SetTable({ entryIdx, best, nextSet = -1, onToggle, onToggleDrop, onOpen
     </div>
   }
   return <div className="settable">
-    <div className="st-cards">
-      <div className="st-card">
-        <div className="st-k">{t('Record')}</div>
-        <div className="st-v">{best > 0 ? <>{fmtNum(best)} <small>{S.unit}</small></> : '—'}</div>
-      </div>
-      <button type="button" className="st-card aim" onClick={onProgressionSettings} aria-label={t('Open progression settings')}>
-        <div className="st-k">{dir && <Icon name={dir} />}{t('Target')}{guidance && <span> · {t(guidance.policyLabel)}</span>}</div>
-        <div className="st-v">{nextAim ? setLabel(entry.id, nextAim, cfg) : t('Done')}</div>
-      </button>
-    </div>
+    <AimCards entryIdx={entryIdx} best={best} onProgressionSettings={onProgressionSettings} onField={onField} />
     <div className={grid + ' st-hd'}>
       <span>{t('Set')}</span>
       {cols.map(col => <span key={col.f}>{col.hd}</span>)}
@@ -1694,8 +1716,9 @@ function ActiveWorkout() {
     if (drumView) {
       const chambers = drumChambers(A.entries, members)
       const ss = members.length > 1
-      const head = idx => block(idx, ss ? { compact: true, drum: true, nameless: true, onUnpair: preview ? undefined : () => unpairAt(idx) } : {
+      const head = idx => block(idx, ss ? { compact: true, drum: true, nameless: true, aims: !preview && idx === cur, onUnpair: preview ? undefined : () => unpairAt(idx) } : {
         drum: true,
+        aims: !preview,
         onPairPrev: idx > 0 ? () => pairAt(idx - 1, idx) : null,
         onPairNext: idx < A.entries.length - 1 ? () => pairAt(idx, idx + 1) : null,
       })
@@ -1875,6 +1898,7 @@ function ActiveWorkout() {
         }}>
       {sessionView
         ? <SessionFlow entries={A.entries} cur={cur} renderBlock={sessionBlock} onSelect={selectExercise}
+          onReorder={dropEntry} disabled={!!work}
           headOpen={idx => !!openHeads[idx]} onToggleHead={toggleHead} bindExRef={bindExRef} />
         : <SlideDeck current={unitIdx} peek={unitDrag?.target ?? null} dir={unitDrag?.dir ?? 0} dx={unitDrag?.dx ?? 0}
           directionOf={(from, to) => (to > from ? 1 : -1)} render={renderUnit} turn />}

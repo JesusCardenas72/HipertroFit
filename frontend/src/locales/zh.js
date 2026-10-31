@@ -1221,6 +1221,7 @@ export default {
   'plus 0.1': '加 0.1',
   'Table': '表格',
   'Show sets as a table': '以表格显示组',
+  'Overload target': '超负荷目标',
   'Session': '训练',
   'Show the whole session': '显示整个训练',
   'Max weight': '最大重量',

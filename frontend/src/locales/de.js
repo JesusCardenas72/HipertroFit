@@ -1238,6 +1238,7 @@ export default {
   'plus 0.1': 'plus 0,1',
   'Table': 'Tabelle',
   'Show sets as a table': 'Sätze als Tabelle anzeigen',
+  'Overload target': 'Ziel Steigerung',
   'Session': 'Training',
   'Show the whole session': 'Ganzes Training anzeigen',
   'Max weight': 'Max. Gewicht',
