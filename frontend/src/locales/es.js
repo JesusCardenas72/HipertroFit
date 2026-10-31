@@ -1494,4 +1494,8 @@ export default {
   'Current': 'Actual',
   'Choose microcycle': 'Elegir microciclo',
   'Nothing was logged in this microcycle.': 'No se registró nada en este microciclo.',
+  'To reach the minimum': 'Para llegar al mínimo',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': 'Microciclo completo: faltan series en {0} de {1} grupos.',
+  'Microcycle complete — every group reaches its minimum.': 'Microciclo completo: todos los grupos llegan a su mínimo.',
+  'At minimum': 'En el mínimo',
 }

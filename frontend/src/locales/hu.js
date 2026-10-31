@@ -1450,4 +1450,8 @@ export default {
   'Current': 'Aktuális',
   'Choose microcycle': 'Mikrociklus kiválasztása',
   'Nothing was logged in this microcycle.': 'Ebben a mikrociklusban nem lett semmi rögzítve.',
+  'To reach the minimum': 'A minimum eléréséhez',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': 'Mikrociklus kész — {1} izomcsoportból {0}-ban még hiányoznak a sorozatok.',
+  'Microcycle complete — every group reaches its minimum.': 'Mikrociklus kész — minden izomcsoport eléri a minimumot.',
+  'At minimum': 'Minimum elérve',
 }

@@ -951,6 +951,10 @@ export const PT_BR_OVERRIDES = {
   'Current': 'Atual',
   'Choose microcycle': 'Escolher microciclo',
   'Nothing was logged in this microcycle.': 'Nada foi salvo neste microciclo.',
+  'To reach the minimum': 'Para atingir o mínimo',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': 'Microciclo concluído — faltam séries em {0} de {1} grupos.',
+  'Microcycle complete — every group reaches its minimum.': 'Microciclo concluído — todos os grupos atingem o seu mínimo.',
+  'At minimum': 'No mínimo',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

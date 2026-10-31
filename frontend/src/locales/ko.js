@@ -1445,4 +1445,8 @@ export default {
   'Current': '현재',
   'Choose microcycle': '마이크로사이클 선택',
   'Nothing was logged in this microcycle.': '이 마이크로사이클에는 기록이 없습니다.',
+  'To reach the minimum': '최소 기준까지',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': '마이크로사이클 완료 — {1}개 근육군 중 {0}개에 세트가 아직 부족합니다.',
+  'Microcycle complete — every group reaches its minimum.': '마이크로사이클 완료 — 모든 근육군이 최소 기준에 도달했습니다.',
+  'At minimum': '최소 기준 달성',
 }

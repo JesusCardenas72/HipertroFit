@@ -51,7 +51,7 @@ function CycleList({ list, value, onPick, close }) {
         </span>
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="tt row" style={{ gap: 6 }}>
-            {t('Microcycle')} #{c.n}
+            {t('Microcycle')}{c.n != null && ' #' + c.n}
             {c.current && <span className="tag acc">{t('Current')}</span>}
             {c.deload && <DeloadBadge />}
           </div>
@@ -69,6 +69,6 @@ export default function CyclePicker({ value, list, onPick }) {
   const open = () => useUI.getState().openSheet(close => <CycleList list={list} value={value} onPick={onPick} close={close} />)
   return <button type="button" className={'cycle-pick' + (value.current ? '' : ' past')} onClick={open}
     aria-label={t('Choose microcycle')} title={t('Choose microcycle')}>
-    <b>#{value.n}</b><span className="d">{cycleDates(value)}</span><Icon name="chevronDown" />
+    <b>{value.n != null ? '#' + value.n : t('Microcycle')}</b><span className="d">{cycleDates(value)}</span><Icon name="chevronDown" />
   </button>
 }

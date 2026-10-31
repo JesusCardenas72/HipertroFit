@@ -15,7 +15,7 @@
 
 import {
   countedBlocks, cycleLogOf, cycleEndOf, cycleDue, microcycleLen, strategyOf,
-  closeMicrocycle, nextCycleStart, addDays,
+  closeMicrocycle, nextCycleStart, addDays, isPlannedSession, cycleStartOf,
 } from './microcycle.js'
 import { emptyProgram } from './program.js'
 import { microNumber, isDeloadCycle, isDeloadWorkout, shiftMeso } from './mesocycle.js'
@@ -44,18 +44,54 @@ function splitEntries(S, blocks) {
   return blocks.slice(0, -1).map((b, k) => entryOf(S, b, k, addDays(blocks[k + 1].start, -1)))
 }
 
+// The sessions before the programming start (cycleStart) that no log entry covers. Moving the
+// start (the Programming sheet's anchor is also cycleStart) restarts the count there, so what
+// was trained before it leaves the running block and, with no closing on record for it, the
+// list too. They are grouped the way an unlogged profile splits its count (countedBlocks): a
+// block opens at a planned session once the one before holds `len`, extras riding along. They
+// were never numbered, so `n` is null; each runs to the day before the next one opened, as the
+// rest do.
+function earlierEntries(S, start, log) {
+  const len = microcycleLen(S)
+  const logged = w => log.some(c => String(w.d) >= c.start && String(w.d) <= c.end)
+  const earlier = ((S && S.workouts) || []).filter(w => String(w.d) < start && !logged(w)).sort(byDate)
+  const blocks = []
+  let cur = null
+  for (const w of earlier) {
+    const planned = isPlannedSession(S, w)
+    if (!cur || (planned && cur.planned >= len)) blocks.push(cur = { start: String(w.d), workouts: [], planned: 0 })
+    cur.workouts.push(w)
+    if (planned) cur.planned++
+  }
+  return blocks.map((b, k) => ({
+    start: b.start,
+    end: addDays(k + 1 < blocks.length ? blocks[k + 1].start : start, -1),
+    n: null,
+    sessions: b.planned,
+    len,
+    strategy: strategyOf(S),
+    deload: b.workouts.some(isDeloadWorkout),
+    workouts: b.workouts,
+  }))
+}
+
 /**
  * Every microcycle on record, newest first: the running one, then the closed ones.
  *
  * Each is { id, n, start, end, current, deload, sessions, len, strategy, workouts }. `id` is
  * its place oldest→newest, stable as new ones are added, so a picker can hold on to it. The
  * running one has no `end` yet — `due` is the day its days run out once its sessions are all
- * done (cycleEndOf), null while they are not.
+ * done (cycleEndOf), null while they are not. Sessions before the running block that no log
+ * entry covers are listed too, as earlier microcycles without a number (earlierEntries): nothing
+ * trained on record drops out of the list.
  */
 export function cycleHistory(S) {
   const blocks = countedBlocks(S)
-  const closed = [...cycleLogOf(S).map(c => ({ ...c, workouts: workoutsBetween(S, c.start, c.end) })),
-    ...splitEntries(S, blocks).map((c, k) => ({ ...c, workouts: blocks[k].workouts }))]
+  const log = cycleLogOf(S)
+  const closed = [...log.map(c => ({ ...c, workouts: workoutsBetween(S, c.start, c.end) })),
+    ...splitEntries(S, blocks).map((c, k) => ({ ...c, workouts: blocks[k].workouts })),
+    ...earlierEntries(S, cycleStartOf(S), log)]
+    .sort((a, b) => String(a.start).localeCompare(String(b.start)))
   const k = blocks.length - 1
   const cur = blocks[k]
   const running = {

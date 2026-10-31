@@ -187,4 +187,33 @@ describe('the microcycles on record', () => {
     expect(cycleHistory(state({ workouts: asPlanned }))[0].due).toBe('2026-03-09')
     expect(cycleHistory(state({ workouts: asPlanned.slice(0, 2) }))[0].due).toBe(null)
   })
+
+  it('lists the sessions a moved programming start left behind as earlier microcycles', () => {
+    // Two blocks trained in March, then the programming start moved to the 20th: the running
+    // block counts from there, and both earlier blocks stay on the list, unnumbered.
+    const S = state({
+      workouts: [...asPlanned, ...days('2026-03-10', 6)],
+      program: { ...state().program, anchor: '2026-03-20', cycleStart: '2026-03-20' },
+    })
+    const list = cycleHistory(S)
+    expect(list.map(c => [c.start, c.end, c.sessions, c.current])).toEqual([
+      ['2026-03-20', null, 0, true],
+      ['2026-03-10', '2026-03-19', 6, false],
+      ['2026-03-02', '2026-03-09', 6, false],
+    ])
+    expect(list[1].n).toBe(null)
+    expect(list.reduce((n, c) => n + c.workouts.length, 0)).toBe(12)   // every session on record
+  })
+
+  it('reads the sessions the log covers from the log, not twice', () => {
+    const S = state({
+      workouts: [...asPlanned, ...days('2026-03-10', 6)],
+      cycleLog: [{ start: '2026-03-02', end: '2026-03-09', n: 1, sessions: 6, len: 6, strategy: 'ppl', deload: false }],
+      program: { ...state().program, anchor: '2026-03-10', cycleStart: '2026-03-10' },
+    })
+    expect(cycleHistory(S).map(c => [c.start, c.current, c.workouts.length])).toEqual([
+      ['2026-03-10', true, 6],
+      ['2026-03-02', false, 6],
+    ])
+  })
 })

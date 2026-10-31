@@ -1462,4 +1462,8 @@ export default {
   'Current': 'Aktuell',
   'Choose microcycle': 'Mikrozyklus wählen',
   'Nothing was logged in this microcycle.': 'In diesem Mikrozyklus wurde nichts erfasst.',
+  'To reach the minimum': 'Bis zum Minimum',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': 'Mikrozyklus abgeschlossen — in {0} von {1} Muskelgruppen fehlen noch Sätze.',
+  'Microcycle complete — every group reaches its minimum.': 'Mikrozyklus abgeschlossen — alle Muskelgruppen erreichen ihren Mindestwert.',
+  'At minimum': 'Minimum erreicht',
 }

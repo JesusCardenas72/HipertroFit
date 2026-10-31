@@ -1458,4 +1458,8 @@ export default {
   'Current': 'ปัจจุบัน',
   'Choose microcycle': 'เลือกไมโครไซเคิล',
   'Nothing was logged in this microcycle.': 'ไม่มีการบันทึกในไมโครไซเคิลนี้',
+  'To reach the minimum': 'ถึงขั้นต่ำ',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': 'ไมโครไซเคิลเสร็จสมบูรณ์ — ยังขาดเซ็ตในอีก {0} จาก {1} กลุ่มกล้ามเนื้อ',
+  'Microcycle complete — every group reaches its minimum.': 'ไมโครไซเคิลเสร็จสมบูรณ์ — ทุกกลุ่มกล้ามเนื้อถึงขั้นต่ำแล้ว',
+  'At minimum': 'ถึงขั้นต่ำแล้ว',
 }

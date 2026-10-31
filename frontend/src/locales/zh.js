@@ -1445,4 +1445,8 @@ export default {
   'Current': '当前',
   'Choose microcycle': '选择小周期',
   'Nothing was logged in this microcycle.': '这个小周期没有任何记录。',
+  'To reach the minimum': '达到最低量',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': '小周期已完成——{1} 个肌群中有 {0} 个仍缺组数。',
+  'Microcycle complete — every group reaches its minimum.': '小周期已完成——每个肌群都达到了最低量。',
+  'At minimum': '已达最低量',
 }

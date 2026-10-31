@@ -1445,4 +1445,8 @@ export default {
   'Current': 'En cours',
   'Choose microcycle': 'Choisir le microcycle',
   'Nothing was logged in this microcycle.': 'Rien n’a été enregistré dans ce microcycle.',
+  'To reach the minimum': 'Pour atteindre le minimum',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': 'Microcycle terminé — il manque encore des séries dans {0} groupes sur {1}.',
+  'Microcycle complete — every group reaches its minimum.': 'Microcycle terminé — chaque groupe atteint son minimum.',
+  'At minimum': 'Minimum atteint',
 }

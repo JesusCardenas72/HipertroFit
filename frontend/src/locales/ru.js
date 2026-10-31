@@ -1445,4 +1445,8 @@ export default {
   'Current': 'Текущий',
   'Choose microcycle': 'Выбрать микроцикл',
   'Nothing was logged in this microcycle.': 'В этом микроцикле ничего не записано.',
+  'To reach the minimum': 'До минимума',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': 'Микроцикл завершён — в {0} из {1} групп ещё не хватает подходов.',
+  'Microcycle complete — every group reaches its minimum.': 'Микроцикл завершён — каждая группа достигла минимума.',
+  'At minimum': 'Минимум достигнут',
 }
