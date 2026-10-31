@@ -1246,6 +1246,14 @@ h4.sec{
 .vol-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
 .vol-legend span{display:inline-flex;align-items:center;gap:5px;font-size:calc(11.5px * var(--fs));color:var(--label-2)}
 .vol-legend i{width:9px;height:9px;border-radius:99px;display:inline-block}
+/* once the block's planned sessions are all done: the sets each group still needs (MinimumGaps) */
+.vol-need{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-top:6px}
+.vol-need-cell{background:var(--surface-2);border-radius:12px;padding:9px 10px 10px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.vol-need-cell.met{background:color-mix(in srgb,var(--green) 12%,var(--surface-2))}
+.vol-need-cell .nm{font-size:calc(12.5px * var(--fs));color:var(--label-2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vol-need-cell b{font-size:calc(22px * var(--fs));font-weight:650;letter-spacing:-.02em;line-height:1.1;color:var(--orange);font-variant-numeric:tabular-nums}
+.vol-need-cell .lb{font-size:calc(11px * var(--fs));color:var(--label-3)}
+.vol-need-cell .ok{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:calc(12px * var(--fs));font-weight:600;color:var(--green)}
 
 /* --- calendar programming sheet --- */
 .prog-seq{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}

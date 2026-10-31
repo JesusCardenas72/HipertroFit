@@ -254,3 +254,18 @@ export function cycleExecution(vol, planned) {
   const plan = (planned && planned.total) || 0
   return { done, planned: plan, pct: plan > 0 ? Math.round(done / plan * 100) : null }
 }
+
+/**
+ * What a finished block still lacks: for each group, the whole effective sets that take it up to
+ * its minimum. `done` is read at the same one decimal the panel shows (groupProgress), so the count
+ * never disagrees with the figure beside it, and it is rounded up to whole sets — a group 2.4 short
+ * needs 3, since two would leave it at 9.6. At or past its minimum a group owes nothing, and so does
+ * one whose band has no minimum (the erectors' band starts at 0). The counts are per group and must
+ * not be added up: one compound set also feeds the groups it trains alongside.
+ */
+export function minimumGaps(vol) {
+  return VOLUME_GROUPS.map(g => {
+    const p = groupProgress(g, vol, null)
+    return { ...g, done: p.done, min: p.min, remaining: Math.max(0, Math.ceil(round1(p.min - p.done))) }
+  })
+}

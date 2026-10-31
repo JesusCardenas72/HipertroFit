@@ -1445,4 +1445,8 @@ export default {
   'Current': 'वर्तमान',
   'Choose microcycle': 'माइक्रोसाइकल चुनें',
   'Nothing was logged in this microcycle.': 'इस माइक्रोसाइकल में कुछ दर्ज नहीं हुआ।',
+  'To reach the minimum': 'न्यूनतम तक पहुँचने के लिए',
+  'Microcycle complete — sets still missing in {0} of {1} groups.': 'माइक्रोसाइकल पूरा — {1} में से {0} मांसपेशी समूहों में अभी सेट बाकी हैं।',
+  'Microcycle complete — every group reaches its minimum.': 'माइक्रोसाइकल पूरा — हर मांसपेशी समूह अपने न्यूनतम तक पहुँच गया है।',
+  'At minimum': 'न्यूनतम पर',
 }

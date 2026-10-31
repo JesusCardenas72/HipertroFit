@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from './muscles.js'
 import {
   EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS, ALL_GROUP_KEYS, volumeGroups, setVolumeSplit, targetOf,
-  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, volumeStatus, volumeColor, groupProgress, cycleExecution,
+  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, volumeStatus, volumeColor, groupProgress, cycleExecution, minimumGaps,
 } from './volume.js'
 
 // A work set with an optional RIR. Inline exercise metadata (tg/mg/sm) resolves through
@@ -342,5 +342,36 @@ describe('groupProgress / cycleExecution', () => {
   it('compares the block\'s work sets with the sets it plans', () => {
     expect(cycleExecution(vol, { total: 120 })).toEqual({ done: 30, planned: 120, pct: 25 })
     expect(cycleExecution(vol, { total: 0 }).pct).toBeNull()
+  })
+})
+
+describe('minimumGaps', () => {
+  afterEach(() => setVolumeSplit())
+  const remaining = (key, done) => minimumGaps({ groups: { [key]: done } }).find(g => g.key === key).remaining
+
+  it('counts the whole sets that take a group up to its minimum', () => {
+    expect(remaining('chest', 0)).toBe(10)     // nothing done: the whole minimum
+    expect(remaining('chest', 7.6)).toBe(3)    // 2.4 short is three sets; two would leave it at 9.6
+    expect(remaining('chest', 9.6)).toBe(1)
+    expect(remaining('chest', 10)).toBe(0)
+  })
+  it('owes nothing past the minimum', () => {
+    expect(remaining('chest', 14)).toBe(0)
+  })
+  it('reads the figure the panel shows, to one decimal', () => {
+    expect(remaining('chest', 9.96)).toBe(0)  // shown as 10 on the panel
+  })
+  it('judges a split part against its own minimum', () => {
+    setVolumeSplit({ back: true, legs: true })
+    expect(remaining('hamstrings', 4.5)).toBe(2)  // minimum 6
+    expect(remaining('lats', 0)).toBe(10)         // minimum 10
+  })
+  it('owes nothing where the band has no minimum', () => {
+    setVolumeSplit({ back: true })
+    expect(remaining('erectors', 0)).toBe(0)      // band 0–6
+  })
+  it('lists the groups in panel order', () => {
+    expect(minimumGaps({ groups: {} }).map(g => g.key))
+      .toEqual(['legs', 'chest', 'back', 'delts', 'biceps', 'triceps', 'abs'])
   })
 })
