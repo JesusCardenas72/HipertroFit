@@ -5,13 +5,14 @@ import { exOr } from '../lib/exercises.js'
 import { exerciseNameFor, t } from '../lib/i18n.js'
 import { fmtDate, fmtNum } from '../lib/format.js'
 import { modeOf } from '../lib/history.js'
-import { railItems, exerciseRecords, repMaxFor } from '../lib/session-view.js'
+import { railItems, exerciseRecords, repMaxFor, sessionRoom } from '../lib/session-view.js'
 import { REP_CAP } from '../lib/onerm.js'
 import Icon from './Icon.jsx'
 import { Thumb } from './Media.jsx'
 
 /* The exercise's two records and what its best estimate says it could lift for each rep count.
-   Read from history only; nothing here is logged. */
+   Read from history only; nothing here is logged. Shown under the exercise's arrow, beside its
+   tools and tags, never on the screen by itself. */
 function Records({ exId }) {
   const workouts = useStore(s => s.S.workouts)
   const unit = useStore(s => s.S.unit)
@@ -21,32 +22,35 @@ function Records({ exId }) {
   // for the rest of the visit (UI state, not saved).
   const rmOpen = useUI(s => !!s.sessionRepMaxOpen)
   const toggleRm = () => useUI.setState(s => ({ sessionRepMaxOpen: !s.sessionRepMaxOpen }))
-  if (!maxWeight && !maxReps) return null
-  return <>
-    <div className="sf-recs">
-      {maxWeight && <div className="sf-rec">
-        <div className="k"><span>{t('Max weight')}</span><Icon name="dumbbell" /></div>
-        <div className="d">{fmtDate(maxWeight.d, false, true)}</div>
-        <div className="v">{fmtNum(maxWeight.w)} {unit} <small>({t('{0} reps', maxWeight.r)})</small></div>
-      </div>}
-      {maxReps && <div className="sf-rec">
-        <div className="k"><span>{t('Max reps')}</span><Icon name="bolt" /></div>
-        <div className="d">{fmtDate(maxReps.d, false, true)}</div>
-        <div className="v">{t('{0} reps', maxReps.r)}{maxReps.w > 0 && <small> ({fmtNum(maxReps.w)} {unit})</small>}</div>
-      </div>}
-    </div>
-    {rm.length > 0 && <div className="sf-rm">
-      <button type="button" className="k" aria-expanded={rmOpen} onClick={toggleRm}>
-        <span>{t('Rep max @ {0}', unit)}</span><Icon name={rmOpen ? 'chevronUp' : 'chevronDown'} />
-      </button>
-      {rmOpen && <div className="g">
+  const recs = maxWeight || maxReps ? <div className="sf-recs">
+    {maxWeight && <div className="sf-rec">
+      <div className="k"><span>{t('Max weight')}</span><Icon name="dumbbell" /></div>
+      <div className="d">{fmtDate(maxWeight.d, false, true)}</div>
+      <div className="v">{fmtNum(maxWeight.w)} {unit} <small>({t('{0} reps', maxWeight.r)})</small></div>
+    </div>}
+    {maxReps && <div className="sf-rec">
+      <div className="k"><span>{t('Max reps')}</span><Icon name="bolt" /></div>
+      <div className="d">{fmtDate(maxReps.d, false, true)}</div>
+      <div className="v">{t('{0} reps', maxReps.r)}{maxReps.w > 0 && <small> ({fmtNum(maxReps.w)} {unit})</small>}</div>
+    </div>}
+  </div> : null
+  // Without an estimate there is no table to fold, so the two records stand on their own.
+  if (!rm.length) return recs
+  // The records open with the estimate: its title is the only line until it is tapped.
+  return <div className="sf-rm">
+    <button type="button" className="k" aria-expanded={rmOpen} onClick={toggleRm}>
+      <span>{t('Rep max @ {0}', unit)}</span><Icon name={rmOpen ? 'chevronUp' : 'chevronDown'} />
+    </button>
+    {rmOpen && <>
+      {recs}
+      <div className="g">
         {rm.map(row => <span key={row.r} className={row.rough ? 'rough' : ''}
           title={row.rough ? t('Rough estimate past {0} reps', REP_CAP) : undefined}>
           {row.r} @ <b>{fmtNum(row.w)}</b>
         </span>)}
-      </div>}
-    </div>}
-  </>
+      </div>
+    </>}
+  </div>
 }
 
 /* The "Session" view: every exercise of the workout as a tab down the left — its thumbnail, with
@@ -67,18 +71,39 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onTog
 
   // The tabs stick under the session header, whose height changes as it folds; the panel is at
   // least as tall as the tabs, so the open tab always has a panel edge to join.
+  // The page is only as long as its content, so the room under the panel (`--sf-room`) is what
+  // lets the last card come up under the header as the others do (Workout scrolls the card in
+  // front to the top). It is worked out from positions that do not include that room itself.
   const railEl = useRef(null)
-  const [geom, setGeom] = useState({ top: 0, rail: 0 })
-  useLayoutEffect(() => {
+  const panelEl = useRef(null)
+  const sflowEl = useRef(null)
+  const [geom, setGeom] = useState({ top: 0, rail: 0, room: 0 })
+  const measure = () => {
     const head = document.querySelector('.wtop')
-    const measure = () => {
-      const next = { top: head ? head.offsetHeight : 0, rail: railEl.current ? railEl.current.scrollHeight : 0 }
-      setGeom(g => (g.top === next.top && g.rail === next.rail ? g : next))
+    const top = head ? head.offsetHeight : 0
+    const rail = railEl.current ? railEl.current.scrollHeight : 0
+    const sflow = sflowEl.current, panel = panelEl.current, last = panel?.lastElementChild
+    let room = 0
+    if (sflow && panel && last) {
+      const page = window.scrollY || 0
+      room = sessionRoom({
+        cardTop: last.getBoundingClientRect().top + page,
+        panelBottom: panel.getBoundingClientRect().bottom + page,
+        belowSession: document.documentElement.scrollHeight - (sflow.getBoundingClientRect().bottom + page),
+        viewport: window.innerHeight,
+        header: top,
+      })
     }
-    measure()
+    const next = { top, rail, room: Math.ceil(room) }
+    setGeom(g => (g.top === next.top && g.rail === next.rail && g.room === next.room ? g : next))
+  }
+  // Heights move with the sets (a drop, a folded head, a superset's partner): measured after each render.
+  useLayoutEffect(() => { measure() })
+  useLayoutEffect(() => {
     const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
-    if (head) ro?.observe(head)
-    if (railEl.current) ro?.observe(railEl.current)
+    for (const el of [document.querySelector('.wtop'), document.querySelector('.wfoot'), railEl.current, sflowEl.current]) {
+      if (el) ro?.observe(el)
+    }
     window.addEventListener('resize', measure)
     return () => { ro?.disconnect(); window.removeEventListener('resize', measure) }
   }, [entries.length])
@@ -91,8 +116,8 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onTog
     else if (tab.offsetTop + tab.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = tab.offsetTop + tab.offsetHeight - box.clientHeight + 4
   }, [cur])
 
-  return <div className="sflow" data-testid="session-flow"
-    style={{ '--sf-top': geom.top + 'px', '--sf-rail': geom.rail + 'px' }}>
+  return <div className="sflow" data-testid="session-flow" ref={sflowEl}
+    style={{ '--sf-top': geom.top + 'px', '--sf-rail': geom.rail + 'px', '--sf-room': geom.room + 'px' }}>
     <nav className="sf-tabs" ref={railEl} aria-label={t('Exercises')}>
       {rail.map((item, k) => {
         const ex = exOr(entries[item.idx].id)
@@ -115,7 +140,7 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onTog
       })}
     </nav>
     {/* Square where the open tab meets it at the very top, so the two read as one shape. */}
-    <div key={members.join(',')} className={'sf-panel' + (rail[0]?.current ? ' flush' : '')} data-dir={dir}
+    <div key={members.join(',')} ref={panelEl} className={'sf-panel' + (rail[0]?.current ? ' flush' : '')} data-dir={dir}
       style={open?.hue != null ? { '--ss': `hsl(${open.hue},70%,55%)` } : undefined}>
       {members.map(idx => {
         const entry = entries[idx]
@@ -127,12 +152,10 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onTog
               <span>{name}</span>
               <Icon name={headOpen(idx) ? 'chevronUp' : 'chevronDown'} className="exhead-chev" />
             </button>
-            {members.length > 1 && <Icon name="link" className="sf-link" />}
           </div>
-          {/* The records belong to the exercise you are on; its partner keeps just its sets,
-              so a superset does not open as two screens of numbers. */}
-          {idx === cur && reps && <Records exId={entry.id} />}
-          {renderBlock(idx)}
+          {/* The records ride along with the arrow's tools and tags (see ExerciseBlock's `marks`),
+              so they show only once that arrow is open, and only for a rep-based exercise. */}
+          {renderBlock(idx, reps ? <Records exId={entry.id} /> : null)}
         </div>
       })}
     </div>

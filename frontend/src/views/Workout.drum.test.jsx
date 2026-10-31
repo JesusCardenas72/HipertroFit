@@ -377,12 +377,13 @@ describe('the set drum', () => {
       })
     }
 
-    it('opens the session on the set that was in the middle of the table', () => {
+    it('opens the session on the exercise in front, its card brought up whole', async () => {
       renderWorkout([{ id: 'a', target: { sets: 3, reps: 10 }, sets: rows(3) }], { setView: 'table' })
       thirdInTheMiddle()
       click(viewBtn())
       expect(useStore.getState().S.setView).toBe('session')
-      expect(scrolled.at(-1)).toBe(container.querySelector('.sf-panel [data-swipe-set="2"]'))
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 400)) })
+      expect(scrolled.at(-1)).toBe(container.querySelector('.sf-panel .sf-card'))
     })
 
     it('turns the drum to the set that was in the middle of the session', () => {

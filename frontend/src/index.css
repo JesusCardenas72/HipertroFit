@@ -2226,7 +2226,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
    the edge of each superset, unbroken across the members of one group — and the panel of the
    unit being worked sits beside them, joined to its tabs like a folder's. The tabs stick under
    the session header (--sf-top, measured) so all of them stay in reach while the sets scroll. */
-.sflow{display:grid;grid-template-columns:74px minmax(0,1fr);align-items:start}
+.sflow{display:grid;grid-template-columns:74px minmax(0,1fr);align-items:start;padding-bottom:var(--sf-room,0px)}
 .sf-tabs{position:sticky;top:var(--sf-top,0px);z-index:1;display:flex;flex-direction:column;padding:2px 0 14px;
   max-height:calc(100dvh - var(--sf-top,0px) - 96px);overflow-y:auto;scrollbar-width:none;overscroll-behavior:contain}
 .sf-tabs::-webkit-scrollbar{display:none}
@@ -2271,9 +2271,12 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 @keyframes sfIn{from{opacity:0;transform:translateY(18px)}}
 @keyframes sfBack{from{opacity:0;transform:translateY(-18px)}}
 .sf-card + .sf-card{margin-top:14px;padding-top:14px;box-shadow:inset 0 var(--hair) 0 var(--sep)}
+/* a card scrolled to lands just under the pinned header, its title in view (Workout's scroll) */
+.sf-card{scroll-margin-top:calc(var(--sf-top,0px) + 12px)}
 .sf-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .sf-head .exhead-tg{flex:1;min-width:0;font-size:calc(17px * var(--fs))}
-.sf-link{flex:none;width:18px;height:18px;color:var(--ss,var(--acc))}
+/* the tools line breaks onto a second line when the buttons do not fit on one */
+.sf-card .extools{flex-wrap:wrap}
 .sf-recs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
 .sf-rec{padding:9px 10px;border-radius:var(--r);background:var(--surface-2)}
 .sf-rec .k{display:flex;align-items:center;justify-content:space-between;gap:6px;font-weight:600;font-size:calc(13px * var(--fs))}
@@ -2282,6 +2285,10 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .sf-rec .v{font-weight:700;font-size:calc(14px * var(--fs));margin-top:6px}
 .sf-rec .v small{font-weight:400;color:var(--label-2)}
 .sf-rm{border-radius:var(--r);box-shadow:inset 0 0 0 var(--hair) var(--sep);margin-bottom:10px}
+/* the records open with the estimate, inside its box, above the table: a little less side room
+   than the table's, so "Peso máx." keeps to one line */
+.sf-rm .sf-recs{padding:0 4px;margin-bottom:8px}
+.sf-rm .sf-rec{padding:9px 8px}
 /* folded to its title until tapped: the numbers are for when you want them */
 .sf-rm .k{width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border:0;background:none;
   color:var(--label-2);font:inherit;font-size:calc(12px * var(--fs));cursor:pointer}

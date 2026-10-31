@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { railItems, exerciseRecords, repMaxTable, repMaxFor, estimateSessionSec, WORK_SEC } from './session-view.js'
+import { railItems, exerciseRecords, repMaxTable, repMaxFor, estimateSessionSec, sessionRoom, WORK_SEC } from './session-view.js'
 import { supersetUnits } from './history.js'
 import { dockItems } from './workout-dock.js'
 import { estimate1RM } from './onerm.js'
@@ -154,5 +154,24 @@ describe('estimateSessionSec', () => {
 
   it('is zero for an empty session', () => {
     expect(estimateSessionSec([], [], opts)).toBe(0)
+  })
+})
+
+describe('sessionRoom', () => {
+  // Page coordinates: a last card low on the page, a foot of 120px below the session.
+  const page = { cardTop: 1000, panelBottom: 1412, belowSession: 120, viewport: 812, header: 115 }
+
+  it('is the room the page is short of, so the last card can come up under the header', () => {
+    expect(sessionRoom(page)).toBe(153)
+  })
+
+  it('is zero when the page can already scroll the card up', () => {
+    expect(sessionRoom({ ...page, cardTop: 300, panelBottom: 1200, belowSession: 300 })).toBe(0)
+  })
+
+  it('leaves the page long enough for the card to reach its place, and no longer', () => {
+    const room = sessionRoom(page)
+    const maxScroll = page.panelBottom + room + page.belowSession - page.viewport
+    expect(maxScroll).toBe(page.cardTop - page.header - 12)
   })
 })

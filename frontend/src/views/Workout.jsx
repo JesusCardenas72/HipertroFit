@@ -206,7 +206,7 @@ const miniStepper = (value, step, dec, onChange) => (
 )
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1, onToggle, onToggleDrop, onOpenSet, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onUnpair, onSetRowRef, onProgressionSettings, onAddExercise, onOpenProgression, onSwap, onRemove, swipeSet, swipeDrop = null, swipeBurst = null, swipeDx = 0, open = true, onToggleHead }) {
+function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1, onToggle, onToggleDrop, onOpenSet, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onUnpair, onSetRowRef, onProgressionSettings, onAddExercise, onOpenProgression, onSwap, onRemove, swipeSet, swipeDrop = null, swipeBurst = null, swipeDx = 0, open = true, onToggleHead, marks = null }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -326,6 +326,8 @@ function ExerciseBlock({ entryIdx, compact, drum, table, nameless, nextSet = -1,
       {ex.eq && <span className="tag">{t(ex.eq)}</span>}
       {best > 0 && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}
     </div>}
+    {/* The session view's records (SessionFlow), under the tags they sit with. */}
+    {open && marks}
     {/* Three notes can apply to one exercise and they are not interchangeable, so each keeps its
         own line and its own icon: the plan's instruction (cfg.note, from the routine), the
         standing fact about the movement (exNotes), and the message you pinned to yourself last
@@ -1017,6 +1019,8 @@ function ActiveWorkout() {
     const idx = resumeEntryIdx(entries, supersetUnits(entries))
     if (idx != null && idx !== cur) update(s => { if (s.active?.entries?.[idx]) s.active.cur = idx })
   }, [resumeId])
+  // Opening the session view owes the same scroll, to the exercise in front.
+  useEffect(() => { if (S.setView === 'session') scrollOwed.current = true }, [S.setView])
   useEffect(() => {
     if (sheetsOpen || !scrollOwed.current) return
     const delay = unitIdx !== scrolledUnit.current ? 320 : 150
@@ -1027,11 +1031,15 @@ function ActiveWorkout() {
       const entry = active?.entries[cur]
       const firstIncomplete = entry?.sets.findIndex(s => !s.done) ?? -1
       const setIdx = firstIncomplete >= 0 ? firstIncomplete : (entry?.sets.length ?? 0) - 1
-      const el = (setIdx >= 0 && setRefs.current.get(entry)?.get(setIdx)) || exRefs.current.get(entry)
-      if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // The session shows the exercise in front whole: its card, from the title to its buttons,
+      // goes under the header (see .sf-card's scroll-margin). A superset's partner gets the same
+      // when the check moves the session on to it.
+      const card = sessionView ? exRefs.current.get(entry) : null
+      const el = card || (setIdx >= 0 && setRefs.current.get(entry)?.get(setIdx)) || exRefs.current.get(entry)
+      if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: sessionView ? 'start' : 'center' })
     }, delay)
     return () => clearTimeout(t)
-  }, [cur, A.entries.length, sheetsOpen, setsDoneNow, resumeId])
+  }, [cur, A.entries.length, sheetsOpen, setsDoneNow, resumeId, S.setView])
 
   const total = A.entries.reduce((n, e) => n + e.sets.length, 0)
   const done = setsDoneActive(A)
@@ -1648,7 +1656,8 @@ function ActiveWorkout() {
   }
   useEffect(() => {
     if (!carry) return
-    if (!drumView) setRefs.current.get(A.entries[carry.entry])?.get(carry.set)?.scrollIntoView?.({ block: 'center' })
+    // The session brings its card up on its own (the scroll below), not the set on screen.
+    if (!drumView && !sessionView) setRefs.current.get(A.entries[carry.entry])?.get(carry.set)?.scrollIntoView?.({ block: 'center' })
     setCarry(null)
   }, [S.setView])
   const slimTop = !(topOpen ?? !drumView)
@@ -1665,11 +1674,11 @@ function ActiveWorkout() {
     {...extra} />
   // The session view's open exercises: the table's rows under the view's own name line, wired
   // like the list (row refs for the superset flow's scroll, pairing from the tools row).
-  const sessionBlock = idx => {
+  const sessionBlock = (idx, marks) => {
     const entry = A.entries[idx]
     const linked = unitOf(units, idx).length > 1
     return blockFor(idx, false, {
-      compact: true, table: true, nameless: true,
+      compact: true, table: true, nameless: true, marks,
       onSetRowRef: (setIdx, el) => bindSetRef(entry, setIdx, el),
       ...(linked ? { onUnpair: () => unpairAt(idx) } : {
         onPairPrev: idx > 0 ? () => pairAt(idx - 1, idx) : null,

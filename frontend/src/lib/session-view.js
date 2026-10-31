@@ -125,3 +125,16 @@ export function estimateSessionSec(entries, units, opts = {}) {
   })
   return total
 }
+
+/**
+ * The room the session needs under its own cards, in px, so the page can scroll its last card
+ * up under the pinned header with `gap` of air above it. A page is only as long as its content,
+ * so a short last card cannot be scrolled that far on its own; this is the difference, and zero
+ * when the page is long enough already. All the figures are page coordinates: `cardTop` the last
+ * card's top, `panelBottom` the bottom of the cards, `belowSession` what the page has under the
+ * session's box (the foot and what follows it), `viewport` the window's height, `header` the
+ * pinned header's height.
+ */
+export function sessionRoom({ cardTop, panelBottom, belowSession, viewport, header, gap = 12 }) {
+  return Math.max(0, cardTop - header - gap + viewport - panelBottom - belowSession)
+}

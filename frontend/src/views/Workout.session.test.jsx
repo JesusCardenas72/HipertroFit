@@ -104,19 +104,27 @@ describe('the session view', () => {
     expect(tabs()[1].classList.contains('cur')).toBe(true)
   })
 
-  it('shows the records of the exercise you are on, from history', () => {
+  it('keeps the records out of sight until the exercise\'s arrow opens them', () => {
     renderWorkout()
+    expect(cards()[0].querySelector('.sf-recs')).toBeNull()
+    expect(cards()[0].querySelector('.sf-rm')).toBeNull()
+    click(cards()[0].querySelector('.sf-head .exhead-tg'))
+    // the rep-max estimate folds the records with it: its title is what shows first
+    expect(cards()[0].querySelector('.sf-rec')).toBeNull()
+    expect(cards()[0].querySelector('.sf-rm')).not.toBeNull()
+    click(cards()[0].querySelector('.sf-rm .k'))
     const recs = cards()[0].querySelectorAll('.sf-rec')
     expect(recs).toHaveLength(2)
     expect(recs[0].textContent).toContain('12')
     expect(recs[1].textContent).toContain('20')
-    expect(cards()[0].querySelector('.sf-rm')).not.toBeNull()
-    // the partner keeps only its sets
+    // the partner has no history, so there are no records to open
+    click(cards()[1].querySelector('.sf-head .exhead-tg'))
     expect(cards()[1].querySelector('.sf-rec')).toBeNull()
   })
 
   it('keeps the rep-max table folded on its title until it is tapped, then open from one exercise to the next', () => {
     renderWorkout()
+    click(cards()[0].querySelector('.sf-head .exhead-tg'))
     const title = () => cards()[0].querySelector('.sf-rm .k')
     expect(title().getAttribute('aria-expanded')).toBe('false')
     expect(cards()[0].querySelector('.sf-rm .g')).toBeNull()
@@ -134,6 +142,28 @@ describe('the session view', () => {
     act(() => useStore.getState().update(s => { s.active.entries[4].sets.forEach(x => { x.done = true }) }))
     expect(tabs()[4].querySelector('.sf-ok')).not.toBeNull()
     expect(tabs()[0].querySelector('.sf-ok')).toBeNull()
+  })
+
+  it('brings the exercise in front to the top, whole, and follows the check on to its partner', async () => {
+    const scrolled = []
+    const native = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function scrollIntoView(options) { scrolled.push({ el: this, options }) }
+    const settle = () => act(async () => { await new Promise(resolve => setTimeout(resolve, 400)) })
+    try {
+      renderWorkout()
+      await settle()
+      expect(scrolled.at(-1).el).toBe(cards()[0])
+      expect(scrolled.at(-1).options.block).toBe('start')
+      // the superset's partner comes up when the check hands the session on to it
+      click(cards()[0].querySelector('.settable .st-ck'))
+      await settle()
+      expect(scrolled.at(-1).el.dataset.exidx).toBe('1')
+      click(tabs()[4])
+      await settle()
+      expect(scrolled.at(-1).el.dataset.exidx).toBe('4')
+    } finally {
+      Element.prototype.scrollIntoView = native
+    }
   })
 
   it('leaves the other views as they were', () => {
