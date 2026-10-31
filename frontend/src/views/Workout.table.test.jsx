@@ -196,7 +196,7 @@ describe('the set table', () => {
     expect(tags('mus-s')).toEqual(['Lower back', 'Adductors'])
   })
 
-  it('is the third stop of the header toggle: list → table → session → drum', () => {
+  it('is the third stop of the view toggle at the foot: list → table → session → drum', () => {
     renderWorkout({ setView: 'list' })
     click(container.querySelector('[data-testid="set-view"]'))
     expect(useStore.getState().S.setView).toBe('table')

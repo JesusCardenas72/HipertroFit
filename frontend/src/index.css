@@ -1903,7 +1903,7 @@ h4.sec{
 .dh-int .subrow{padding-left:0}
 /* a tool bar: one capsule of equal slots, icon over a short label — the set's (.dh-bar, inside
    the drum's hero) and the session's running order (.wtools, at the foot of the workout) */
-.dh-bar,.wtools{display:flex;align-items:stretch;margin-top:10px;border-radius:14px;overflow:hidden;
+.dh-bar,.wtools,.wview{display:flex;align-items:stretch;margin-top:10px;border-radius:14px;overflow:hidden;
   background:color-mix(in srgb,var(--surface-2) 70%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep)}
 .dh-tool,.wtool{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   padding:8px 2px 7px;color:var(--label-2);font-size:calc(10.5px * var(--fs));font-weight:600;letter-spacing:.01em;
@@ -1914,15 +1914,17 @@ h4.sec{
 .dh-tool:active:not(:disabled),.wtool:active:not(:disabled){background:var(--surface-3);color:var(--label)}
 .dh-tool:disabled,.wtool:disabled{opacity:.32}
 .dh-tool.del .icn,.wtool.del .icn{color:var(--red)}
-/* The foot of the workout: paging, then add / remove exercise (reordering is the dock's drag). It
-   comes in three sizes and Workout.jsx picks the largest that leaves nothing to scroll to
-   (data-fit on the page): 0 two rows, the tools with their labels; 1 one row, the tools as icons; 2 the
-   same, tighter; 3 and 4 keep that and shrink the set in front. */
-.wtools{border-radius:var(--r);margin-top:10px}
+/* The foot of the workout: paging, then the view of the sets (.wview, the bottom left corner) and
+   add / remove exercise (reordering is the dock's drag). It comes in three sizes and Workout.jsx
+   picks the largest that leaves nothing to scroll to (data-fit on the page): 0 two rows, the tools
+   with their labels, the view a slot as wide as each of the others; 1 one row, the view first and
+   the tools as icons; 2 the same, tighter; 3 and 4 keep that and shrink the set in front. */
+.wtools,.wview{border-radius:var(--r);margin-top:10px}
 .wtool{padding:10px 4px 9px;font-size:calc(11.5px * var(--fs));justify-content:flex-start}
 .wtool .icn{font-size:calc(19px * var(--fs))}
 .wtool span{max-width:100%;line-height:1.2;text-align:center;overflow-wrap:anywhere}
-.wfoot{margin-top:12px}
+.wfoot{margin-top:12px;display:grid;grid-template-columns:1fr 2fr;column-gap:10px}
+.wfoot>:not(.wview,.wtools){grid-column:1/-1}
 /* the workout ends with its foot, and a session in progress hides the tab bar (TabBar.jsx), so
    nothing is left under it: a screen that fits has nothing to scroll to. The rest timer drops down
    into the room the bar leaves. */
@@ -1935,7 +1937,8 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .narrow:not([data-fit="0"]) .wfoot{display:flex;align-items:stretch;gap:8px;margin-top:8px}
 .narrow:not([data-fit="0"]) .wnav{flex:1;min-width:0;gap:8px}
 .narrow:not([data-fit="0"]) .wnav .btn{padding:11px 10px;font-size:calc(16px * var(--fs))}
-.narrow:not([data-fit="0"]) .wtools{flex:none;margin-top:0}
+.narrow:not([data-fit="0"]) :is(.wtools,.wview){flex:none;margin-top:0}
+.narrow:not([data-fit="0"]) .wview{order:-1}
 .narrow:not([data-fit="0"]) .wtool{flex:none;flex-direction:row;justify-content:center;padding:0 15px}
 .narrow:not([data-fit="0"]) .wtool span{display:none}
 .narrow:is([data-fit="2"],[data-fit="3"],[data-fit="4"]) .wfoot{margin-top:6px}

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { drumHome, drumSettle, drumArmed, drumRubber, drumSteps, drumCylinder, drumReach, drumFace, drumBend, drumShade, clampChamber, DRUM_LOCK } from '../lib/drum.js'
+import { drumHome, chamberOf, drumSettle, drumArmed, drumRubber, drumSteps, drumCylinder, drumReach, drumFace, drumBend, drumShade, clampChamber, DRUM_LOCK } from '../lib/drum.js'
 import { SWIPE_MIN_DISTANCE } from '../lib/swipe.js'
 import { vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
@@ -80,13 +80,20 @@ function BentFace({ chamber, bands, className, onClick, full: fallback }) {
 export default function SetDrum({
   chambers, entries, members = 1, inert = false,
   renderHead, renderHero, renderStrip, renderThumb, onNav, onSwipe, onSwipeEnd, onHeroRef, memberLabel,
-  headOpen, onToggleHead,
+  headOpen, onToggleHead, start = null, onFocus,
 }) {
   const count = chambers.length
   const home = drumHome(entries, chambers)
-  const [focus, setFocus] = useState(home)
+  // A drum opened from another view starts on the set that view had on screen ({ entry, set });
+  // otherwise, and if that set is not one of its chambers, on the next one to do.
+  const [focus, setFocus] = useState(() => {
+    const at = start ? chamberOf(chambers, start.entry, start.set) : -1
+    return at >= 0 ? at : home
+  })
   const f = clampChamber(focus, count)
   const fc = chambers[f]
+  // The workout keeps track of the set in front, so a change of view opens on it too.
+  useEffect(() => { if (fc) onFocus?.(fc) }, [fc?.entry, fc?.set])
   // { axis: 'y' | 'x', dy, dx } while a finger is on the drum, else null.
   const [drag, setDrag] = useState(null)
   const gesture = useRef(null)

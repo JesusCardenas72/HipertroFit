@@ -955,6 +955,12 @@ function ActiveWorkout() {
   // null follows the view (folded in the drum, open in the list and the table) until the title
   // is tapped; from then on it is what the tap left it.
   const [topOpen, setTopOpen] = useState(null)
+  // A change of view keeps your place in the exercise: the set on screen when you switch
+  // ({ entry, set }) is the one the next view opens on — the drum turns to it (SetDrum's
+  // `start`), the list, the table and the session scroll it to the middle of the screen. The drum
+  // reports the set in front as it turns (drumAt); in the others it is the row nearest the middle.
+  const [carry, setCarry] = useState(null)
+  const drumAt = useRef(null)
   // The exercise being dragged into view, once a swipe has committed to the horizontal axis:
   // { dir, target, dx }, or null whenever nothing is being dragged — which is nearly always.
   const [unitDrag, setUnitDrag] = useState(null)
@@ -1623,8 +1629,28 @@ function ActiveWorkout() {
   const estSec = sessionView && !A.backfill ? estimateSessionSec(A.entries, units, {
     restSec: S.restSec, warmupRestSec: S.warmupRestSec, restExSec: S.restExSec, workoutRestEx: A.restExSec,
   }) : 0
-  // The toggle walks drum → list → table → drum and names the view it leads to.
+  // The toggle walks drum → list → table → session → drum and names the view it leads to.
   const nextView = SET_VIEWS[(SET_VIEWS.indexOf(S.setView) + 1) % SET_VIEWS.length] || 'drum'
+  const setOnScreen = () => {
+    if (drumView) return drumAt.current && unit.includes(drumAt.current.entry) ? drumAt.current : null
+    const mid = window.innerHeight / 2
+    let best = null, gap = Infinity
+    unit.forEach(idx => setRefs.current.get(A.entries[idx])?.forEach((el, set) => {
+      const r = el.getBoundingClientRect()
+      const d = Math.abs((r.top + r.bottom) / 2 - mid)
+      if (d < gap) { gap = d; best = { entry: idx, set } }
+    }))
+    return best
+  }
+  const switchView = () => {
+    setCarry(setOnScreen())
+    update(s => { s.setView = nextView })
+  }
+  useEffect(() => {
+    if (!carry) return
+    if (!drumView) setRefs.current.get(A.entries[carry.entry])?.get(carry.set)?.scrollIntoView?.({ block: 'center' })
+    setCarry(null)
+  }, [S.setView])
   const slimTop = !(topOpen ?? !drumView)
   const position = isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)
   // The set to do next is marked on the exercise you are on, never on a neighbour's preview.
@@ -1665,6 +1691,7 @@ function ActiveWorkout() {
         onPairNext: idx < A.entries.length - 1 ? () => pairAt(idx, idx + 1) : null,
       })
       const drum = <SetDrum key={members.join(',')} chambers={chambers} entries={A.entries} members={members.length} inert={preview}
+        start={preview ? null : carry} onFocus={preview ? undefined : ch => { drumAt.current = ch }}
         memberLabel={idx => exerciseNameFor(exOr(A.entries[idx].id))}
         renderHead={head}
         headOpen={idx => !!openHeads[idx]} onToggleHead={preview ? undefined : toggleHead}
@@ -1766,8 +1793,8 @@ function ActiveWorkout() {
         and the session name, its progress, the running order and where you are in it are
         exactly the things that have to stay on screen while you scroll. */}
     {/* In the drum the set in front is what the screen is for, so the header folds down to its
-        title bar: the name, the clock, the sets done and where you are stay; the running order,
-        the view toggle and the rest of it are one tap on the title away. */}
+        title bar: the name, the clock, the sets done and where you are stay; the session note,
+        the rest between exercises and the rest of it are one tap on the title away. */}
     <div className={'wtop' + (isDeloadWorkout(A) ? ' deload' : '') + (slimTop ? ' slim' : '')}>
       <div className="hdr">
         {/* With no tab bar under a running session, this is the way out to the rest of the app;
@@ -1776,7 +1803,7 @@ function ActiveWorkout() {
         <button className="iconbtn" aria-label={t('Home')} title={t('Home')} onClick={() => nav('/home')}><Icon name="house" /></button>
         <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }); stopRest(); stopWork(); nav('/home') } })}><Icon name="xmark" /></button>
         </div>
-        {/* Tapping the title folds the session's own line (position, view, note, rest between
+        {/* Tapping the title folds the session's own line (position, note, rest between
             exercises) away and back, in every view. */}
         <button type="button" className="wtop-tg" data-testid="workout-top" aria-expanded={!slimTop}
           aria-label={slimTop ? t('Show workout details') : t('Hide workout details')} onClick={() => setTopOpen(!slimTop ? false : true)}>
@@ -1797,11 +1824,6 @@ function ActiveWorkout() {
       {A.backfill && <div className="muted small" style={{ marginBottom: 8 }}>{t('Logging a past workout — no rest timers.')}</div>}
       {!!A.entries.length && <div className="row wpos" style={{ gap: 6, marginBottom: 6 }}>
         <span className="muted small" data-testid="workout-position">{position}</span>
-        <button className="giftoggle inline" data-testid="set-view"
-          aria-label={t(SET_VIEW_COPY[nextView].aria)}
-          onClick={() => update(s => { s.setView = nextView })}>
-          <Icon name={SET_VIEW_COPY[nextView].icon} />{t(SET_VIEW_COPY[nextView].label)}
-        </button>
         {/* When the animation is hidden (Media's toggle stepped it to 'off'), the only way back
             lives here beside the position label, out of the way of the sets. */}
         {S.gifSize === 'off' && <button className="giftoggle inline" data-testid="show-media"
@@ -1850,13 +1872,19 @@ function ActiveWorkout() {
       </div>
     </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
 
-    {/* The foot of the session: paging between exercises, then one bar for the running order.
-        Finishing (✓), swapping an exercise (its header) and the session note (the header's
-        details) are all up top, so none of them is repeated down here. */}
+    {/* The foot of the session: paging between exercises, then, in its bottom left corner, the
+        view of the sets, and one bar for the running order. Finishing (✓), swapping an exercise
+        (its header) and the session note (the header's details) are all up top, so none of them
+        is repeated down here. The view toggle is here rather than in the header so it is one
+        thumb away in every view, the drum's folded header included. */}
     <div className="wfoot" ref={footEl}>
       {!sessionView && <div className="wnav">
         <Button variant="tinted" icon="chevronLeft" disabled={unitIdx <= 0} onClick={() => navigateUnit(-1)}>{t('Prev')}</Button>
         <Button variant="tinted" trailingIcon="chevronRight" disabled={unitIdx < 0 || unitIdx >= units.length - 1} onClick={() => navigateUnit(1)}>{t('Next')}</Button>
+      </div>}
+      {!!A.entries.length && <div className="wview">
+        <button type="button" className="wtool" data-testid="set-view" aria-label={t(SET_VIEW_COPY[nextView].aria)} onClick={switchView}>
+          <Icon name={SET_VIEW_COPY[nextView].icon} /><span>{t(SET_VIEW_COPY[nextView].label)}</span></button>
       </div>}
       {A.entries.length
         ? <div className="wtools" role="toolbar" aria-label={t('Exercises')}>

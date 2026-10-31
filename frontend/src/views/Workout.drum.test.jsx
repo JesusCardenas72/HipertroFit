@@ -264,11 +264,12 @@ describe('the set drum', () => {
     expect(top.textContent).toContain('1 / 2')
     // The running order stays too: it is how you get around the session.
     expect(container.querySelector('[data-testid="workout-dock"]')).not.toBeNull()
-    expect(container.querySelector('[data-testid="set-view"]')).toBeNull()
+    // The view toggle is the foot's, so folding the header does not hide it.
+    expect(container.querySelector('.wfoot [data-testid="set-view"]')).not.toBeNull()
     click(top)
     expect(top.getAttribute('aria-expanded')).toBe('true')
     expect(container.querySelector('[data-testid="workout-dock"]')).not.toBeNull()
-    expect(container.querySelector('[data-testid="set-view"]')).not.toBeNull()
+    expect(container.querySelectorAll('[data-testid="set-view"]')).toHaveLength(1)
   })
 
   it('keeps the animation behind a thumbnail beside the name', () => {
@@ -291,14 +292,17 @@ describe('the set drum', () => {
     expect(container.querySelector('.exnote').textContent).toBe('Slow on the way down')
   })
 
-  it('keeps the foot to paging and adding / removing, with the session note up top', () => {
+  it('keeps the foot to paging, the view and adding / removing, with the session note up top', () => {
     renderWorkout([
       { id: 'a', target: { sets: 2, reps: 10 }, sets: rows(2) },
       { id: 'b', target: { sets: 2, reps: 10 }, sets: rows(2) },
     ])
     const foot = container.querySelector('.wfoot')
     expect([...foot.querySelectorAll('.wtool')].map(b => b.textContent))
-      .toEqual(['Add exercise', 'Remove exercise'])
+      .toEqual(['List', 'Add exercise', 'Remove exercise'])
+    // The view sits on its own, before the bar of the running order: the bottom left corner.
+    expect(foot.querySelector('.wview [data-testid="set-view"]')).not.toBeNull()
+    expect(foot.querySelector('.wview').nextElementSibling.classList.contains('wtools')).toBe(true)
     // Finishing is the header's ✓, swapping is the exercise header's, the note is the header's.
     expect(foot.textContent).not.toMatch(/Finish|Swap|session note/)
     expect(container.querySelector('[data-testid="session-note"]')).toBeNull()
@@ -306,13 +310,89 @@ describe('the set drum', () => {
     expect(container.querySelector('[data-testid="session-note"]').getAttribute('aria-label')).toBe('Add session note')
   })
 
-  it('switches back to the list from the header', () => {
+  it('switches to the list from the foot, with the header still folded', () => {
     renderWorkout([{ id: 'a', target: { sets: 2, reps: 10 }, sets: rows(2) }])
-    click(container.querySelector('[data-testid="workout-top"]'))
     click(container.querySelector('[data-testid="set-view"]'))
     expect(useStore.getState().S.setView).toBe('list')
     expect(container.querySelector('.drum')).toBeNull()
     expect(container.querySelectorAll('.setrow')).toHaveLength(2)
+  })
+
+  describe('changing the view mid-session', () => {
+    const viewBtn = () => container.querySelector('[data-testid="set-view"]')
+    const lines = () => [...container.querySelectorAll('[data-swipe-set]')]
+    let scrolled
+    beforeEach(() => {
+      scrolled = []
+      Element.prototype.scrollIntoView = vi.fn(function () { scrolled.push(this) })
+    })
+
+    it('keeps everything logged, whichever view it was logged in', () => {
+      renderWorkout([{ id: 'a', target: { sets: 3, reps: 10 }, sets: rows(3) }])
+      click(container.querySelector('.drum-ch.hero .dh-go'))
+      click(viewBtn())
+      expect(useStore.getState().S.setView).toBe('list')
+      expect(container.querySelectorAll('.setrow.done')).toHaveLength(1)
+      expect(container.querySelector('.setrow.done').getAttribute('data-swipe-set')).toBe('0')
+      click(viewBtn())
+      expect(useStore.getState().S.setView).toBe('table')
+      expect(lines()[0].classList.contains('done')).toBe(true)
+      click(lines()[1].querySelector('.st-ck'))
+      click(viewBtn())
+      expect(useStore.getState().S.setView).toBe('session')
+      expect(lines().map(el => el.classList.contains('done'))).toEqual([true, true, false])
+      click(lines()[2].querySelector('.st-ck'))
+      click(viewBtn())
+      expect(useStore.getState().S.setView).toBe('drum')
+      expect(sets().map(s => s.done)).toEqual([true, true, true])
+      expect(pips().map(p => p.classList.contains('done'))).toEqual([true, true, true])
+    })
+
+    it('keeps the toggle in the bottom left corner of every view', () => {
+      renderWorkout([{ id: 'a', target: { sets: 3, reps: 10 }, sets: rows(3) }])
+      const seen = []
+      for (let i = 0; i < 4; i++) {
+        seen.push(useStore.getState().S.setView)
+        expect(container.querySelector('.wfoot .wview [data-testid="set-view"]')).not.toBeNull()
+        click(viewBtn())
+      }
+      expect(seen).toEqual(['drum', 'list', 'table', 'session'])
+      expect(useStore.getState().S.setView).toBe('drum')
+    })
+
+    it('opens the list on the set the drum was turned to', () => {
+      renderWorkout([{ id: 'a', target: { sets: 3, reps: 10 }, sets: rows(3) }])
+      click(pips()[2])
+      expect(heroWeight()).toBe('70')
+      click(viewBtn())
+      expect(scrolled.at(-1)).toBe(container.querySelectorAll('.setrow')[2])
+    })
+
+    // The third line sits in the middle of the screen, the other two above it.
+    const thirdInTheMiddle = () => {
+      const mid = window.innerHeight / 2
+      lines().forEach((el, i) => {
+        const top = mid - 20 - (2 - i) * 60
+        el.getBoundingClientRect = () => ({ top, bottom: top + 40, left: 0, right: 0, width: 0, height: 40 })
+      })
+    }
+
+    it('opens the session on the set that was in the middle of the table', () => {
+      renderWorkout([{ id: 'a', target: { sets: 3, reps: 10 }, sets: rows(3) }], { setView: 'table' })
+      thirdInTheMiddle()
+      click(viewBtn())
+      expect(useStore.getState().S.setView).toBe('session')
+      expect(scrolled.at(-1)).toBe(container.querySelector('.sf-panel [data-swipe-set="2"]'))
+    })
+
+    it('turns the drum to the set that was in the middle of the session', () => {
+      renderWorkout([{ id: 'a', target: { sets: 3, reps: 10 }, sets: rows(3) }], { setView: 'session' })
+      thirdInTheMiddle()
+      click(viewBtn())
+      expect(useStore.getState().S.setView).toBe('drum')
+      expect(heroWeight()).toBe('70')
+      expect(pips()[2].getAttribute('aria-selected')).toBe('true')
+    })
   })
 })
 
