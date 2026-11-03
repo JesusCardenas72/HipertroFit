@@ -21,7 +21,7 @@ import {
   hasEffort, displayScale, scaleName, toScale, avgRir, effortSummary, effortWeeks,
   effortHistogram, isHardSet, HARD_RIR
 } from '../lib/effort.js'
-import { cycleVolume, groupVolume, plannedVolume } from '../lib/volume.js'
+import { cycleVolume, groupVolume, plannedVolume, plannedAhead } from '../lib/volume.js'
 import VolumeGroupBars from '../components/VolumeGroupBars.jsx'
 import CyclePicker, { useCycleChoice, CycleStatsLine } from '../components/CyclePicker.jsx'
 import { Button, Segmented, SelectRow } from '../components/ui.jsx'
@@ -145,6 +145,7 @@ function MuscleBalance({ S }) {
   // What the block plans, so the bars can read the log against the plan and the band's top —
   // the running block only: today's programming says nothing about what an old one planned.
   const microPlan = useMemo(() => (micro && cycle.current ? plannedVolume(S) : null), [micro, S, cycle])
+  const microAhead = useMemo(() => (micro && cycle.current ? plannedAhead(S) : { groups: {} }), [micro, S, cycle])
   // Counting only the sets taken near failure turns the map from "where did the volume go"
   // into "where did the stimulus go" — a muscle can lead on sets and still never be trained
   // hard. Offered only when the window holds ratings at all, since with none the hard map
@@ -181,7 +182,7 @@ function MuscleBalance({ S }) {
           onMuscle={m => setSel(s => (s === m ? null : m))} />
         <BodyMapLegend />
         {micro && microVol && <>
-          <VolumeGroupBars vol={microVol} planned={microPlan} />
+          <VolumeGroupBars vol={microVol} planned={microPlan} ahead={microAhead} />
           {worked.length > 0 && <h4 className="sec" style={{ marginTop: 14 }}>{t('Muscle balance')}</h4>}
         </>}
         {sel && <div className="mrow" style={{ borderTop: 'var(--hair) solid var(--sep)', marginTop: 4, paddingTop: 10 }}>

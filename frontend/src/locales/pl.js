@@ -1449,6 +1449,8 @@ export default {
   'Microcycle complete — sets still missing in {0} of {1} groups.': 'Mikrocykl ukończony — brakuje jeszcze serii w {0} z {1} grup.',
   'Microcycle complete — every group reaches its minimum.': 'Mikrocykl ukończony — każda grupa osiąga swoje minimum.',
   'At minimum': 'Minimum osiągnięte',
+  'Plan covers it': 'Plan to pokrywa',
+  'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': 'Liczba po prawej to serie, których grupie brakuje do minimum, wliczając to, co jeszcze zaplanowane.',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': 'Zaplanowane dni treningowe minęły — brakuje jeszcze serii w {0} z {1} grup.',
   'Scheduled days are over — every group reaches its minimum.': 'Zaplanowane dni treningowe minęły — każda grupa osiąga swoje minimum.',
   '{0} eff': '{0} efekt.',

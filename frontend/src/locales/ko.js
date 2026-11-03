@@ -1449,6 +1449,8 @@ export default {
   'Microcycle complete — sets still missing in {0} of {1} groups.': '마이크로사이클 완료 — {1}개 근육군 중 {0}개에 세트가 아직 부족합니다.',
   'Microcycle complete — every group reaches its minimum.': '마이크로사이클 완료 — 모든 근육군이 최소 기준에 도달했습니다.',
   'At minimum': '최소 기준 달성',
+  'Plan covers it': '계획으로 충족',
+  'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': '오른쪽 숫자는 아직 남은 계획까지 포함해 해당 근육군이 최소 기준까지 더 필요한 세트 수입니다.',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': '예정된 훈련일이 지났습니다 — {1}개 근육군 중 {0}개에 세트가 아직 부족합니다.',
   'Scheduled days are over — every group reaches its minimum.': '예정된 훈련일이 지났습니다 — 모든 근육군이 최소 기준에 도달했습니다.',
   '{0} eff': '{0} 유효',

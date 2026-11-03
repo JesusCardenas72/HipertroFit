@@ -21,7 +21,7 @@
 // quads + glutes + hamstrings stacked. Secondary muscles still earn partial credit (the
 // 0.4 weight from musclesOf), which is the usual way fractional volume is counted.
 
-import { cycleWorkouts, microcycleLen, isExtra } from './microcycle.js'
+import { cycleWorkouts, cycleStrip, workoutDaysOver, microcycleLen, isExtra } from './microcycle.js'
 import { REST } from './program.js'
 import { volumeMusclesOf, LATS, REAR_DELTS } from './muscles.js'
 import { EXIDX } from './exercises.js'
@@ -185,6 +185,17 @@ export function cycleVolume(S) {
   return { ...groupVolume(win), sessions: win.filter(w => !isExtra(w)).length }
 }
 
+// Credit every work set a routine configures (warm-ups never count); returns how many that is.
+function creditRoutine(groups, routine) {
+  let total = 0
+  for (const cfg of (routine && routine.ex) || []) {
+    const n = Math.max(1, Math.round(cfg.sets) || 1)
+    creditSet(groups, entryMuscles(cfg), n)
+    total += n
+  }
+  return total
+}
+
 /**
  * The volume the programming plans for one microcycle, before anything is trained — what the
  * Programming sheet shows while the sequence is being built.
@@ -206,15 +217,26 @@ export function plannedVolume(S) {
   const steps = ((S && S.program && S.program.seq) || []).filter(x => x && x !== REST)
   const len = steps.length ? microcycleLen(S) : 0
   let total = 0
-  for (let i = 0; i < len; i++) {
-    const r = byId(steps[i % steps.length])
-    for (const cfg of (r && r.ex) || []) {
-      const n = Math.max(1, Math.round(cfg.sets) || 1)
-      creditSet(groups, entryMuscles(cfg), n)
-      total += n
-    }
-  }
+  for (let i = 0; i < len; i++) total += creditRoutine(groups, byId(steps[i % steps.length]))
   return { groups, rated: total, unrated: 0, total, sessions: len }
+}
+
+/**
+ * The volume the running microcycle still plans: the sets of the steps it has open (cycleStrip),
+ * credited the same way plannedVolume credits them. A step counts until a session fills it, so
+ * what was done in that session — more or less than planned — replaces its plan. Nothing is ahead
+ * once the block is complete, nor once its scheduled workout days are over: from then on the
+ * calendar has no more sessions for it.
+ */
+export function plannedAhead(S, today) {
+  const groups = {}
+  for (const g of VOLUME_GROUPS) groups[g.key] = 0
+  if (workoutDaysOver(S, today)) return { groups }
+  const routines = (S && S.routines) || []
+  for (const step of cycleStrip(S)) {
+    if (step.state !== 'done') creditRoutine(groups, routines.find(r => r.id === step.routineId))
+  }
+  return { groups }
 }
 
 /** Traffic-light status of a group's effective-set count against a target band (default 10–20). */
@@ -256,16 +278,19 @@ export function cycleExecution(vol, planned) {
 }
 
 /**
- * What a finished block still lacks: for each group, the whole effective sets that take it up to
- * its minimum. `done` is read at the same one decimal the panel shows (groupProgress), so the count
- * never disagrees with the figure beside it, and it is rounded up to whole sets — a group 2.4 short
- * needs 3, since two would leave it at 9.6. At or past its minimum a group owes nothing, and so does
- * one whose band has no minimum (the erectors' band starts at 0). The counts are per group and must
- * not be added up: one compound set also feeds the groups it trains alongside.
+ * What a block will still lack: for each group, the whole effective sets that take it up to its
+ * minimum on top of what it has done and of `ahead`, the volume still to come (plannedAhead). So
+ * off-plan work brings the count down, and at the end of the block, with nothing ahead, it is what
+ * the block actually lacks. `done` is read at the same one decimal the panel shows (groupProgress),
+ * so the count never disagrees with the figure beside it, and it is rounded up to whole sets — a
+ * group 2.4 short needs 3, since two would leave it at 9.6. At or past its minimum a group owes
+ * nothing, and so does one whose band has no minimum (the erectors' band starts at 0). The counts
+ * are per group and must not be added up: one compound set also feeds the groups it trains alongside.
  */
-export function minimumGaps(vol) {
+export function minimumGaps(vol, ahead) {
   return VOLUME_GROUPS.map(g => {
     const p = groupProgress(g, vol, null)
-    return { ...g, done: p.done, min: p.min, remaining: Math.max(0, Math.ceil(round1(p.min - p.done))) }
+    const left = (ahead && ahead.groups[g.key]) || 0
+    return { ...g, done: p.done, min: p.min, remaining: Math.max(0, Math.ceil(round1(p.min - p.done - left))) }
   })
 }

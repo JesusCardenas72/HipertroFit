@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from './muscles.js'
 import {
   EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS, ALL_GROUP_KEYS, volumeGroups, setVolumeSplit, targetOf,
-  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, volumeStatus, volumeColor, groupProgress, cycleExecution, minimumGaps,
+  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, plannedAhead, volumeStatus, volumeColor, groupProgress, cycleExecution, minimumGaps,
 } from './volume.js'
 
 // A work set with an optional RIR. Inline exercise metadata (tg/mg/sm) resolves through
@@ -373,5 +373,61 @@ describe('minimumGaps', () => {
   it('lists the groups in panel order', () => {
     expect(minimumGaps({ groups: {} }).map(g => g.key))
       .toEqual(['legs', 'chest', 'back', 'delts', 'biceps', 'triceps', 'abs'])
+  })
+  it('counts the volume still to come towards the minimum', () => {
+    const gap = (done, left) => minimumGaps({ groups: { chest: done } }, { groups: { chest: left } })
+      .find(g => g.key === 'chest').remaining
+    expect(gap(0, 7)).toBe(3)      // the plan alone leaves it three short
+    expect(gap(2, 7)).toBe(1)      // off-plan work brings that down
+    expect(gap(0, 7.6)).toBe(3)    // 2.4 short, still whole sets
+    expect(gap(0, 12)).toBe(0)     // the plan covers it
+  })
+})
+
+describe('plannedAhead', () => {
+  const routines = [
+    { id: 'push', ex: [{ id: 'curl', tg: 'biceps', sets: 3 }] },
+    { id: 'legs', ex: [{ id: 'squat', tg: 'quads', sets: 4 }] },
+  ]
+  // Far from the sequence's last training day, unless a test says otherwise.
+  const TODAY = '2026-09-02'
+  const S = (workouts = [], seq = ['push', 'legs']) =>
+    ({ routines, workouts, cycleLog: [], program: { on: false, seq, anchor: '2026-09-01', strategy: 'custom' } })
+  const set = { done: true, w: 10, r: 10 }
+  const logged = (d, routineId, id, tg, n) =>
+    ({ d, routineId, entries: [{ id, tg, sets: Array.from({ length: n }, () => set) }] })
+  const gap = (st, key) => minimumGaps(cycleVolume(st), plannedAhead(st, TODAY)).find(g => g.key === key).remaining
+
+  it('is the whole plan while nothing is logged', () => {
+    const { groups } = plannedAhead(S(), TODAY)
+    expect(groups.biceps).toBe(3)
+    expect(groups.legs).toBe(4)
+  })
+  it('drops a step once a session fills it', () => {
+    const { groups } = plannedAhead(S([logged('2026-09-01', 'push', 'curl', 'biceps', 3)]), TODAY)
+    expect(groups.biceps).toBe(0)
+    expect(groups.legs).toBe(4)
+  })
+  it('keeps a step that an off-plan session did not fill', () => {
+    const st = S([logged('2026-09-01', null, 'curl', 'biceps', 2)])
+    expect(plannedAhead(st, TODAY).groups.biceps).toBe(3)
+  })
+  it('is empty once the block is complete', () => {
+    const st = S([logged('2026-09-01', 'push', 'curl', 'biceps', 3), logged('2026-09-02', 'legs', 'squat', 'quads', 4)])
+    expect(plannedAhead(st, TODAY).groups).toMatchObject({ biceps: 0, legs: 0 })
+  })
+  it('is empty once the scheduled days are over, sessions left or not', () => {
+    expect(plannedAhead(S(), '2026-09-03').groups).toMatchObject({ biceps: 0, legs: 0 })
+  })
+  it('is empty without a sequence', () => {
+    expect(plannedAhead(S([], []), TODAY).groups.biceps).toBe(0)
+  })
+  it('keeps the gap of the plan, and off-plan work brings it down', () => {
+    expect(gap(S(), 'biceps')).toBe(7)    // 3 planned of a minimum of 10
+    expect(gap(S([logged('2026-09-01', null, 'curl', 'biceps', 2)]), 'biceps')).toBe(5)
+  })
+  it('grows the gap when a session falls short of its plan, and shrinks it when it goes past', () => {
+    expect(gap(S([logged('2026-09-01', 'push', 'curl', 'biceps', 1)]), 'biceps')).toBe(9)
+    expect(gap(S([logged('2026-09-01', 'push', 'curl', 'biceps', 5)]), 'biceps')).toBe(5)
   })
 })
