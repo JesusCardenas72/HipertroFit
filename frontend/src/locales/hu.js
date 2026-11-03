@@ -1454,6 +1454,8 @@ export default {
   'Microcycle complete — sets still missing in {0} of {1} groups.': 'Mikrociklus kész — {1} izomcsoportból {0}-ban még hiányoznak a sorozatok.',
   'Microcycle complete — every group reaches its minimum.': 'Mikrociklus kész — minden izomcsoport eléri a minimumot.',
   'At minimum': 'Minimum elérve',
+  'Plan covers it': 'A terv lefedi',
+  'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': 'A jobb oldali szám azt mutatja, hány sorozat hiányzik a csoportnak a minimumhoz, a még tervezetteket is beszámítva.',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': 'A tervezett edzésnapok lejártak — {1} izomcsoportból {0}-ban még hiányoznak a sorozatok.',
   'Scheduled days are over — every group reaches its minimum.': 'A tervezett edzésnapok lejártak — minden izomcsoport eléri a minimumot.',
   '{0} eff': '{0} hat.',

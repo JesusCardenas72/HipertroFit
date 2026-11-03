@@ -1462,6 +1462,8 @@ export default {
   'Microcycle complete — sets still missing in {0} of {1} groups.': 'ไมโครไซเคิลเสร็จสมบูรณ์ — ยังขาดเซ็ตในอีก {0} จาก {1} กลุ่มกล้ามเนื้อ',
   'Microcycle complete — every group reaches its minimum.': 'ไมโครไซเคิลเสร็จสมบูรณ์ — ทุกกลุ่มกล้ามเนื้อถึงขั้นต่ำแล้ว',
   'At minimum': 'ถึงขั้นต่ำแล้ว',
+  'Plan covers it': 'แผนครอบคลุมแล้ว',
+  'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': 'ตัวเลขทางขวาคือจำนวนเซ็ตที่กลุ่มยังขาดจากขั้นต่ำ โดยนับรวมสิ่งที่ยังอยู่ในแผนแล้ว',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': 'วันฝึกที่กำหนดไว้ผ่านไปแล้ว — ยังขาดเซ็ตในอีก {0} จาก {1} กลุ่มกล้ามเนื้อ',
   'Scheduled days are over — every group reaches its minimum.': 'วันฝึกที่กำหนดไว้ผ่านไปแล้ว — ทุกกลุ่มกล้ามเนื้อถึงขั้นต่ำแล้ว',
   '{0} eff': '{0} มีประสิทธิภาพ',

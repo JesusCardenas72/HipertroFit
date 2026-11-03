@@ -6,8 +6,9 @@ import { VOLUME_GROUPS, VOLUME_TARGET, volumeStatus, volumeColor, targetOf, grou
 
 // Effective sets per muscle group for one microcycle, read against the 10–20 target band.
 // Shared by Home and Stats so the two can never report different numbers for the same block.
-// With `minimum` (the running block, once its planned sessions are done or its days are over) each
-// row also shows, at the right of its figures, the sets its group still needs to reach its minimum.
+// With `ahead` (plannedAhead, the volume still to come; empty for a block already behind) each row
+// also shows, at the right of its figures, the sets its group will still need to reach its minimum
+// once that is done.
 //
 // Each group is three lines: its name, the figures under it, then the bar on its own across the
 // full width. The bar is measured against the top of the band, not against the best-worked group: full
@@ -48,13 +49,13 @@ function usePeek() {
   return [peek, bind]
 }
 
-export default function VolumeGroupBars({ vol, title, planned, minimum }) {
+export default function VolumeGroupBars({ vol, title, planned, ahead }) {
   const [info, setInfo] = useState(false)
   const [peek, bindPeek] = usePeek()
   if (!vol) return null
   const split = VOLUME_GROUPS.some(g => g.parent)
   const plan = planned && planned.total > 0 ? planned : null
-  const gaps = minimum ? Object.fromEntries(minimumGaps(vol).map(g => [g.key, g])) : null
+  const gaps = ahead ? Object.fromEntries(minimumGaps(vol, ahead).map(g => [g.key, g])) : null
   const exec = plan && cycleExecution(vol, plan)
   const pctOf = n => Math.min(100, Math.round(n * 100)) + '%'
   return <>
@@ -76,6 +77,7 @@ export default function VolumeGroupBars({ vol, title, planned, minimum }) {
         {plan && <span><i className="gap" />{t('up to the optimal max')}</span>}
       </div>
       {plan && <div>{t('The full bar is the optimal maximum; the plan should stay below it.')}</div>}
+      {gaps && <div>{t('The figure on the right is the sets a group still needs for its minimum, counting what is still planned.')}</div>}
     </div>}
     {exec && <div className="vol-exec small">
       {t('Executed {0} of {1} planned sets', exec.done, exec.planned)} <b>{exec.pct}%</b>
@@ -103,7 +105,7 @@ export default function VolumeGroupBars({ vol, title, planned, minimum }) {
                 : g.target && <span className="rng">{band.min}–{band.max}</span>}
               {gaps && gaps[g.key].min > 0 && (gaps[g.key].remaining
                 ? <span className="need">+{t('{0} sets', gaps[g.key].remaining)}</span>
-                : <span className="need met"><Icon name="check" />{t('At minimum')}</span>)}
+                : <span className="need met"><Icon name="check" />{t(v >= band.min ? 'At minimum' : 'Plan covers it')}</span>)}
             </span>
             <span className="bar">
               {/* Planned first, under the done fill: only the part not yet trained shows. */}

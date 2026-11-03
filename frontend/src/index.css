@@ -1238,9 +1238,10 @@ h4.sec{
 @media (prefers-reduced-motion:reduce){.vol-bars .v{transition:none}.vol-bar-row.peek .nm{animation:none}}
 .vol-bars .v b{font-weight:600}
 .vol-bars .v .pct{margin-left:6px;color:var(--label);font-weight:600}
-.vol-bars .v .rng{margin-left:8px;font-size:calc(11px * var(--fs));color:var(--label-3)}
-/* the sets a group still needs to reach its minimum, at the right of its figures (MinimumGaps' row) */
-.vol-bars .v .need{margin-left:auto;padding-left:10px;display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--orange)}
+.vol-bars .v .rng{margin-left:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:calc(11px * var(--fs));color:var(--label-3)}
+/* the sets a group still needs to reach its minimum, at the right of its figures: always shown
+   whole, on a narrow phone it is the plan's figure beside it that gets cut */
+.vol-bars .v .need{flex-shrink:0;margin-left:auto;padding-left:10px;display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--orange)}
 .vol-bars .v .need.met{color:var(--green)}
 .vol-exec{margin-bottom:6px;color:var(--label-2)}
 .vol-exec b{color:var(--label);font-variant-numeric:tabular-nums}

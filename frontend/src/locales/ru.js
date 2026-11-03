@@ -1449,6 +1449,8 @@ export default {
   'Microcycle complete — sets still missing in {0} of {1} groups.': 'Микроцикл завершён — в {0} из {1} групп ещё не хватает подходов.',
   'Microcycle complete — every group reaches its minimum.': 'Микроцикл завершён — каждая группа достигла минимума.',
   'At minimum': 'Минимум достигнут',
+  'Plan covers it': 'Покрыто планом',
+  'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': 'Число справа — подходы, которых группе не хватает до минимума, с учётом ещё запланированного.',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': 'Запланированные дни тренировок прошли — в {0} из {1} групп ещё не хватает подходов.',
   'Scheduled days are over — every group reaches its minimum.': 'Запланированные дни тренировок прошли — каждая группа достигла минимума.',
   '{0} eff': '{0} эфф.',
