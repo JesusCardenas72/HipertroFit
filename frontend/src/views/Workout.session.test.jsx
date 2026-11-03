@@ -4,8 +4,10 @@ import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Workout from './Workout.jsx'
+import Modals from '../components/Modals.jsx'
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
+import { setKindOf } from '../lib/set-kind.js'
 
 vi.mock('../lib/sound.js', () => ({
   beep: vi.fn(), vibrate: vi.fn(), playClips: vi.fn(), stopClips: vi.fn(), holdFocus: vi.fn(() => () => {}),
@@ -172,6 +174,105 @@ describe('the session view', () => {
     } finally {
       Element.prototype.scrollIntoView = native
     }
+  })
+
+  describe('under a sheet, with the page pinned behind it', () => {
+    // jsdom-likes have no layout, so this draws the one that matters: what the session's room adds
+    // pushes down everything under it, and a pinned body leaves the document only a window tall.
+    const VIEWPORT = 768, CONTENT = 1000, FOOT = 99, HEADER = 60
+    let restore
+    const room = () => parseFloat(document.querySelector('.sflow')?.style.getPropertyValue('--sf-room')) || 0
+    const pageLayout = () => {
+      const rect = Element.prototype.getBoundingClientRect
+      const height = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')
+      const scroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollHeight')
+      const box = (top, bottom) => ({ top, bottom, left: 0, right: 0, width: 0, height: bottom - top })
+      Element.prototype.getBoundingClientRect = function getBoundingClientRect() {
+        if (this.classList.contains('app')) return box(0, CONTENT + room() + FOOT)
+        if (this.classList.contains('sflow')) return box(HEADER, CONTENT + room())
+        if (this.classList.contains('sf-panel')) return box(HEADER, CONTENT)
+        if (this.classList.contains('sf-card')) return box(CONTENT - 300, CONTENT)
+        return box(0, 0)
+      }
+      Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get() { return this.classList.contains('wtop') ? HEADER : 0 } })
+      Object.defineProperty(Element.prototype, 'scrollHeight', { configurable: true, get() {
+        if (this !== document.documentElement) return 0
+        return document.body.style.position === 'fixed' ? VIEWPORT : Math.max(VIEWPORT, CONTENT + room() + FOOT)
+      } })
+      restore = () => {
+        Element.prototype.getBoundingClientRect = rect
+        if (height) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', height); else delete HTMLElement.prototype.offsetHeight
+        if (scroll) Object.defineProperty(Element.prototype, 'scrollHeight', scroll); else delete Element.prototype.scrollHeight
+      }
+    }
+    const renderInApp = () => {
+      const S = clone(DEF)
+      S.setView = 'session'
+      S.active = { id: 'session-test', d: '2026-08-11', start: Date.now(), routineId: null, name: 'Session test', bw: null, cur: 0, entries: entries() }
+      useStore.setState({ S, user: null })
+      container = document.createElement('div')
+      document.body.appendChild(container)
+      root = createRoot(container)
+      act(() => root.render(<MemoryRouter><div className="app"><Workout /></div><Modals /></MemoryRouter>))
+    }
+    const openSetSheet = () => {
+      const number = cards()[0].querySelector('.settable .st-n')
+      click(number)
+      click(number)
+      return document.querySelector('.setsheet')
+    }
+
+    beforeEach(pageLayout)
+    afterEach(() => { restore(); document.body.removeAttribute('style') })
+
+    it('survives changing a set from its sheet, and keeps the room it worked out', () => {
+      renderInApp()
+      const before = room()
+      expect(before).toBe(CONTENT - 300 - HEADER - 12 + VIEWPORT - CONTENT - FOOT)
+      const sheet = openSetSheet()
+      expect(sheet).not.toBeNull()
+      expect(document.body.style.position).toBe('fixed')
+      click(sheet.querySelectorAll('.ss-kind button')[2])
+      expect(setKindOf(active().entries[0].sets[0])).toBe('failure')
+      for (const r of [8, 9, 10]) act(() => useStore.getState().update(s => { s.active.entries[0].sets[0].r = r }))
+      expect(container.querySelector('[data-testid="session-flow"]')).not.toBeNull()
+      expect(room()).toBe(before)
+    })
+
+    it('survives the exercise being swapped while the picker is still open', () => {
+      renderInApp()
+      const before = room()
+      act(() => useUI.getState().openSheet(() => <div>picker</div>))
+      expect(document.body.style.position).toBe('fixed')
+      act(() => useStore.getState().update(s => { s.active.entries[0] = { id: 'z', target: { sets: 3, reps: 8 }, sets: sets(3) } }))
+      expect(container.querySelector('[data-testid="session-flow"]')).not.toBeNull()
+      expect(room()).toBe(before)
+    })
+
+    it('settles at once on a page shorter than the window', () => {
+      // A body stretched to the window used to count as content under the session, so each pass
+      // of the room added itself to the next one until React gave up.
+      const native = Element.prototype.getBoundingClientRect
+      Element.prototype.getBoundingClientRect = function getBoundingClientRect() {
+        if (this.classList.contains('app')) return { top: 0, bottom: 300 + room() + FOOT }
+        if (this.classList.contains('sflow')) return { top: HEADER, bottom: 300 + room() }
+        if (this.classList.contains('sf-panel')) return { top: HEADER, bottom: 300 }
+        if (this.classList.contains('sf-card')) return { top: HEADER + 13, bottom: 300 }
+        return { top: 0, bottom: 0 }
+      }
+      const scroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollHeight')
+      Object.defineProperty(Element.prototype, 'scrollHeight', { configurable: true, get() {
+        return this === document.documentElement ? Math.max(VIEWPORT, 300 + room() + FOOT) : 0
+      } })
+      try {
+        renderInApp()
+        expect(container.querySelector('[data-testid="session-flow"]')).not.toBeNull()
+        expect(room()).toBe(HEADER + 13 - HEADER - 12 + VIEWPORT - 300 - FOOT)
+      } finally {
+        Element.prototype.getBoundingClientRect = native
+        Object.defineProperty(Element.prototype, 'scrollHeight', scroll)
+      }
+    })
   })
 
   it('leaves the other views as they were', () => {

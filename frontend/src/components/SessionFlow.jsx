@@ -95,7 +95,10 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onReo
   // least as tall as the tabs, so the open tab always has a panel edge to join.
   // The page is only as long as its content, so the room under the panel (`--sf-room`) is what
   // lets the last card come up under the header as the others do (Workout scrolls the card in
-  // front to the top). It is worked out from positions that do not include that room itself.
+  // front to the top). It is worked out from positions that do not include that room itself: what
+  // lies under the session is read off the screen's own box (.app), never off the document, whose
+  // height stops being the content's when a sheet pins the body (Modals.jsx) or the page is shorter
+  // than the window. There the room would feed its own next measure and never settle.
   const railEl = useRef(null)
   const panelEl = useRef(null)
   const sflowEl = useRef(null)
@@ -111,13 +114,15 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onReo
       room = sessionRoom({
         cardTop: last.getBoundingClientRect().top + page,
         panelBottom: panel.getBoundingClientRect().bottom + page,
-        belowSession: document.documentElement.scrollHeight - (sflow.getBoundingClientRect().bottom + page),
+        belowSession: (sflow.closest('.app') || document.body).getBoundingClientRect().bottom - sflow.getBoundingClientRect().bottom,
         viewport: window.innerHeight,
         header: top,
       })
     }
     const next = { top, rail, room: Math.ceil(room) }
-    setGeom(g => (g.top === next.top && g.rail === next.rail && g.room === next.room ? g : next))
+    // A pixel of room is nothing to see, and letting it go means a measure that lands either side
+    // of a whole number cannot redraw the session for ever.
+    setGeom(g => (g.top === next.top && g.rail === next.rail && Math.abs(g.room - next.room) <= 1 ? g : next))
   }
   // Heights move with the sets (a drop, a folded head, a superset's partner): measured after each render.
   useLayoutEffect(() => { measure() })
