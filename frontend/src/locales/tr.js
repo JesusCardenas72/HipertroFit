@@ -897,6 +897,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': 'Mikrodöngü boyunca hacmin birikişini görmek için bir seans yap.',
   'Programming': 'Programlama',
   'Day sequence': 'Gün sıralaması',
+  'Sequence': 'Sıralama',
   'Use programming': 'Programlamayı kullan',
   'Overriding the weekly schedule': 'Haftalık programın yerini alır',
   'Weekly schedule is in use': 'Haftalık program kullanılıyor',

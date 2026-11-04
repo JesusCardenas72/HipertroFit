@@ -583,6 +583,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': 'Entrena una sesión para ver el volumen acumularse a lo largo del microciclo.',
   'Programming': 'Programación',
   'Day sequence': 'Secuencia de días',
+  'Sequence': 'Secuencia',
   'Numeric cycle': 'Ciclo numérico',
   'Planned microcycle volume': 'Volumen Planificado Microciclo',
   'Weekdays': 'Días de la semana',

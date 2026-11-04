@@ -897,6 +897,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': 'माइक्रोसाइकल में वॉल्यूम बनता देखने के लिए एक सेशन करें।',
   'Programming': 'प्रोग्रामिंग',
   'Day sequence': 'दिनों का क्रम',
+  'Sequence': 'क्रम',
   'Use programming': 'प्रोग्रामिंग इस्तेमाल करें',
   'Overriding the weekly schedule': 'साप्ताहिक शेड्यूल की जगह लेता है',
   'Weekly schedule is in use': 'साप्ताहिक शेड्यूल इस्तेमाल हो रहा है',

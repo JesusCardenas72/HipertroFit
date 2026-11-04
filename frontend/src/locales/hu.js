@@ -902,6 +902,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': 'Végezz el egy edzést, hogy lásd, hogyan gyűlik a mennyiség a mikrociklus alatt.',
   'Programming': 'Programozás',
   'Day sequence': 'Napok sorrendje',
+  'Sequence': 'Sorrend',
   'Use programming': 'Programozás használata',
   'Overriding the weekly schedule': 'Felülírja a heti beosztást',
   'Weekly schedule is in use': 'A heti beosztás van használatban',

@@ -12,6 +12,7 @@ import MicrocycleActions from '../components/MicrocycleActions.jsx'
 import { Button } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
+import { isSectionOpen, moveSection, planSectionOrder, sectionDropIntent, toggleSection } from '../lib/plan-sections.js'
 import { autoScrollStep, createListEngine, listTargets, scrollHostFor } from '../components/routineMagnets.js'
 import { ROUTINE_DRAG_SLOP, ROUTINE_LONG_PRESS_MS } from './RoutineEdit.jsx'
 import { vibrate } from '../lib/sound.js'
@@ -23,8 +24,19 @@ const clamp = (value, low, high) => Math.max(low, Math.min(high, value))
    rows ride the same springs as the plan editor's exercises (components/routineMagnets.js) — the
    lifted one follows the finger, its neighbours give way, a folder it hovers leans in to meet it
    and everything glides into its new place once it is let go. Every visible row (folder headers
-   included) is one `[data-routine-row]`, numbered top to bottom in `data-ex-index`. */
-function usePlanReorder(rows, onDrop) {
+   included) is one `[data-routine-row]`, numbered top to bottom in `data-ex-index`.
+
+   The sections of the screen move the same way, held by their headers: `drag` says which rows the
+   gesture moves, what lifts one and how a drop is read. A section can be far taller than the screen,
+   so with `fold` all of them fold down to their headers for as long as one is lifted. */
+const ROUTINE_DRAG = {
+  row: '[data-routine-row]', handle: '[data-routine-row][data-plan-kind="routine"]', place: planDropIntent, fold: false,
+}
+const SECTION_DRAG = {
+  row: '[data-plan-section]', handle: '[data-plan-section-hd]', place: sectionDropIntent, fold: true,
+}
+
+function usePlanReorder(rows, onDrop, cfg = ROUTINE_DRAG) {
   const listRef = useRef(null)
   const engineRef = useRef(null)
   const gestureRef = useRef(null)
@@ -51,7 +63,7 @@ function usePlanReorder(rows, onDrop) {
     if (engineRef.current && engineRef.current.list !== list) { engineRef.current.destroy(); engineRef.current = null }
     if (!list) return
     if (!engineRef.current) {
-      engineRef.current = createListEngine({ list, svg: null, goo: null, getEntries: () => entriesRef.current })
+      engineRef.current = createListEngine({ list, svg: null, goo: null, getEntries: () => entriesRef.current, rowSelector: cfg.row })
       engineRef.current.list = list
     }
     engineRef.current.relayout()
@@ -80,8 +92,15 @@ function usePlanReorder(rows, onDrop) {
     const matchesSnapshot = gesture => JSON.stringify(rowsRef.current) === gesture.snapshot
     // Every row still measurable: one vanishing mid-drag invalidates every position we compare.
     const rowsMeasurable = () => {
-      const nodes = list.querySelectorAll('[data-routine-row]')
+      const nodes = list.querySelectorAll(cfg.row)
       return nodes.length === rowsRef.current.length && [...nodes].every(node => !!node.getBoundingClientRect())
+    }
+    // The list keeps its height while folded, so the page under the finger does not jump up.
+    const foldAll = () => { list.style.minHeight = list.getBoundingClientRect().height + 'px'; list.dataset.folded = '' }
+    const unfoldAll = () => { list.style.minHeight = ''; delete list.dataset.folded }
+    const scrollBy = (host, dy) => {
+      if (host === window) window.scrollBy(0, dy)
+      else host.scrollTop += dy
     }
     const releaseCapture = gesture => {
       const target = gesture?.captureTarget
@@ -100,6 +119,7 @@ function usePlanReorder(rows, onDrop) {
       // The compatibility click lands synchronously after pointerup; the guard only has to outlive it.
       suppressTimerRef.current = window.setTimeout(() => { suppressClickRef.current = false }, 150)
       setDrag(null)
+      if (cfg.fold) unfoldAll()
       // Everything springs home — or, once the list re-renders in its new order, to its new place.
       engineRef.current?.release()
       // Above or below the list still lands (the row is held at its first / last place); only a
@@ -108,6 +128,16 @@ function usePlanReorder(rows, onDrop) {
       const inside = !!rect && x >= rect.left && x <= rect.right
       if (commit && inside && gesture.intent && rowsMeasurable() && matchesSnapshot(gesture)) {
         onDropRef.current(rowsRef.current[gesture.index].id, gesture.intent)
+      }
+      if (cfg.fold) {
+        // Once unfolded and in its new order, bring the page to where its header is under the finger.
+        const { node } = gesture
+        window.requestAnimationFrame(() => {
+          const engine = engineRef.current
+          engine?.relayout()
+          const row = engine?.base?.rows.find(r => r.node === node)
+          if (row) scrollBy(gesture.scrollHost, list.getBoundingClientRect().top + row.top - (gesture.lastY - gesture.grabInRow))
+        })
       }
     }
     const updateDrag = (gesture, x, y, schedule = true) => {
@@ -122,11 +152,11 @@ function usePlanReorder(rows, onDrop) {
       gesture.lastX = x; gesture.lastY = y
       // Positions are the ones measured at lift, relative to the list: a scroll moves the list,
       // not them, so only the finger is brought into that frame.
-      const raw = (y - listRect.top) - (gesture.grabY - gesture.grabListTop)
+      const raw = (y - listRect.top) - gesture.grabInRow - src.top
       const overhang = src.h / 2
       gesture.dy = clamp(raw, -src.top - overhang, Math.max(-src.top - overhang, b.height - src.bottom + overhang))
       const others = b.rows.filter(row => row !== src)
-      const placed = planDropIntent(others.map(row => ({ ...rowsRef.current[row.index], top: row.top, bottom: row.bottom })),
+      const placed = cfg.place(others.map(row => ({ ...rowsRef.current[row.index], top: row.top, bottom: row.bottom })),
         src.cy + gesture.dy)
       // listTargets wants the folder it leans toward by its place in the whole list.
       const join = placed.join == null ? null : others[placed.join].index
@@ -145,8 +175,7 @@ function usePlanReorder(rows, onDrop) {
       if (!gesture?.active) return
       const step = autoScrollStep(gesture.scrollHost, gesture.lastY)
       if (!step) return
-      if (gesture.scrollHost === window) window.scrollBy(0, step)
-      else gesture.scrollHost.scrollTop += step
+      scrollBy(gesture.scrollHost, step)
       updateDrag(gesture, gesture.lastX, gesture.lastY, false)
       if (gestureRef.current === gesture) frame = window.requestAnimationFrame(runAutoScroll)
     }
@@ -155,14 +184,19 @@ function usePlanReorder(rows, onDrop) {
       gesture.timer = null
       if (!matchesSnapshot(gesture) || !rowsMeasurable()) { finish(gesture, false); return }
       const engine = engineRef.current
+      // Where the finger holds it: kept through the fold, whatever that does to the page.
+      const heldAt = gesture.node.getBoundingClientRect().top
+      gesture.grabInRow = gesture.lastY - heldAt
+      gesture.scrollHost = scrollHostFor(list)
+      if (cfg.fold) {
+        foldAll()
+        scrollBy(gesture.scrollHost, gesture.node.getBoundingClientRect().top - heldAt)
+      }
       const b = engine?.remeasure()
       const src = b?.valid ? b.byIndex.get(gesture.index) : null
       const listRect = list.getBoundingClientRect()
-      if (!src || !listRect) { finish(gesture, false); return }
+      if (!src || !listRect) { finish(gesture, false); if (cfg.fold) unfoldAll(); return }
       gesture.active = true
-      gesture.grabY = gesture.lastY
-      gesture.grabListTop = listRect.top
-      gesture.scrollHost = scrollHostFor(list)
       gesture.captureTarget = gesture.downTarget
       try { gesture.captureTarget.setPointerCapture?.(gesture.pointerId) } catch { /* unsupported */ }
       suppressClickRef.current = true
@@ -184,12 +218,12 @@ function usePlanReorder(rows, onDrop) {
       const target = event.target
       if (!target?.closest || target.closest('button,a,input,textarea,select,[data-nodrag]')) return
       // Only routines are lifted; a folder header is somewhere to drop one.
-      const row = target.closest('[data-routine-row][data-plan-kind="routine"]')
+      const row = target.closest(cfg.handle)?.closest(cfg.row)
       if (!row || !list.contains(row)) return
       const index = Number(row.dataset.exIndex)
       if (!Number.isInteger(index)) return
       const gesture = {
-        pointerId: event.pointerId, index, downTarget: target, intent: null, mode: 'entry', dy: 0,
+        pointerId: event.pointerId, index, node: row, downTarget: target, intent: null, mode: 'entry', dy: 0,
         startX: event.clientX, startY: event.clientY, lastX: event.clientX, lastY: event.clientY,
         snapshot: JSON.stringify(rowsRef.current), active: false, timer: null,
       }
@@ -231,8 +265,8 @@ function usePlanReorder(rows, onDrop) {
       event.preventDefault(); cancelActive()
     }
     const onVisibility = () => { if (document.visibilityState === 'hidden') cancelActive() }
-    const onContextMenu = event => { if (gestureRef.current?.active && event.target.closest?.('[data-routine-row]')) event.preventDefault() }
-    const onDragStart = event => { if (event.target.closest?.('[data-routine-row]')) event.preventDefault() }
+    const onContextMenu = event => { if (gestureRef.current?.active && event.target.closest?.(cfg.row)) event.preventDefault() }
+    const onDragStart = event => { if (event.target.closest?.(cfg.handle)) event.preventDefault() }
     // Once a row is lifted the browser must not claim the vertical drag as a pan.
     const onTouchMove = event => { if (gestureRef.current?.active) event.preventDefault() }
 
@@ -252,7 +286,10 @@ function usePlanReorder(rows, onDrop) {
       if (gesture) window.clearTimeout(gesture.timer)
       clearFrame(); gestureRef.current = null
       releaseCapture(gesture)
-      if (gesture?.active) engineRef.current?.release()
+      if (gesture?.active) {
+        if (cfg.fold) unfoldAll()
+        engineRef.current?.release()
+      }
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('touchmove', onTouchMove)
       document.removeEventListener('pointermove', onPointerMove)
@@ -296,6 +333,12 @@ export default function Plan() {
     update(s => { dropRoutine(s, id, intent) })
   }
   const reorder = usePlanReorder(rows, drop)
+  const sectionOrder = planSectionOrder(S)
+  const sectionRows = useMemo(() => sectionOrder.map(id => ({ kind: 'section', id })), [sectionOrder.join()])
+  const stack = usePlanReorder(sectionRows, (id, intent) => {
+    // Tried on a copy first, like a routine's drop.
+    if (moveSection({ planSections: S.planSections }, id, intent.slot)) update(s => { moveSection(s, id, intent.slot) })
+  }, SECTION_DRAG)
   const rowProps = (kind, id) => {
     const i = rowAt.get(kind + ':' + id)
     return [(reorder.drag?.index === i ? ' is-dragging' : '') + (reorder.drag?.join === i ? ' magnet' : ''),
@@ -322,63 +365,79 @@ export default function Plan() {
       <Icon name="chevronRight" className="chev" /></div>
   }
 
+  const generatePlanRow = <div className="list" style={{ marginBottom: 14 }}>
+    <div className="item" {...tappable(() => nav('/plan/generar'))}>
+      <span className="lrow-i"><Icon name="sparkles" /></span>
+      <div className="grow">
+        <div className="tt">{t('Generate plan')}</div>
+        <div className="ss">{t('Full body, Upper / Lower or Push / Pull / Legs, by movement pattern')}</div>
+      </div>
+      <Icon name="chevronRight" className="chev" />
+    </div>
+  </div>
+  // In the section's header, which folds on a tap: these two must keep theirs to themselves.
+  const routineActions = <div className="row" style={{ gap: 6 }} onClick={e => e.stopPropagation()}>
+    <Button size="sm" variant="tinted" icon="folder" onClick={() => folderSheet()} aria-label={t('New folder')} title={t('New folder')} />
+    <Button size="sm" variant="tinted" icon="plus" onClick={addRoutine}>{t('New')}</Button>
+  </div>
+  const routinesBody = S.routines.length || folders.length ? <div ref={reorder.listRef} onClickCapture={reorder.onClickCapture}
+    className={'list plan-routines' + (reorder.drag ? ' is-reordering' : '')}>
+    {folders.map(({ folder: f, routines }) => {
+      const [cls, attrs] = rowProps('folder', f.id)
+      return <div key={f.id} className={'folder' + (f.open ? ' open' : '')}>
+        <div className={'item folder-hd' + cls} {...attrs} aria-expanded={!!f.open} {...tappable(() => update(s => toggleFolder(s, f.id)))}>
+          <span className="lrow-i"><Icon name="folder" /></span>
+          <div className="grow"><div className="tt">{f.name}</div>
+            <div className="ss">{t(routines.length === 1 ? '{0} routine' : '{0} routines', routines.length)}</div></div>
+          <button className="iconbtn" aria-label={t('Edit folder')} title={t('Edit folder')}
+            onClick={e => { e.stopPropagation(); folderSheet(f) }}><Icon name="pencil" /></button>
+          <Icon name={f.open ? 'chevronUp' : 'chevronDown'} className="chev" />
+        </div>
+        {f.open && <div className="list folder-body">
+          {routines.length ? routines.map(routineRow)
+            : <div className="small dim folder-empty">{t('Empty folder — open a routine and pick this folder, or add one from the folder menu.')}</div>}
+        </div>}
+      </div>
+    })}
+    {loose.map(routineRow)}
+    {/* Where it would land; a folder it would go into lights up instead. */}
+    {reorder.drag && reorder.drag.join == null && <div className="routine-drop-indicator" aria-hidden="true"
+      style={{ top: `${reorder.drag.indicatorTop}px` }} />}
+  </div> : <>
+    <div className="empty"><div className="ico"><Icon name="clipboard" /></div>{t('No routines yet.')}<br />{t('Create one or load the starter plan.')}</div>
+    <Button variant="primary" icon="sparkles" onClick={() => nav('/plan/generar')}>{t('Generate plan')}</Button>
+    <div style={{ height: 8 }} />
+    <Button icon="sparkles" onClick={loadStarterPlan}>{t('Load starter plan (Push / Pull / Legs)')}</Button>
+  </>
+
   return <>
     <div className="hdr">
       <div><h1>{t('Plan')}</h1><div className="sub">{t('Your weekly routine')}</div></div>
       <button className="iconbtn" onClick={planToolsSheet} aria-label={t('Share your plan')} title={t('Share your plan')}><Icon name="upload" /></button>
     </div>
     <MicrocycleActions />
-    <div className="cols"><div>
-      <h4 className="sec">{t('Programming')}</h4>
-      <div className="list" style={{ marginBottom: 6 }}>
-        <div className="item" {...tappable(() => nav('/plan/generar'))}>
-          <span className="lrow-i"><Icon name="sparkles" /></span>
-          <div className="grow">
-            <div className="tt">{t('Generate plan')}</div>
-            <div className="ss">{t('Full body, Upper / Lower or Push / Pull / Legs, by movement pattern')}</div>
+    {/* A folded section stays mounted, only hidden: the lists inside keep their drag gestures. */}
+    <ProgramSheet layout={(programming, sequence) => <div ref={stack.listRef} onClickCapture={stack.onClickCapture}
+      className={'plan-stack' + (stack.drag ? ' is-reordering' : '')}>
+      {sectionOrder.map((id, i) => {
+        const { title, actions, body } = {
+          programming: { title: t('Programming'), body: <>{generatePlanRow}{programming}</> },
+          sequence: { title: t('Sequence'), body: sequence },
+          routines: { title: t('Routines'), actions: routineActions, body: routinesBody },
+        }[id]
+        const open = isSectionOpen(S, id)
+        return <section key={id} data-plan-section={id} data-ex-index={i}
+          className={'plan-section' + (stack.drag?.index === i ? ' is-dragging' : '')}>
+          <div className="plan-section-hd" data-plan-section-hd aria-expanded={open}
+            {...tappable(() => update(s => toggleSection(s, id)))}>
+            <h4 className="sec">{title}</h4>
+            {actions}
+            <Icon name={open ? 'chevronUp' : 'chevronDown'} className="chev" />
           </div>
-          <Icon name="chevronRight" className="chev" />
-        </div>
-      </div>
-
-      <ProgramSheet />
-    </div><div>
-      <div className="row between" style={{ marginTop: 22, marginBottom: 10 }}>
-        <h4 className="sec" style={{ margin: 0 }}>{t('Routines')}</h4>
-        <div className="row" style={{ gap: 6 }}>
-          <Button size="sm" variant="tinted" icon="folder" onClick={() => folderSheet()} aria-label={t('New folder')} title={t('New folder')} />
-          <Button size="sm" variant="tinted" icon="plus" onClick={addRoutine}>{t('New')}</Button>
-        </div>
-      </div>
-      {S.routines.length || folders.length ? <div ref={reorder.listRef} onClickCapture={reorder.onClickCapture}
-        className={'list plan-routines' + (reorder.drag ? ' is-reordering' : '')}>
-        {folders.map(({ folder: f, routines }) => {
-          const [cls, attrs] = rowProps('folder', f.id)
-          return <div key={f.id} className={'folder' + (f.open ? ' open' : '')}>
-            <div className={'item folder-hd' + cls} {...attrs} aria-expanded={!!f.open} {...tappable(() => update(s => toggleFolder(s, f.id)))}>
-              <span className="lrow-i"><Icon name="folder" /></span>
-              <div className="grow"><div className="tt">{f.name}</div>
-                <div className="ss">{t(routines.length === 1 ? '{0} routine' : '{0} routines', routines.length)}</div></div>
-              <button className="iconbtn" aria-label={t('Edit folder')} title={t('Edit folder')}
-                onClick={e => { e.stopPropagation(); folderSheet(f) }}><Icon name="pencil" /></button>
-              <Icon name={f.open ? 'chevronUp' : 'chevronDown'} className="chev" />
-            </div>
-            {f.open && <div className="list folder-body">
-              {routines.length ? routines.map(routineRow)
-                : <div className="small dim folder-empty">{t('Empty folder — open a routine and pick this folder, or add one from the folder menu.')}</div>}
-            </div>}
-          </div>
-        })}
-        {loose.map(routineRow)}
-        {/* Where it would land; a folder it would go into lights up instead. */}
-        {reorder.drag && reorder.drag.join == null && <div className="routine-drop-indicator" aria-hidden="true"
-          style={{ top: `${reorder.drag.indicatorTop}px` }} />}
-      </div> : <>
-        <div className="empty"><div className="ico"><Icon name="clipboard" /></div>{t('No routines yet.')}<br />{t('Create one or load the starter plan.')}</div>
-        <Button variant="primary" icon="sparkles" onClick={() => nav('/plan/generar')}>{t('Generate plan')}</Button>
-        <div style={{ height: 8 }} />
-        <Button icon="sparkles" onClick={loadStarterPlan}>{t('Load starter plan (Push / Pull / Legs)')}</Button>
-      </>}
-    </div></div>
+          <div className="plan-section-body" hidden={!open}>{body}</div>
+        </section>
+      })}
+      {stack.drag && <div className="routine-drop-indicator" aria-hidden="true" style={{ top: `${stack.drag.indicatorTop}px` }} />}
+    </div>} />
   </>
 }

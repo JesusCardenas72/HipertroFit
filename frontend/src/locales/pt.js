@@ -897,6 +897,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': 'Faz uma sessão para veres o volume acumular-se ao longo do microciclo.',
   'Programming': 'Programação',
   'Day sequence': 'Sequência de dias',
+  'Sequence': 'Sequência',
   'Use programming': 'Usar programação',
   'Overriding the weekly schedule': 'Substitui o plano semanal',
   'Weekly schedule is in use': 'Está a ser usado o plano semanal',

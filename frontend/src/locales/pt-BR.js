@@ -509,6 +509,7 @@ export const PT_BR_OVERRIDES = {
   'Train a session to see your volume build up over the microcycle.': 'Faça uma sessão para ver o volume se acumular ao longo do microciclo.',
   'Programming': 'Programação',
   'Day sequence': 'Sequência de dias',
+  'Sequence': 'Sequência',
   'Use programming': 'Usar programação',
   'Overriding the weekly schedule': 'Substitui o plano semanal',
   'Weekly schedule is in use': 'O plano semanal está em uso',

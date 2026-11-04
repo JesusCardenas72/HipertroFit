@@ -26,7 +26,7 @@ import BodyMap from './components/BodyMap.jsx'
 import { exerciseMuscleSnapshot, loadOfWorkouts, MUSCLE_CHOICES, muscleLabel, muscleChoiceOf } from './lib/muscles.js'
 import { parseImport, mergeImport } from './lib/import-csv.js'
 import { importHevyData, HevyApiError, HEVY_DEV_SETTINGS, mergeHevyRoutines } from './lib/import-hevy.js'
-import { addFolder, renameFolder, moveFolder, deleteFolder, groupRoutines, FOLDER_NAME_MAX } from './lib/folders.js'
+import { addFolder, renameFolder, moveFolder, deleteFolder, groupRoutines, toggleFolderInSequence, FOLDER_NAME_MAX } from './lib/folders.js'
 import { dropActiveWorkoutEntry } from './lib/active-workout-order.js'
 import { useRoutineReorder } from './views/RoutineEdit.jsx'
 import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-share.js'
@@ -1794,7 +1794,7 @@ export const folderSheet = folder => ui().openSheet(close => <FolderSheet folder
 // Build the microcycle as a repeating sequence of training/rest days and project it onto the
 // calendar. Every mutation writes straight to S.program so the week strip, the calendar and the
 // volume window all update live. See lib/program.js.
-export function ProgramSheet({ close = () => {} }) {
+export function ProgramSheet({ close = () => {}, layout }) {
   const st = useStore(s => s.S)
   const prog = st.program
   const seq = (prog && prog.seq) || []
@@ -1925,8 +1925,7 @@ export function ProgramSheet({ close = () => {} }) {
   // The carried chip is placed in the list's own frame, so the sheet's transforms do not move it.
   const listBox = reorder.listRef.current?.getBoundingClientRect() || { left: 0, top: 0 }
 
-  return <>
-    <h3>{t('Programming')}</h3>
+  const programming = <>
     <div className="muted small" style={{ marginBottom: 14 }}>{t('Lay your microcycle out as a repeating sequence of training and rest days. It projects onto the calendar and, while on, overrides the weekly schedule from the start date.')}</div>
 
     {/* Planned sets per muscle group for one microcycle, recounted on every sequence edit —
@@ -1946,7 +1945,9 @@ export function ProgramSheet({ close = () => {} }) {
         <Switch checked={!!(prog && prog.on)} onChange={setOn} disabled={!seq.length} />
       </Row>
     </div>
+  </>
 
+  const sequence = <>
     <h4 className="sec">{t('Day sequence')}</h4>
     <Segmented className="seg-mode" value={mode} onChange={setMode}
       options={[{ value: SEQ_CYCLE, label: t('Numeric cycle') }, { value: SEQ_WEEK, label: t('Weekdays') }]} />
@@ -1975,8 +1976,12 @@ export function ProgramSheet({ close = () => {} }) {
     {/* Routines grouped under their folders when there are any; loose ones follow. */}
     <div className="prog-add">
       {folderGroups.map(({ folder, routines }) => <div key={folder.id} className="prog-group">
-        <div className="prog-group-name"><Icon name="folder" />{folder.name}</div>
-        <div className="prog-add">{routines.map(addChip)}</div>
+        <button type="button" className="prog-group-name" aria-expanded={!folder.seqClosed}
+          onClick={() => update(s => toggleFolderInSequence(s, folder.id))}>
+          <Icon name="folder" /><span className="grow">{folder.name}</span>
+          <Icon name={folder.seqClosed ? 'chevronDown' : 'chevronUp'} />
+        </button>
+        {!folder.seqClosed && <div className="prog-add">{routines.map(addChip)}</div>}
       </div>)}
       {loose.map(addChip)}
       {mode !== SEQ_WEEK && <button className="chip" onClick={() => addStep(REST)}><Icon name="moon" />{t('Rest')}</button>}
@@ -2017,6 +2022,14 @@ export function ProgramSheet({ close = () => {} }) {
     <div style={{ marginTop: 12 }}>
       <Button icon="calendar" onClick={() => { close(); calendarSheet() }}>{t('Open calendar')}</Button>
     </div>
+  </>
+
+  // The Plan screen lays the two parts out in its own sections; as a sheet they go one after the other.
+  if (layout) return layout(programming, sequence)
+  return <>
+    <h3>{t('Programming')}</h3>
+    {programming}
+    {sequence}
   </>
 }
 export const programSheet = () => ui().openSheet(close => <ProgramSheet close={close} />)

@@ -914,6 +914,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': 'Absolviere eine Einheit, um zu sehen, wie sich dein Volumen über den Mikrozyklus aufbaut.',
   'Programming': 'Planung',
   'Day sequence': 'Tagesfolge',
+  'Sequence': 'Abfolge',
   'Use programming': 'Planung verwenden',
   'Overriding the weekly schedule': 'Ersetzt den Wochenplan',
   'Weekly schedule is in use': 'Der Wochenplan ist aktiv',

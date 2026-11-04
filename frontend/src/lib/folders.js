@@ -58,6 +58,15 @@ export function toggleFolder(s, id) {
   if (f) f.open = !f.open
 }
 
+/** Fold a folder's routines in the Programming sheet's day sequence. Kept apart from `open`: the
+ *  Routines list and the sequence are folded each for its own reasons. Unset means unfolded. */
+export function toggleFolderInSequence(s, id) {
+  const f = (s.folders || []).find(x => x.id === id)
+  if (!f) return
+  if (f.seqClosed) delete f.seqClosed
+  else f.seqClosed = true
+}
+
 /** Swap a folder with its neighbour (dir -1 up, +1 down). */
 export function moveFolder(s, id, dir) {
   const list = s.folders || []

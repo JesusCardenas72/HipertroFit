@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { addFolder, deleteFolder, dropRoutine, folderOf, groupRoutines, planDropIntent, planRows, moveFolder, moveRoutineToFolder, renameFolder, toggleFolder, FOLDER_NAME_MAX } from './folders.js'
+import { addFolder, deleteFolder, dropRoutine, folderOf, groupRoutines, planDropIntent, planRows, moveFolder, moveRoutineToFolder, renameFolder, toggleFolder, toggleFolderInSequence, FOLDER_NAME_MAX } from './folders.js'
 
 const state = () => ({
   folders: [{ id: 'fa', name: 'Bloque A', open: true }, { id: 'fb', name: 'Bloque B', open: false }],
@@ -53,6 +53,16 @@ describe('folder mutations', () => {
     expect(moveFolder(s, 'fa', -1)).toBe(false)
     expect(moveFolder(s, 'fa', 1)).toBe(true)
     expect(s.folders.map(f => f.name)).toEqual(['Bloque B', 'Hipertrofia'])
+  })
+
+  it('folds a folder in the day sequence apart from the Routines list', () => {
+    const s = state()
+    toggleFolderInSequence(s, 'fa')
+    expect(s.folders[0].seqClosed).toBe(true)
+    expect(s.folders[0].open).toBe(true)
+    toggleFolderInSequence(s, 'fa')
+    expect('seqClosed' in s.folders[0]).toBe(false)
+    expect(() => toggleFolderInSequence(s, 'gone')).not.toThrow()
   })
 
   it('deleting a folder keeps its routines, now loose', () => {

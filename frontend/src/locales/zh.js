@@ -897,6 +897,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': '完成一次训练，即可看到训练量在小周期内逐步累积。',
   'Programming': '排程',
   'Day sequence': '日程顺序',
+  'Sequence': '顺序',
   'Use programming': '使用排程',
   'Overriding the weekly schedule': '覆盖每周计划',
   'Weekly schedule is in use': '正在使用每周计划',

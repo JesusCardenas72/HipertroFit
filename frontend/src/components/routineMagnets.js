@@ -53,7 +53,7 @@ function gooMarkup(layers) {
 
 /* Springs for every row, keyed by entry, and the capsules drawn behind them. Positions are kept
    relative to the list, so scrolling the page moves nothing. */
-export function createListEngine({ list, svg, goo, getEntries }) {
+export function createListEngine({ list, svg, goo, getEntries, rowSelector = '[data-routine-row]' }) {
   const springs = new Map()
   const applied = new WeakMap()
   let base = null
@@ -76,7 +76,7 @@ export function createListEngine({ list, svg, goo, getEntries }) {
     const listRect = list.getBoundingClientRect()
     const rows = []
     let valid = !!listRect
-    list.querySelectorAll('[data-routine-row]').forEach(node => {
+    list.querySelectorAll(rowSelector).forEach(node => {
       const index = Number(node.dataset.exIndex)
       const rect = node.getBoundingClientRect()
       if (!rect || !listRect) { valid = false; return }

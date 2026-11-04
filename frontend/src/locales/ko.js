@@ -897,6 +897,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': '세션을 하나 하면 마이크로사이클 동안 운동량이 쌓이는 모습을 볼 수 있어요.',
   'Programming': '프로그래밍',
   'Day sequence': '요일 순서',
+  'Sequence': '순서',
   'Use programming': '프로그래밍 사용',
   'Overriding the weekly schedule': '주간 일정을 대체해요',
   'Weekly schedule is in use': '주간 일정을 사용 중이에요',

@@ -897,6 +897,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': 'Проведите занятие, чтобы увидеть, как копится объём за микроцикл.',
   'Programming': 'Планирование',
   'Day sequence': 'Последовательность дней',
+  'Sequence': 'Последовательность',
   'Use programming': 'Использовать планирование',
   'Overriding the weekly schedule': 'Заменяет недельное расписание',
   'Weekly schedule is in use': 'Используется недельное расписание',

@@ -910,6 +910,7 @@ export default {
   'Train a session to see your volume build up over the microcycle.': 'ฝึกหนึ่งเซสชันเพื่อดูปริมาณสะสมตลอดไมโครไซเคิล',
   'Programming': 'การจัดโปรแกรม',
   'Day sequence': 'ลำดับวัน',
+  'Sequence': 'ลำดับ',
   'Use programming': 'ใช้การจัดโปรแกรม',
   'Overriding the weekly schedule': 'แทนที่ตารางรายสัปดาห์',
   'Weekly schedule is in use': 'กำลังใช้ตารางรายสัปดาห์',
