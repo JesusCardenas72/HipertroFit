@@ -9,7 +9,7 @@ import { createRoot } from 'react-dom/client'
 import { EXDB } from './lib/exercises.js'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { exConfigSheet, addExerciseToRoutine } from './sheets.jsx'
+import { exConfigSheet, exDefaultsSheet, addExerciseToRoutine } from './sheets.jsx'
 import { routineExerciseConfig } from './lib/exercise-class.js'
 
 const ex = EXDB.find(e => e.id === '0009')
@@ -137,6 +137,40 @@ describe('exercise config: fields that belong to the exercise', () => {
     expect(value(host, 'Weight (kg)')).toBe('90')
     act(() => { button(host, /^add to routine$/i).click() })
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ prog: 'double', repsMin: 5, reps: 12, weight: 90 }))
+  })
+})
+
+describe('exercise settings from the Exercises tab', () => {
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    useUI.setState({ sheets: [] })
+    useStore.setState(s => ({ S: { ...s.S, unit: 'kg', exDefaults: {} } }))
+    document.body.innerHTML = ''
+  })
+
+  afterEach(() => {
+    act(() => { mounted.splice(0).forEach(root => root.unmount()) })
+  })
+
+  it('edits what the exercise carries, and leaves a routine’s sets, warm-ups and note out', () => {
+    useStore.setState(s => ({ S: { ...s.S, exDefaults: { [ex.id]: { prog: 'double', repsMin: 6, reps: 8, inc: 2.5, bodyweight: false } } } }))
+    exDefaultsSheet(ex)
+    const host = renderTop()
+    expect(value(host, 'Reps from')).toBe('6')
+    expect(value(host, 'Step (kg)')).toBe('2.5')
+    expect(stepper(host, 'Sets')).toBeUndefined()
+    expect(stepper(host, 'Warm-up sets')).toBeUndefined()
+    expect(host.querySelector('textarea')).toBeNull()
+  })
+
+  it('saves straight through — it is the exercise being changed, so nothing is asked again', () => {
+    useStore.setState(s => ({ S: { ...s.S, exDefaults: { [ex.id]: { prog: 'double', repsMin: 6, reps: 8, inc: 2.5, bodyweight: false } } } }))
+    exDefaultsSheet(ex)
+    const host = renderTop()
+    bump(host, 'Reps from', 'up')
+    act(() => { button(host, /^save$/i).click() })
+    expect(useUI.getState().sheets).toHaveLength(0)
+    expect(useStore.getState().S.exDefaults[ex.id]).toMatchObject({ prog: 'double', repsMin: 7, reps: 8, inc: 2.5 })
   })
 })
 

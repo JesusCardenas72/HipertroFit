@@ -549,6 +549,7 @@ function ExerciseDetail({ ex: shown, close }) {
       {!isCardio(ex) && <Button icon="target" style={{ flex: 1 }} onClick={() => muscleEditSheet(ex)}>{t('Edit muscle groups')}</Button>}
     </div>}
     <Button icon="copy" style={{ marginTop: 8 }} onClick={() => { close(); copyExSheet(ex, copy => exerciseDetailSheet(copy)) }}>{t('Create a copy')}</Button>
+    {!isCardio(ex) && <Button icon="gear" style={{ marginTop: 8 }} onClick={() => { close(); exDefaultsSheet(ex) }}>{t('Exercise settings')}</Button>}
     {!isCardio(ex) && <PatternRow ex={ex} />}
     {!isCardio(ex) && <OneRM ex={ex} />}
     {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{!INSTR_LANGS.includes(getLang()) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
@@ -1207,7 +1208,9 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit, perSide, gcls }) 
   </>
 }
 
-function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
+// `defaults`: opened from the Exercises tab, not from a routine. Only what the exercise carries
+// (exDefaults) is edited there — sets, warm-ups and notes belong to each routine and are left out.
+function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial, defaults }) {
   const st = useStore(s => s.S)
   const cardio = isCardio(ex.id)
   // What this exercise was given the first time it was configured, anywhere. A new instance
@@ -1266,6 +1269,8 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
       update(s => { s.exDefaults = applyGlobals(s.exDefaults, ex.id, resolved, mode) })
       onSave(out)
     }
+    // Editing the exercise itself is the change the confirmation asks about, so it is not asked again.
+    if (defaults) return finish()
     const changes = changedGlobals(resolved, globals, mode)
     if (!changes.length) return finish()
     confirmSheet({
@@ -1366,7 +1371,9 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
     {ex.desc && <div className="exnote">{ex.desc}</div>}
     {/* A colour with no key is a riddle: say once, up front, what the marked fields mean. */}
     <div className="small gfield-key" style={{ marginBottom: 14 }}>
-      {t('Fields in this colour belong to the exercise: every routine that uses it starts from them, and changing one here changes it everywhere. The rest are this routine’s own.')}
+      {defaults
+        ? t('Everything here belongs to the exercise: every routine that uses it starts from these values. Sets, warm-ups and notes are set per routine, in the routine.')
+        : t('Fields in this colour belong to the exercise: every routine that uses it starts from them, and changing one here changes it everywhere. The rest are this routine’s own.')}
     </div>
     {!cardio && <div style={{ marginBottom: 14 }}>
       <Segmented className="seg-range" value={mode} onChange={setMode}
@@ -1378,19 +1385,19 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
         <Stepper label={t('Minutes')} value={c.min} step={1} decimal={false} onChange={v => setC(x => ({ ...x, min: v }))} />
         <Stepper label={t('Speed (km/h)')} value={c.speed} step={0.5} onChange={v => setC(x => ({ ...x, speed: v }))} />
       </> : mode === 'time' ? <>
-        <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={v => setC(x => ({ ...x, sets: v }))} />
-        <Stepper label={t('Seconds')} value={c.sec} step={5} decimal={false} onChange={v => setC(x => ({ ...x, sec: v }))} />
-        <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} ladder={ladder} onChange={v => setC(x => ({ ...x, weight: v }))} />
+        {!defaults && <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={v => setC(x => ({ ...x, sets: v }))} />}
+        {!defaults && <Stepper label={t('Seconds')} value={c.sec} step={5} decimal={false} onChange={v => setC(x => ({ ...x, sec: v }))} />}
+        {!defaults && <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} ladder={ladder} onChange={v => setC(x => ({ ...x, weight: v }))} />}
       </> : <>
         {/* Rest-pause always trains as exactly two rows — a warm-up at this rep count, then one
             rest-pause work set — so "Sets" has nothing left to mean and only invites a mismatch. */}
-        {c.intensifier?.type !== 'restpause' &&
+        {!defaults && c.intensifier?.type !== 'restpause' &&
           <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={v => setC(x => ({ ...x, sets: v }))} />}
         {!double && <Stepper label={t('Reps')} value={c.reps} step={perSide ? 2 : 1} decimal={false}
           className={gcls('reps')} onChange={v => setC(x => ({ ...x, reps: v }))} />}
         {/* On bodyweight work the weight stepper is the click #32 is about, so it is not here
             until there is a belt to describe — see the added-weight row below. */}
-        {!bw && <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} ladder={ladder} onChange={v => setC(x => ({ ...x, weight: v }))} />}
+        {!bw && !defaults && <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} ladder={ladder} onChange={v => setC(x => ({ ...x, weight: v }))} />}
       </>}
     </div>
     {c.intensifier?.type === 'restpause' && <div className="small dim" style={{ marginTop: -10, marginBottom: 18 }}>
@@ -1399,7 +1406,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
     {/* Planned warm-ups: the session used to start at the work weight and you added every
         warm-up by hand, every time. Rest-pause is excluded because it builds its own warm-up
         row, and cardio because an interval plan has no load to ramp. */}
-    {!cardio && c.intensifier?.type !== 'restpause' && <>
+    {!cardio && !defaults && c.intensifier?.type !== 'restpause' && <>
       <div className="row cfgrow" style={{ marginBottom: 6 }}>
         <Stepper label={t('Warm-up sets')} value={c.warmupSets || 0} step={1} decimal={false}
           onChange={v => setC(x => ({ ...x, warmupSets: Math.max(0, Math.min(MAX_PLANNED_WARMUPS, Math.round(v) || 0)) }))} />
@@ -1525,17 +1532,20 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, initial }) {
       </div>}
     </>}
     <ProgressionFields ex={ex} mode={mode} c={c} setC={setC} routine={routine} unit={st.unit} perSide={perSide} gcls={gcls} />
-    <textarea className="input" rows={3} maxLength={500} style={{ marginBottom: 18 }}
+    {!defaults && <textarea className="input" rows={3} maxLength={500} style={{ marginBottom: 18 }}
       placeholder={t('Note (optional) — loading cues, "bar only then +1 plate/side each set", anything worth remembering here')}
-      value={c.note || ''} onChange={e => setC(x => ({ ...x, note: e.target.value }))} />
-    <Button variant="primary" disabled={progressionStepInvalid} onClick={save}>{existing ? t('Save') : t('Add to routine')}</Button>
-    {ex.custom
+      value={c.note || ''} onChange={e => setC(x => ({ ...x, note: e.target.value }))} />}
+    <Button variant="primary" disabled={progressionStepInvalid} onClick={save}>{existing || defaults ? t('Save') : t('Add to routine')}</Button>
+    {!defaults && (ex.custom
       ? <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => { close(); customExSheet(ex) }}>{t('Edit or delete this exercise')}</Button></>
-      : !ex.missing && <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => renameExSheet(ex)}>{t('Rename this exercise')}</Button></>}
+      : !ex.missing && <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => renameExSheet(ex)}>{t('Rename this exercise')}</Button></>)}
     {onDelete && <><div style={{ height: 8 }} /><Button variant="danger" onClick={() => { close(); onDelete() }}>{t('Remove from routine')}</Button></>}
   </>
 }
 export const exConfigSheet = (ex, existing, onSave, onDelete, routine, initial) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} initial={initial} onSave={onSave} onDelete={onDelete} routine={routine} close={close} />)
+// The exercise's own settings, from the Exercises tab: increments, rep range, rest, progression… —
+// everything every routine that uses it starts from (see lib/exercise-defaults.js).
+export const exDefaultsSheet = ex => ui().openSheet(close => <ExConfig ex={ex} onSave={() => {}} close={close} defaults />)
 
 /* ============================ add an exercise to a routine ============================ */
 // The parameters of a planned exercise, one row each, for the "already set up" notice.
