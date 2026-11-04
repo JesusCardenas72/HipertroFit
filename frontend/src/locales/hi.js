@@ -1451,6 +1451,7 @@ export default {
   'At minimum': 'न्यूनतम पर',
   'Plan covers it': 'योजना में शामिल',
   'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': 'दाईं ओर की संख्या बताती है कि बची हुई योजना गिनने के बाद समूह को न्यूनतम तक कितने सेट और चाहिए।',
+  'A figure with a minus is the sets a group will end up past its optimal maximum.': 'ऋण चिह्न वाली संख्या बताती है कि समूह अपनी इष्टतम अधिकतम सीमा से कितने सेट ऊपर जाएगा।',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': 'निर्धारित प्रशिक्षण दिन बीत चुके हैं — {1} में से {0} मांसपेशी समूहों में अभी सेट बाकी हैं।',
   'Scheduled days are over — every group reaches its minimum.': 'निर्धारित प्रशिक्षण दिन बीत चुके हैं — हर मांसपेशी समूह अपने न्यूनतम तक पहुँच गया है।',
   '{0} eff': '{0} प्रभावी',

@@ -382,6 +382,15 @@ describe('minimumGaps', () => {
     expect(gap(0, 7.6)).toBe(3)    // 2.4 short, still whole sets
     expect(gap(0, 12)).toBe(0)     // the plan covers it
   })
+  it('counts the sets past the optimal maximum, on the same reading', () => {
+    const excess = (done, left) => minimumGaps({ groups: { chest: done } }, { groups: { chest: left } })
+      .find(g => g.key === 'chest').excess
+    expect(excess(0, 12)).toBe(0)     // inside the band
+    expect(excess(0, 20)).toBe(0)     // at the top is not past it
+    expect(excess(0, 23)).toBe(3)     // the plan alone goes past
+    expect(excess(5, 17)).toBe(2)     // what is done counts as well
+    expect(excess(0, 21.2)).toBe(2)   // 1.2 over, still whole sets
+  })
 })
 
 describe('plannedAhead', () => {

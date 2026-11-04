@@ -1451,6 +1451,7 @@ export default {
   'At minimum': 'Minimumda',
   'Plan covers it': 'Plan karşılıyor',
   'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': 'Sağdaki sayı, hâlâ planlananlar da sayıldığında grubun minimumuna ulaşması için gereken settir.',
+  'A figure with a minus is the sets a group will end up past its optimal maximum.': 'Eksi işaretli sayı, grubun optimal maksimumunu aşacağı set sayısıdır.',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': 'Planlanan antrenman günleri bitti — {1} kas grubunun {0} tanesinde hâlâ set eksik.',
   'Scheduled days are over — every group reaches its minimum.': 'Planlanan antrenman günleri bitti — her kas grubu minimuma ulaştı.',
   '{0} eff': '{0} etkili',

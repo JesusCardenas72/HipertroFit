@@ -16,7 +16,7 @@ import { logExtraSheet } from '../sheets.jsx'
 // microcycle already behind; that one reads its log only — the plan is today's programming,
 // which says nothing about what that block planned.
 // Each group's line of the bars always shows the sets it will still need for its minimum once what
-// is still planned is done. Once the running block has every planned session done, or its scheduled
+// is still planned is done, or those it will have past its maximum. Once the running block has every planned session done, or its scheduled
 // workout days are over, MinimumGaps sums them up under the bars. A running block with a plan shows
 // its bars from the start, before anything is logged: the gaps of the plan are already there to read.
 export default function MuscleVolumeCard({ S }) {

@@ -1500,6 +1500,7 @@ export default {
   'At minimum': 'En el mínimo',
   'Plan covers it': 'Lo cubre el plan',
   'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': 'La cifra de la derecha son las series que le faltan al grupo para su mínimo, contando lo que aún está programado.',
+  'A figure with a minus is the sets a group will end up past its optimal maximum.': 'Una cifra con signo menos son las series que le sobrarán al grupo por encima de su máximo óptimo.',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': 'Los días de entrenamiento programados han terminado: faltan series en {0} de {1} grupos.',
   'Scheduled days are over — every group reaches its minimum.': 'Los días de entrenamiento programados han terminado: todos los grupos llegan a su mínimo.',
 }

@@ -1937,7 +1937,7 @@ export function ProgramSheet({ close = () => {} }) {
         <span className="small muted">{t('{0} sessions / microcycle', planned.sessions)}</span>
       </div>
       {planned.total
-        ? <VolumeGroupBars vol={planned} title={false} />
+        ? <VolumeGroupBars vol={planned} title={false} isPlan />
         : <div className="muted small">{t('Add routines to the sequence to see the sets it plans per muscle group.')}</div>}
     </div>
 

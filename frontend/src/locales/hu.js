@@ -1456,6 +1456,7 @@ export default {
   'At minimum': 'Minimum elérve',
   'Plan covers it': 'A terv lefedi',
   'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': 'A jobb oldali szám azt mutatja, hány sorozat hiányzik a csoportnak a minimumhoz, a még tervezetteket is beszámítva.',
+  'A figure with a minus is the sets a group will end up past its optimal maximum.': 'A mínuszos szám azt mutatja, hány sorozattal lépi túl a csoport az optimális maximumát.',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': 'A tervezett edzésnapok lejártak — {1} izomcsoportból {0}-ban még hiányoznak a sorozatok.',
   'Scheduled days are over — every group reaches its minimum.': 'A tervezett edzésnapok lejártak — minden izomcsoport eléri a minimumot.',
   '{0} eff': '{0} hat.',

@@ -1451,6 +1451,7 @@ export default {
   'At minimum': '已达最低量',
   'Plan covers it': '计划已覆盖',
   'The figure on the right is the sets a group still needs for its minimum, counting what is still planned.': '右侧数字是该肌群达到最低量还缺的组数，已计入尚未完成的计划。',
+  'A figure with a minus is the sets a group will end up past its optimal maximum.': '带减号的数字是该肌群将超出最佳上限的组数。',
   'Scheduled days are over — sets still missing in {0} of {1} groups.': '计划的训练日已过——{1} 个肌群中有 {0} 个仍缺组数。',
   'Scheduled days are over — every group reaches its minimum.': '计划的训练日已过——每个肌群都达到了最低量。',
   '{0} eff': '{0} 有效',

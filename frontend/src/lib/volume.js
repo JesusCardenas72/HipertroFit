@@ -286,11 +286,17 @@ export function cycleExecution(vol, planned) {
  * group 2.4 short needs 3, since two would leave it at 9.6. At or past its minimum a group owes
  * nothing, and so does one whose band has no minimum (the erectors' band starts at 0). The counts
  * are per group and must not be added up: one compound set also feeds the groups it trains alongside.
+ * `excess` is the other side of the same reading: the whole sets the group will end up past its
+ * optimal maximum, rounded up too — 1.2 over takes two sets off to get back under it.
  */
 export function minimumGaps(vol, ahead) {
   return VOLUME_GROUPS.map(g => {
     const p = groupProgress(g, vol, null)
     const left = (ahead && ahead.groups[g.key]) || 0
-    return { ...g, done: p.done, min: p.min, remaining: Math.max(0, Math.ceil(round1(p.min - p.done - left))) }
+    return {
+      ...g, done: p.done, min: p.min,
+      remaining: Math.max(0, Math.ceil(round1(p.min - p.done - left))),
+      excess: Math.max(0, Math.ceil(round1(p.done + left - p.max))),
+    }
   })
 }

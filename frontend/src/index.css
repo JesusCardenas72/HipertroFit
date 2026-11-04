@@ -1243,6 +1243,7 @@ h4.sec{
    whole, on a narrow phone it is the plan's figure beside it that gets cut */
 .vol-bars .v .need{flex-shrink:0;margin-left:auto;padding-left:10px;display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--orange)}
 .vol-bars .v .need.met{color:var(--green)}
+.vol-bars .v .need.over{color:var(--red)}
 .vol-exec{margin-bottom:6px;color:var(--label-2)}
 .vol-exec b{color:var(--label);font-variant-numeric:tabular-nums}
 /* A split Back / Legs: the parts sit under the whole group's name, indented behind a rail. */
