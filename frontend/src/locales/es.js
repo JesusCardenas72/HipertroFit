@@ -957,6 +957,8 @@ export default {
   'With English': 'Con inglés',
   'Translated only': 'Solo español',
   'Rename this exercise': 'Renombrar este ejercicio',
+  'Exercise settings': 'Ajustes del ejercicio',
+  'Everything here belongs to the exercise: every routine that uses it starts from these values. Sets, warm-ups and notes are set per routine, in the routine.': 'Todo esto es del ejercicio: cada rutina que lo use empieza con estos valores. Las series, el calentamiento y las notas se fijan en cada rutina.',
   'Only the name changes — your routines, history and stats keep pointing at the same exercise. Leave it empty to go back to “{0}”.': 'Solo cambia el nombre: tus rutinas, tu historial y tus estadísticas siguen apuntando al mismo ejercicio. Déjalo vacío para volver a «{0}».',
   'Original name restored': 'Nombre original restaurado',
   // Plan ▸ Routines folders
