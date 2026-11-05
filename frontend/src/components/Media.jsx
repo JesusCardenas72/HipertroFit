@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { imgSrc, gifSrc } from '../lib/exercises.js'
+import { cutoutBackground } from '../lib/thumb-cutout.js'
 import { useStore } from '../store/useStore.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
@@ -44,10 +45,45 @@ export default function Media({ ex, id, compact, minimizable }) {
 
 // Without a picture of its own an exercise shows the muscle it trains. `muscle` (exercise
 // lists) adds that muscle as a badge on the picture's corner, so a routine reads by muscle.
+// Thumbnails have a white studio background; each picture is cut out once (see lib/thumb-cutout.js)
+// and the result kept for the session. If the browser will not read the pixels, the original shows.
+const cutouts = new Map()
+function cutoutOf(src) {
+  if (!cutouts.has(src)) cutouts.set(src, new Promise(resolve => {
+    const img = new Image()
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas')
+        c.width = img.naturalWidth; c.height = img.naturalHeight
+        const ctx = c.getContext('2d', { willReadFrequently: true })
+        ctx.drawImage(img, 0, 0)
+        const data = ctx.getImageData(0, 0, c.width, c.height)
+        cutoutBackground(data.data, c.width, c.height)
+        ctx.putImageData(data, 0, 0)
+        resolve(c.toDataURL('image/png'))
+      } catch { resolve(src) }   // tainted canvas or no 2D context: keep the original
+    }
+    img.onerror = () => resolve(src)
+    img.src = src
+  }))
+  return cutouts.get(src)
+}
+
 export function Thumb({ ex, muscle }) {
+  const src = ex.img ? imgSrc(ex) : null
+  const [cut, setCut] = useState(null)
+  useEffect(() => {
+    setCut(null)
+    if (!src) return
+    let live = true
+    cutoutOf(src).then(url => { if (live) setCut(url) })
+    return () => { live = false }
+  }, [src])
   const glyph = muscleGlyphOf(ex)
-  if (!ex.img) return <div className="thumb thumb-x"><Icon name={glyph || 'dumbbell'} /></div>
-  const img = <img className="thumb" loading="lazy" decoding="async" draggable={false} src={imgSrc(ex)} alt="" />
+  if (!src) return <div className="thumb thumb-x"><Icon name={glyph || 'dumbbell'} /></div>
+  // Hidden until its cut-out is ready, so the white box never flashes.
+  const img = <img className="thumb" loading="lazy" decoding="async" draggable={false} src={cut || src} alt=""
+    style={cut ? undefined : { opacity: 0 }} />
   if (!muscle || !glyph) return img
   return <span className="thumb-wrap">{img}<Icon name={glyph} className="thumb-mus" /></span>
 }

@@ -126,6 +126,46 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onReo
   }
   // Heights move with the sets (a drop, a folded head, a superset's partner): measured after each render.
   useLayoutEffect(() => { measure() })
+  // One frame per superset: the run of consecutive tabs that share its colour, boxed with a little room.
+  const [frames, setFrames] = useState([])
+  const measureFrames = () => {
+    const nav = railEl.current
+    if (!nav) return
+    const runs = []
+    let run = null
+    for (const tab of nav.querySelectorAll('.sf-tab')) {
+      const hue = tab.style.getPropertyValue('--ss')
+      if (tab.classList.contains('sup') && hue) {
+        if (run && run.hue === hue) run.last = tab
+        else { run = { hue, first: tab, last: tab }; runs.push(run) }
+      } else run = null
+    }
+    // Boxed around the pictures themselves, kept inside the rail so the edge never gets clipped.
+    // The frame is border-box with a 2px border drawn inside this box, so 6px leaves a 4px gap to the pictures.
+    const PAD = 6
+    const navBox = nav.getBoundingClientRect()
+    const thumbBox = tab => {
+      const r = tab.querySelector('.sf-th').getBoundingClientRect()
+      return { left: r.left - navBox.left + nav.scrollLeft, right: r.right - navBox.left + nav.scrollLeft,
+        top: r.top - navBox.top + nav.scrollTop, bottom: r.bottom - navBox.top + nav.scrollTop }
+    }
+    const next = runs.map(r => {
+      const a = thumbBox(r.first), b = thumbBox(r.last)
+      const left = Math.max(0, Math.min(a.left, b.left) - PAD)
+      const top = Math.max(0, a.top - PAD)
+      return { hue: r.hue, left, top, width: Math.max(a.right, b.right) + PAD - left, height: b.bottom + PAD - top }
+    })
+    const key = JSON.stringify(next)
+    setFrames(f => JSON.stringify(f) === key ? f : next)
+  }
+  useLayoutEffect(() => { measureFrames() })
+  // The picture of the selected tab grows with a transition, so the frame is measured again once each one ends.
+  useEffect(() => {
+    const nav = railEl.current
+    if (!nav) return
+    nav.addEventListener('transitionend', measureFrames)
+    return () => nav.removeEventListener('transitionend', measureFrames)
+  }, [])
   useLayoutEffect(() => {
     const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
     for (const el of [document.querySelector('.wtop'), document.querySelector('.wfoot'), railEl.current, sflowEl.current]) {
@@ -342,6 +382,7 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onReo
         const cls = 'sf-tab ' + item.pos + (item.current ? ' on' : '') + (top ? ' on-top' : '') + (bot ? ' on-bot' : '')
           + (item.idx === cur ? ' cur' : '') + (item.done ? ' done' : '')
           + (lifted ? ' lifted dragging' : '') + (drag?.join === item.idx ? ' magnet' : '')
+          + (item.hue != null ? ' sup' : '')
         // The lifted tab follows the finger; the neighbours of the gap it would open lean toward it.
         const lean = drag?.leans?.[item.idx]
         const move = lifted ? `translateY(${drag.dy}px) scale(${LIFT_SCALE})` : lean ? `translateY(${lean}px)` : null
@@ -355,6 +396,8 @@ export default function SessionFlow({ entries, cur, renderBlock, onSelect, onReo
           {bot && <i className="sf-cn b" />}
         </button>
       })}
+      {frames.map((f, i) => <div key={i} className="sf-frame" aria-hidden="true"
+        style={{ top: f.top + 'px', left: f.left + 'px', width: f.width + 'px', height: f.height + 'px', '--ss': f.hue }} />)}
       {drag && drag.join == null && drag.markerY != null && <div className="sf-marker" data-testid="session-marker"
         aria-hidden="true" style={{ top: drag.markerY + 'px' }} />}
       {drag?.joinSpan && <div className="sf-join" data-testid="session-join" aria-hidden="true"

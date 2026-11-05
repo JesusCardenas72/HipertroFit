@@ -932,7 +932,15 @@ export function FavoriteStar({ st, id }) {
   const fav = isFavorite(st, id)
   return <button className="iconbtn" style={{ flex: 'none', color: fav ? 'var(--acc)' : undefined }}
     aria-pressed={fav} aria-label={fav ? t('Remove from favourites') : t('Add to favourites')} title={fav ? t('Remove from favourites') : t('Add to favourites')}
-    onClick={ev => { ev.stopPropagation(); update(s => { toggleFavorite(s, id) }) }}><Icon name={fav ? 'starFill' : 'star'} /></button>
+    onClick={ev => {
+      ev.stopPropagation()
+      const name = exerciseNameFor(EXIDX[id] || { id, n: id })
+      confirmSheet({
+        title: fav ? t('Remove “{0}” from favourites?', name) : t('Add “{0}” to favourites?', name),
+        confirmText: fav ? t('Remove') : t('Add'),
+        onConfirm: () => { update(s => { toggleFavorite(s, id) }) },
+      })
+    }}><Icon name={fav ? 'starFill' : 'star'} /></button>
 }
 
 // Three independent filters: favourite or not (lib/favorites.js), body part and equipment.

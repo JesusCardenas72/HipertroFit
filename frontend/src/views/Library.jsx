@@ -3,7 +3,9 @@ import { useStore } from '../store/useStore.js'
 import { EXDB, BODYPARTS, allExercises, equipmentOf, matchExercise } from '../lib/exercises.js'
 import { activeProfile, exAvailable, ADJUSTABLE, adjustableFor } from '../lib/equipment.js'
 import { topOf } from '../lib/load-scale.js'
-import { muscleLabel } from '../lib/muscles.js'
+import { muscleLabel, MUSCLE_NAME } from '../lib/muscles.js'
+import { trainsMuscle, muscleGroupCounts } from '../lib/muscle-groups.js'
+import { glyphOfMuscle } from '../lib/glyphs.js'
 import { bestWeightFor, workSetCounts } from '../lib/history.js'
 import { favoriteMap, favoritesFirst } from '../lib/favorites.js'
 import { fmtNum } from '../lib/format.js'
@@ -19,6 +21,7 @@ export default function Library() {
   const [q, setQ] = useState('')
   const [scope, setScope] = useState('')   // '' = all, 'fav' / 'nofav' = favourite or not, 'trained' = in history
   const [bp, setBp] = useState('')
+  const [mu, setMu] = useState('')   // muscle group slug from the grid ('' = none picked)
   const [eq, setEq] = useState('')
   const [adjOn, setAdjOn] = useState(false)   // the dumbbell chip, tapped again: adjustable dumbbells
   const [showAll, setShowAll] = useState(false)   // ignore the active equipment profile for this session
@@ -32,7 +35,10 @@ export default function Library() {
   // Scope, body part and equipment filter independently of each other.
   const inScope = e => scope === 'fav' ? !!favs[e.id] : scope === 'nofav' ? !favs[e.id] : scope === 'trained' ? !!trainedCounts[e.id] : true
   const base = favoritesFirst(S, allExercises(S).filter(e => inScope(e) && (!bp || e.bp === bp) && matchExercise(e, q)))
-  const eqFiltered = (profile && !showAll) ? base.filter(e => exAvailable(S, e)) : base
+  const profiled = (profile && !showAll) ? base.filter(e => exAvailable(S, e)) : base
+  // Browsing by muscle group: the grid of group cards shows until the user searches, filters or picks one.
+  const browsing = !mu && !bp && !scope && !q.trim()
+  const eqFiltered = mu ? profiled.filter(e => trainsMuscle(e, mu)) : profiled
   const eqOpts = equipmentOf(eqFiltered)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
   const eqOn = eqOpts.includes(eq) ? eq : ''
@@ -46,6 +52,8 @@ export default function Library() {
     setShown(40)
   }
   const pickScope = v => { setScope(s => s === v ? '' : v); setShown(40) }
+  const pickMu = slug => { setMu(m => m === slug ? '' : slug); setEq(''); setAdjOn(false); setShown(40) }
+  const muCounts = browsing ? muscleGroupCounts(profiled) : null
   const ico = { fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }
   useRevealActiveChip(bpStrip, bp)
   useRevealActiveChip(eqStrip, eqOn)
@@ -85,7 +93,22 @@ export default function Library() {
       <Icon name="dumbbell" style={{ fontSize: 13 }} />
       {t('{0}–{1} {3}, +{2} {3} — added to a routine with these weights.', fmtNum(adj.from), fmtNum(topOf(adj)), fmtNum(adj.step), S.unit)}
     </div>}
-    <div className="list">
+    {browsing && <>
+      <div className="small dim" style={{ margin: '0 2px 8px' }}>{t('Pick a muscle group to see its exercises.')}</div>
+      <div className="tiles" style={{ gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+        {muCounts.map(({ slug, count }) => <button key={slug} className="card nocap" disabled={!count} onClick={() => pickMu(slug)}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '10px 8px', margin: 0, opacity: count ? 1 : 0.45, cursor: count ? 'pointer' : 'default', border: 0, font: 'inherit', color: 'inherit' }}>
+          {glyphOfMuscle(slug) && <Icon name={glyphOfMuscle(slug)} size={56} style={{ marginBottom: 6 }} />}
+          <div className="tt capitalize" style={{ fontSize: 14 }}>{t(MUSCLE_NAME[slug])}</div>
+          <div className="small dim">{count} {t('exercises')}</div>
+        </button>)}
+      </div>
+    </>}
+    {mu && <div className="row" style={{ alignItems: 'center', gap: 8, margin: '0 2px 10px' }}>
+      <button className="chip nocap" onClick={() => pickMu('')}>← {t('Muscle groups')}</button>
+      <div className="tt capitalize" style={{ marginLeft: 'auto' }}>{t(MUSCLE_NAME[mu])}</div>
+    </div>}
+    {!browsing && <div className="list">
       <div className="item" {...tappable(() => customExSheet(null, ex => exerciseDetailSheet(ex), q.trim()))}>
         <div className="thumb thumb-x"><Icon name="sparkles" /></div>
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name, muscles, equipment, instructions and image')}</div></div><Icon name="plus" className="chev" />
@@ -101,8 +124,8 @@ export default function Library() {
         </div>
       })}
       {f.length === 0 && <div className="empty"><div className="ico"><Icon name="magnifier" /></div>{t('No match')}</div>}
-    </div>
-    {f.length > shown && <><div style={{ height: 10 }} /><Button onClick={() => setShown(s => s + 40)}>{t('Show more')}</Button></>}
+    </div>}
+    {!browsing && f.length > shown && <><div style={{ height: 10 }} /><Button onClick={() => setShown(s => s + 40)}>{t('Show more')}</Button></>}
   </>
 }
 

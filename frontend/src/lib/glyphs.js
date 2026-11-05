@@ -79,6 +79,9 @@ const MUSCLE_GLYPH = {
   hamstring: 'hamstrings', calves: 'calves', tibialis: 'calves',
 }
 
+/** The artwork that shows one muscle slug (lib/muscles.js), or null if it has none. */
+export const glyphOfMuscle = slug => MUSCLE_GLYPH[slug] || null
+
 /**
  * The muscle glyph for an exercise: the muscle it trains hardest (a primary before any
  * secondary, the first-listed primary on a tie), or null for cardio and for an exercise
