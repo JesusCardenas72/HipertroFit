@@ -95,3 +95,10 @@ describe('copyName', () => {
     expect(n.endsWith(' (copy)')).toBe(true)
   })
 })
+
+describe('buildCustomExercise credit', () => {
+  it('keeps the source credit of an imported exercise, and leaves it out when there is none', () => {
+    expect(buildCustomExercise({ id: 'c1', n: 'Plank', bp: 'waist', credit: 'Exercise data by RepDB (repdb.co)' }).credit).toBe('Exercise data by RepDB (repdb.co)')
+    expect(buildCustomExercise({ id: 'c2', n: 'Plank', bp: 'waist' })).not.toHaveProperty('credit')
+  })
+})

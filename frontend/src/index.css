@@ -1018,7 +1018,7 @@ h4.sec{
   touch-action:none;overscroll-behavior:none;
 }
 .sheet{
-  position:absolute;left:0;right:0;bottom:0;background:var(--bg-el);
+  position:absolute;left:0;right:0;bottom:var(--picker-keyboard-bottom,0px);background:var(--bg-el);
   border-radius:var(--r-xl) var(--r-xl) 0 0;
   padding:8px calc(18px + var(--sar)) calc(20px + var(--sab)) calc(18px + var(--sal));
   max-height:calc(90 * var(--vh));max-height:min(calc(90 * var(--vh)),calc(calc(100 * var(--dvh)) - 8px));
@@ -1029,6 +1029,12 @@ h4.sec{
 .sheet:has(.picker-search){
   bottom:var(--picker-keyboard-bottom,0px);
   max-height:min(calc(90 * var(--vh)),calc(calc(100 * var(--dvh)) - 8px),calc(var(--picker-visual-height,calc(100 * var(--vh))) - 8px));
+}
+/* A sheet with a field under the keyboard (lib/keyboard-reveal.js) is lifted by its inset above and
+   capped to the part of the screen that is still visible, so its top never runs off-screen. */
+.sheet[data-kb]{
+  max-height:min(calc(90 * var(--vh)),calc(var(--picker-visual-height,calc(100 * var(--vh))) - 8px));
+  translate:0 var(--kb-shift,0px);
 }
 :root[data-theme="light"] .sheet{background:var(--bg)}
 @keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}

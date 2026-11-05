@@ -75,6 +75,8 @@ export function buildCustomExercise(f) {
     ...(img ? { img } : {}),
     ...(gif ? { gif } : {}),
     ...(gif && Number.isInteger(f.frame) && f.frame > 0 ? { frame: f.frame } : {}),
+    // The source credit of an imported exercise (lib/supplement-catalogue.js); kept as written.
+    ...(String(f.credit || '').trim() ? { credit: String(f.credit).trim().slice(0, 200) } : {}),
     custom: true,
   }
 }
