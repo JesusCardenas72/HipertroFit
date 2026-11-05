@@ -132,7 +132,8 @@ this repository or in the app. Each imported exercise keeps its source's credit 
 
 - **RepDB** — [RepDB/exercise-dataset](https://github.com/RepDB/exercise-dataset), RepDB Free Tier
   licence. Used inside the application with attribution: *Exercise data by RepDB (repdb.co)*. The
-  dataset is not republished from this project.
+  dataset is not republished from this project. The main picture of the built-in exercises listed
+  in `frontend/src/lib/exercise-images.js` is loaded from it at runtime, in place of the bundled one.
 - **GymBells** — [gellyfish-ai/gymbells-exercises](https://github.com/gellyfish-ai/gymbells-exercises),
   CC BY-NC 4.0. Non-commercial use only: *Exercise illustrations by GymBells
   (gymbells.gellyfish.dev), CC BY-NC 4.0*.
