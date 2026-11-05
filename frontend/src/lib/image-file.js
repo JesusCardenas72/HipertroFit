@@ -53,12 +53,47 @@ export function gifFromDataUrl(url) {
   try { return parseGif(dataUrlToBytes(url)) } catch { return null }
 }
 
+/** A video the browser can decode into a still: an MP4 or WebM, by type or by extension. */
+export const isVideoFile = file => !!file && (/^video\/(mp4|webm)$/.test(file.type || '') || /\.(mp4|webm)$/i.test(file.name || ''))
+
+/** A picture file or a video file: what the picker, paste and drop accept. */
+export const isPictureFile = file => !!file && (/^image\//.test(file.type || '') || isVideoFile(file))
+
+// A frame half a second in (the very first one is often black) of a video, as the JPEG still.
+// Throws 'not-image' when the browser cannot decode the file.
+async function frameFromVideo(file) {
+  const url = URL.createObjectURL(file)
+  try {
+    const video = document.createElement('video')
+    video.muted = true
+    video.playsInline = true
+    video.preload = 'auto'
+    await new Promise((resolve, reject) => {
+      video.onloadeddata = resolve
+      video.onerror = () => reject(new Error('not-image'))
+      video.src = url
+    })
+    if (!video.videoWidth) throw new Error('not-image')
+    if (Number.isFinite(video.duration) && video.duration > 0.5) {
+      await new Promise((resolve, reject) => {
+        video.onseeked = resolve
+        video.onerror = () => reject(new Error('not-image'))
+        video.currentTime = 0.5
+      })
+    }
+    return toJpeg(video, video.videoWidth, video.videoHeight)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
 /**
- * → { img, gif, frame } (gif is '' for a still image, and for a GIF with a single frame).
- * Throws 'too-large' / 'not-image'.
+ * → { img, gif, frame } (gif is '' for a still image, for a GIF with a single frame, and for a
+ * video, whose still is one of its frames). Throws 'too-large' / 'not-image'.
  */
 export async function pictureFromFile(file) {
-  if (!file || !/^image\//.test(file.type)) throw new Error('not-image')
+  if (!isPictureFile(file)) throw new Error('not-image')
+  if (isVideoFile(file)) return { img: await frameFromVideo(file), gif: '', frame: 0 }
   const src = await readAsDataUrl(file)
   if (file.type === 'image/gif') {
     const gif = gifFromDataUrl(src)
@@ -90,9 +125,9 @@ const isImageUrl = text => /^(https?:\/\/\S+|data:image\/[a-z]+;base64,\S+)$/i.t
 export function imageFromTransfer(dt) {
   if (!dt) return null
   for (const item of dt.items || []) {
-    if (item.kind === 'file' && /^image\//.test(item.type)) return item.getAsFile()
+    if (item.kind === 'file' && (/^image\//.test(item.type) || /^video\/(mp4|webm)$/.test(item.type))) return item.getAsFile()
   }
-  return [...(dt.files || [])].find(f => /^image\//.test(f.type)) || null
+  return [...(dt.files || [])].find(isPictureFile) || null
 }
 
 /**

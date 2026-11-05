@@ -726,7 +726,7 @@ function CustomExForm({ existing, copyOf, prefill, onDone, close }) {
     {bp === 'cardio' && <div className="small dim row" style={{ margin: '10px 0', gap: 5 }}><Icon name="figureRun" style={{ fontSize: 13 }} />{t('Cardio exercises log time + speed instead of weight × reps.')}</div>}
     <h4 className="sec">{t('Image')}</h4>
     <div onDragOver={e => e.preventDefault()} onDrop={onDrop}>
-    <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPicture} />
+    <input ref={fileRef} type="file" accept="image/*,video/mp4,video/webm,.mp4,.webm" hidden onChange={pickPicture} />
     {picBusy ? <div className="small dim" style={{ marginBottom: 12 }}>{t('Loading image…')}</div> : pic.img ? <>
       <Media ex={{ id: 'preview', n, img: pic.img, gif: pic.gif }} compact />
       {pic.gif && <GifFramePicker src={pic.gif} frame={pic.frame} onPick={(frame, img) => setPic(p => ({ ...p, frame, img }))} />}
