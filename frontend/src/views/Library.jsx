@@ -11,7 +11,7 @@ import { favoriteMap, favoritesFirst } from '../lib/favorites.js'
 import { fmtNum } from '../lib/format.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { Thumb } from '../components/Media.jsx'
-import { exerciseDetailSheet, addToRoutineSheet, customExSheet, FavoriteStar } from '../sheets.jsx'
+import { exerciseDetailSheet, addToRoutineSheet, customExSheet, importExercisesSheet, FavoriteStar } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { tappable, useRevealActiveChip } from '../lib/use-sheet-keyboard.js'
@@ -112,6 +112,10 @@ export default function Library() {
       <div className="item" {...tappable(() => customExSheet(null, ex => exerciseDetailSheet(ex), q.trim()))}>
         <div className="thumb thumb-x"><Icon name="sparkles" /></div>
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name, muscles, equipment, instructions and image')}</div></div><Icon name="plus" className="chev" />
+      </div>
+      <div className="item" {...tappable(() => importExercisesSheet())}>
+        <div className="thumb thumb-x"><Icon name="download" /></div>
+        <div className="grow"><div className="tt">{t('Import exercises')}</div><div className="ss">{t('from open exercise sources, with their picture and credit')}</div></div><Icon name="plus" className="chev" />
       </div>
       {f.slice(0, shown).map(e => {
         const best = bestWeightFor(S, e.id)

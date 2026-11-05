@@ -37,6 +37,7 @@ import { ladderOf, snapLoad, topOf, withAdjustable } from './lib/load-scale.js'
 import { routineExerciseConfig, classifyExercise, CLASS_NAME, CLASS_REP_RANGE, EXERCISE_CLASSES } from './lib/exercise-class.js'
 import { buildCustomExercise, stepsText, copyName, NAME_MAX, DESC_MAX, MAX_IMAGE_BYTES } from './lib/custom-exercise.js'
 import { pictureFromFile, pictureFromUrl, pictureFromClipboard, imageFromTransfer, gifFromDataUrl, frameCanvas, frameToJpeg } from './lib/image-file.js'
+import { SUPPLEMENT_SOURCES, loadSource, freshOnly, importSeed, normName } from './lib/supplement-catalogue.js'
 import { previousRoutineConfig, seedConfig, changedGlobals, applyGlobals, isGlobalField, GLOBAL_LABEL } from './lib/exercise-defaults.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
@@ -621,21 +622,24 @@ export const addToRoutineSheet = (ex, opts) => ui().openSheet(close => <AddToRou
 // `copyOf` starts a new exercise from another one (built-in or custom): every field, the
 // instructions in the current language and the picture are filled in from it, under a name
 // that is still free, and the copy is saved as a separate custom exercise.
-function CustomExForm({ existing, copyOf, prefill, onDone, close }) {
+// `importOf` starts a new exercise from a supplementary source (lib/supplement-catalogue.js):
+// the same fields as a copy, the picture downloaded from the source, and its credit kept on save.
+function CustomExForm({ existing, copyOf, prefill, importOf, onDone, close }) {
   const nameRef = useRef(null)
   const fileRef = useRef(null)
   const onNameFocus = useSheetKeyboard(nameRef)
-  const src = existing || copyOf
+  const src = existing || copyOf || (importOf && importOf.row)
   const [n, setN] = useState(() => existing ? existing.n
     : copyOf ? copyName(exerciseNameFor(copyOf), allExercises(S()).flatMap(e => [e.n, exerciseNameFor(e)]), t('copy'))
+    : importOf ? importOf.row.n
     : (prefill || ''))
   const [bp, setBp] = useState(src ? src.bp : '')
   const [eq, setEq] = useState(src && src.eq && src.eq !== 'custom' ? src.eq : '')
   // A built-in's class may come from an override keyed by its id, which the copy will not have.
-  const [cls, setCls] = useState(() => copyOf && !copyOf.custom ? classifyExercise(copyOf) : (src && src.cls) || '')
+  const [cls, setCls] = useState(() => copyOf && !copyOf.custom ? classifyExercise(copyOf) : importOf ? classifyExercise(importOf.row) : (src && src.cls) || '')
   const [pattern, setPattern] = useState(src ? patternOf(src) || '' : '')
   const [desc, setDesc] = useState(src ? (src.desc || '') : '')
-  const [steps, setSteps] = useState(existing ? stepsText(existing.st) : copyOf ? stepsText(instrFor(copyOf)) : '')
+  const [steps, setSteps] = useState(existing ? stepsText(existing.st) : copyOf ? stepsText(instrFor(copyOf)) : importOf ? stepsText(importOf.row.st) : '')
   const [pic, setPic] = useState(() => src && src.custom ? { img: src.img || '', gif: src.gif || '', frame: src.frame || 0 } : { img: '', gif: '', frame: 0 })
   const [picBusy, setPicBusy] = useState(false)
   const [muscles, setMuscles] = useState(() => initialMuscles(src))
@@ -658,6 +662,11 @@ function CustomExForm({ existing, copyOf, prefill, onDone, close }) {
       if (copyOf.gif) try { return await pictureFromUrl(gifSrc(copyOf)) } catch { /* fall back to the still */ }
       try { return await pictureFromUrl(imgSrc(copyOf)) } catch { throw new Error('copy') }
     })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // An imported exercise's picture comes from its source; without one the form just has none.
+  useEffect(() => {
+    if (!importOf || !importOf.row.imageUrl) return
+    takePicture(() => pictureFromUrl(importOf.row.imageUrl))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // An image copied in the browser can be pasted straight in (Ctrl+V / long-press → Paste)
   // or dropped on the image section; text pastes into the fields are left alone.
@@ -683,7 +692,7 @@ function CustomExForm({ existing, copyOf, prefill, onDone, close }) {
     if (!q) { toast(t('Give it a name')); return }
     window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(q), '_blank', 'noopener')
   }
-  const draft = id => buildCustomExercise({ id, n, bp, eq, cls, pattern, primaries: muscles.primary, secondaries: muscles.secondary, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame })
+  const draft = id => buildCustomExercise({ id, n, bp, eq, cls, pattern, primaries: muscles.primary, secondaries: muscles.secondary, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame, credit: importOf ? importOf.row.credit : (existing || {}).credit })
   const autoCls = classifyExercise({ ...draft((existing || {}).id), cls: undefined })
   const save = () => {
     const name = n.trim()
@@ -786,7 +795,46 @@ function GifFramePicker({ src, frame, onPick }) {
   </div>
 }
 
-export const customExSheet = (existing, onDone, prefill) => ui().openSheet(close => <CustomExForm existing={existing} prefill={prefill} onDone={onDone} close={close} />)
+export const customExSheet = (existing, onDone, prefill, importOf) => ui().openSheet(close => <CustomExForm existing={existing} prefill={prefill} importOf={importOf} onDone={onDone} close={close} />)
+
+// The supplementary sources: pick an exercise to open as a new custom exercise. The form then
+// fills in from it, downloads its picture and keeps its credit; saving works like any other.
+export const importExercisesSheet = () => ui().openSheet(close => <ImportExercisesSheet close={close} />)
+function ImportExercisesSheet({ close }) {
+  const [srcId, setSrcId] = useState(SUPPLEMENT_SOURCES[0].id)
+  const [list, setList] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [q, setQ] = useState('')
+  const taken = useMemo(() => allExercises(S()).flatMap(e => [e.n, exerciseNameFor(e)]), [])
+  useEffect(() => {
+    let live = true
+    setList(null)
+    setFailed(false)
+    loadSource(srcId).then(l => { if (live) setList(l) }, () => { if (live) setFailed(true) })
+    return () => { live = false }
+  }, [srcId])
+  const source = SUPPLEMENT_SOURCES.find(s => s.id === srcId)
+  const needle = normName(q)
+  const fresh = useMemo(() => list ? freshOnly(list, taken) : [], [list, taken])
+  const shown = fresh.filter(c => !needle || normName(c.names.join(' ')).includes(needle)).slice(0, 60)
+  return <>
+    <h4 className="sec">{t('Import exercises')}</h4>
+    <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+      {SUPPLEMENT_SOURCES.map(s => <Button key={s.id} size="sm" variant={s.id === srcId ? 'tinted' : 'ghost'} onClick={() => setSrcId(s.id)}>{s.name}</Button>)}
+    </div>
+    <TextField value={q} onChange={e => setQ(e.target.value)} placeholder={t('Search…')} style={{ marginBottom: 8 }} />
+    {failed ? <div className="small dim">{t('Could not reach {0}. Try again later.', source.name)}</div>
+      : !list ? <div className="small dim">{t('Loading…')}</div>
+      : <div className="list">
+        {shown.map(c => <div key={c.key} className="item" onClick={() => { close(); customExSheet(null, undefined, undefined, { row: importSeed(c) }) }}>
+          <div className="grow"><div className="tt capitalize">{c.n}</div><div className="ss capitalize">{[c.bp && t(c.bp), c.eq && t(c.eq)].filter(Boolean).join(' · ')}</div></div>
+          <Icon name="plus" className="chev" />
+        </div>)}
+        {!shown.length && <div className="small dim">{t('Nothing new to import')}</div>}
+      </div>}
+    <div className="small dim" style={{ marginTop: 10 }}>{source.credit}</div>
+  </>
+}
 export const copyExSheet = (ex, onDone) => ui().openSheet(close => <CustomExForm copyOf={ex} onDone={onDone} close={close} />)
 
 function pictureError(err) {

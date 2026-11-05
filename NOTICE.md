@@ -123,3 +123,20 @@ English source produced with OpenAI Codex and Anthropic Claude Code
 language-model assistance. They are not copied from a separate Portuguese
 dataset. Their review status and translation policy are documented alongside
 the source files.
+
+## Supplementary exercise sources
+
+The import sheet (Library → Import exercises, `frontend/src/lib/supplement-catalogue.js`) reads
+exercises from three public repositories when the user opens it. Nothing from them is bundled in
+this repository or in the app. Each imported exercise keeps its source's credit line.
+
+- **RepDB** — [RepDB/exercise-dataset](https://github.com/RepDB/exercise-dataset), RepDB Free Tier
+  licence. Used inside the application with attribution: *Exercise data by RepDB (repdb.co)*. The
+  dataset is not republished from this project. The main picture of the built-in exercises listed
+  in `frontend/src/lib/exercise-images.js` is loaded from it at runtime, in place of the bundled one.
+- **GymBells** — [gellyfish-ai/gymbells-exercises](https://github.com/gellyfish-ai/gymbells-exercises),
+  CC BY-NC 4.0. Non-commercial use only: *Exercise illustrations by GymBells
+  (gymbells.gellyfish.dev), CC BY-NC 4.0*.
+- **LibreFit** — [LibreFitOrg/LibreFit](https://github.com/LibreFitOrg/LibreFit), GPL-3.0 with
+  additional terms (author attribution must stay visible; the project logo and name are not
+  granted). Credit: *Exercise data from LibreFit (GPL-3.0)*.

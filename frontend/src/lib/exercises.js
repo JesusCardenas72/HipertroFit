@@ -2,6 +2,7 @@ import { EXDB } from './exercises-data.js'
 import { exerciseMuscleMetadataFor } from './exercise-muscles.js'
 import { isPattern } from './movement-patterns.js'
 import { t, getVersion, exerciseNameSearchText } from './i18n-core.js'
+import { REPDB_MAIN_IMAGES, REPDB_IMAGE_BASE } from './exercise-images.js'
 
 export { EXDB }
 
@@ -10,6 +11,9 @@ export { EXDB }
 // historical tests that rely on the upstream shape keep working while EXIDX and pickers see the
 // corrected model.
 const catalogueExercise = ex => {
+  // A RepDB main picture replaces the bundled one for the same built-in id (lib/exercise-images.js).
+  const picture = REPDB_MAIN_IMAGES[ex?.id]
+  if (picture) ex = { ...ex, img: REPDB_IMAGE_BASE + picture }
   const metadata = exerciseMuscleMetadataFor(ex?.id)
   if (!Object.keys(metadata).length) return ex
   const out = { ...ex, ...metadata }
@@ -191,7 +195,8 @@ const ENV = import.meta.env || {}
 const IMG_BASE = ENV.VITE_IMG_BASE || 'img/'
 const GIF_BASE = ENV.VITE_GIF_BASE || 'gif/'
 // A custom exercise carries its picture inline (data: URL), so it is used as is.
-const mediaSrc = (base, file) => /^data:/.test(file || '') ? file : base + file
+// Inline data: pictures and absolute https pictures (RepDB, see above) are used as they are.
+const mediaSrc = (base, file) => /^(data:|https:\/\/)/.test(file || '') ? file : base + file
 export const imgSrc = ex => mediaSrc(IMG_BASE, ex.img)
 export const gifSrc = ex => mediaSrc(GIF_BASE, ex.gif)
 

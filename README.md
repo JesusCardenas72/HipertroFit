@@ -122,6 +122,10 @@ the exercise media (~140 MB) once.
 > openGym's AGPL, and their ownership is currently disputed between Gym visual and ExerciseDB.
 > openGym ships none of it: your instance downloads it from upstream. Reusing it yourself,
 > commercially or not, means clearing it with the rights holder — see [NOTICE.md](NOTICE.md).
+>
+> The main picture of 68 built-in exercises is loaded at runtime from
+> [RepDB/exercise-dataset](https://github.com/RepDB/exercise-dataset) instead:
+> *Exercise data by RepDB (repdb.co)*.
  Prefer building the images yourself instead of pulling from
 GitLab's registry? Drop the `pull` step and run `docker compose up -d --build` — you don't need Node or
 a build step locally either way.
