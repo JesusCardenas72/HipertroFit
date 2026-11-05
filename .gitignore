@@ -27,3 +27,7 @@ dist-apk/
 
 # Docker images packed for the NAS (scripts/build-nas.ps1)
 dist-nas/
+
+# Local source material (muscle artwork, sounds), not part of the build
+/Iconos Musculos/
+/Sonidos/
