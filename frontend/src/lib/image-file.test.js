@@ -1,7 +1,28 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { imageFromTransfer, pictureFromClipboard, pictureFromUrl } from './image-file.js'
+import { imageFromTransfer, pictureFromClipboard, pictureFromUrl, isVideoFile, isPictureFile } from './image-file.js'
 
 const file = (type, name = 'x') => ({ type, name })
+
+describe('video files as thumbnails', () => {
+  it('recognises MP4 and WebM by type or by extension, and nothing else as video', () => {
+    expect(isVideoFile(file('video/mp4'))).toBe(true)
+    expect(isVideoFile(file('video/webm'))).toBe(true)
+    expect(isVideoFile(file('', 'bench.MP4'))).toBe(true)
+    expect(isVideoFile(file('video/quicktime', 'clip.mov'))).toBe(false)
+    expect(isVideoFile(file('image/png', 'x.png'))).toBe(false)
+    expect(isVideoFile(null)).toBe(false)
+  })
+  it('accepts pictures and videos alike, and refuses other files', () => {
+    expect(isPictureFile(file('image/gif'))).toBe(true)
+    expect(isPictureFile(file('video/mp4'))).toBe(true)
+    expect(isPictureFile(file('application/pdf', 'a.pdf'))).toBe(false)
+  })
+  it('a paste or drop carrying an MP4 is taken, not ignored', () => {
+    const mp4 = file('video/mp4', 'bench.mp4')
+    expect(imageFromTransfer({ items: [{ kind: 'file', type: 'video/mp4', getAsFile: () => mp4 }] })).toBe(mp4)
+    expect(imageFromTransfer({ items: [], files: [file('text/plain'), mp4] })).toBe(mp4)
+  })
+})
 
 describe('imageFromTransfer', () => {
   it('takes the first image item of a paste / drop and ignores text', () => {
