@@ -262,13 +262,15 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 18px}
 .hdr h1{font-size:calc(34px * var(--fs));line-height:1.06;font-weight:700;letter-spacing:-.028em}
 .hdr .sub{color:var(--label-2);font-size:calc(15px * var(--fs));letter-spacing:-.006em;margin-top:4px}
-/* Home's header: the mark sits at the left, about as tall as the title and date beside it (same --fs units),
-   centred on them, and the title takes the room between it and the settings button. The mark keeps its
+/* Home's header: the mark sits at the left, exactly as tall as the title and date beside it (same --fs units), and the title takes the room between it and the settings button. The mark keeps its
    size at every UI size. Where the three do not fit on one line the header takes two: the mark on its own,
    then the title with the settings button at its right. The title is never squeezed, so it only truncates
    past the width of its own line. */
 .hdr-home{flex-wrap:wrap}
-.hdr-brand{flex:0 0 calc(50px * var(--fs));min-width:0;height:auto;align-self:center}
+/* --brand-h is the title block's measured height (Home.jsx); the calc is only the fallback without
+   ResizeObserver: h1 line (34px × 1.06) + .sub margin (4px) + .sub line (15px × 1.29). The width
+   follows from the mark's own aspect ratio */
+.hdr-brand{flex:none;height:var(--brand-h, calc((34px * 1.06 + 15px * 1.29) * var(--fs) + 4px));width:auto;aspect-ratio:auto;object-fit:contain;align-self:flex-end}
 .hdr-home .iconbtn{margin-left:auto}
 .hdr-title{flex:1 1 auto;min-width:0;max-width:calc(100% - 48px)}
 .hdr-title h1,.hdr-title .sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
