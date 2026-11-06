@@ -293,16 +293,20 @@ export const isExtra = w => !!w && w.extra === true
  * than the block plans it — stands in for the step that was due, the first open one. Either
  * way it fills exactly one position, so the block still closes on its count.
  */
-function blockFill(S) {
+export function blockFill(S) {
   const len = microcycleLen(S)
   const steps = trainingSteps(S && S.program)
   const done = cycleWorkouts(S).filter(w => isPlannedSession(S, w))
   const open = Array.from({ length: len }, (_, i) => i)
+  // `filled[k]` is the position done[k] took — what lib/sequence-days.js walks on from.
+  const filled = []
   for (const w of done) {
     const own = steps.length ? open.findIndex(i => steps[i % steps.length] === w.routineId) : -1
-    open.splice(own >= 0 ? own : 0, 1)
+    const at = own >= 0 ? own : 0
+    if (at < open.length) filled.push(open[at])
+    open.splice(at, 1)
   }
-  return { steps, done, open }
+  return { steps, done, open, filled }
 }
 
 /**

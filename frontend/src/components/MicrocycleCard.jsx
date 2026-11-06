@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { t } from '../lib/i18n.js'
 import { todayISO, mondayOf, DAYS, fmtDate } from '../lib/format.js'
-import { effectiveRoutine, nextSessionRoutine, upcomingDays } from '../lib/history.js'
+import { effectiveRoutine, nextSessionRoutine } from '../lib/history.js'
+import { sequenceDays } from '../lib/sequence-days.js'
 import { cyclePosition, strategyOf, isExtra, STRATEGIES, cycleEndOf } from '../lib/microcycle.js'
 import { mesoState, acceptDeload, postponeDeload, isDeloadWorkout, carriedBase, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
 import { openNextCycle, closeMicrocycleSheet } from './MicrocycleActions.jsx'
@@ -18,9 +19,11 @@ const STRATEGY_NAME = Object.fromEntries(STRATEGIES.map(s => [s.key, s.name]))
 
 // The microcycle as the home screen's unit of time, in place of the calendar week.
 //
-// The strip is the current week, Monday to Sunday, as the calendar schedules it — the same
-// projection as the Programming sheet's "Next 14 days", cut to this week: weekday, date and the
-// routine (or rest) of each day; a day already gone by without a session shows faded. Where the block stands in sessions is the "Session n of m" line under it, since
+// The strip is the current week, Monday to Sunday: weekday, date and what each day holds. Days
+// trained show the routine trained, in green with a check; days gone by without a session show
+// faded. The days ahead are the Plan tab's sequence carried on from the last session — a session
+// that was due and not trained moves on, with the rest of the sequence behind it
+// (lib/sequence-days.js). Where the block stands in sessions is the "Session n of m" line under it, since
 // sessions are what complete a microcycle; complete, it runs on through its rest days and, once
 // they are over, asks to open the next one (lib/microcycle.js). Tapping a day opens its
 // reschedule sheet.
@@ -29,17 +32,19 @@ export default function MicrocycleCard() {
   const nav = useNavigate()
   const today = todayISO()
   const pos = cyclePosition(S)
-  const days = upcomingDays(S, 7, mondayOf(today))
+  // History up to today, the sequence carried on from there (lib/sequence-days.js).
+  const days = sequenceDays(S, 7, mondayOf(today), today)
   const meso = mesoState(S)
   // Complete, the block runs on through its rest days; past its last day it is over and waits
   // for the user to open the next one (lib/microcycle.js).
   const end = cycleEndOf(S)
   const over = !!end && end < today
   const routineOf = id => S.routines.find(r => r.id === id) || null
-  // What today offers: the day's own plan when there is one (an override, or a training day
-  // of the program), else the next step of the sequence — training a "rest" day just brings
-  // the next session forward.
-  const planned = effectiveRoutine(S, today)
+  // What today offers: the day's own plan as the strip lays it out (an override, or a session
+  // the sequence — moved on past any missed day — puts here), else the next step of the
+  // sequence: training a "rest" day just brings the next session forward.
+  const todayDay = days.find(d => d.iso === today)
+  const planned = todayDay ? (todayDay.state === 'planned' ? routineOf(todayDay.routineId) : null) : effectiveRoutine(S, today)
   const next = planned || nextSessionRoutine(S)
   // Loose extra work logged today is not today's session — the row keeps offering it.
   const doneToday = S.workouts.filter(w => w.d === today && !isExtra(w)).at(-1) || null
@@ -72,18 +77,24 @@ export default function MicrocycleCard() {
 
     <div className="prog-prev week7">
       {days.map(d => {
+        const r = routineOf(d.routineId)
+        const done = d.state === 'done'
         // A day reads as a deload when it was trained as one, or — not trained yet — when this
         // microcycle is the deload.
-        const dl = d.done ? isDeloadWorkout(d.done) : meso.deload && !!d.r
-        const label = d.done ? (d.done.name || t('Workout done')) : d.r ? d.r.name : t('Rest day')
-        // A day already gone by without a session is history, not a plan: shown faded.
-        const past = d.iso < today && !d.done
-        return <button key={d.iso} className={'prog-day' + (d.iso === today ? ' today' : '') + (past ? ' past' : '') + (dl ? ' deload' : '')}
+        const dl = done ? isDeloadWorkout(d.done) : meso.deload && d.state === 'planned'
+        const label = done ? (d.done.name || r?.name || t('Workout done'))
+          : d.state === 'missed' ? t('Not trained — {0} moved on', r ? r.name : '—')
+            : d.state === 'planned' && r ? r.name : t('Rest day')
+        // A day gone by without a session is history, not a plan: shown faded.
+        const past = d.state === 'missed' || d.state === 'past'
+        const glyph = done ? (r ? glyphOf(r.emoji) : 'dumbbell') : (d.state === 'planned' || d.state === 'missed') && r ? glyphOf(r.emoji) : 'moon'
+        return <button key={d.iso} className={'prog-day' + (d.iso === today ? ' today' : '') + (past ? ' past' : '') + (done ? ' done' : '') + (dl ? ' deload' : '')}
           title={dl ? label + ' · ' + t('Deload') : label} onClick={() => dayOverrideSheet(d.iso)}>
           <span className="wd">{t(DAYS[d.wd])}</span>
           <span className="dn">{d.dn}</span>
-          <span className="lrow-i sm" style={d.done ? { background: 'var(--surface-3)', color: 'var(--green)' } : d.r ? null : { background: 'var(--surface-3)' }}>
-            <Icon name={d.done ? 'checkCircle' : d.r ? glyphOf(d.r.emoji) : 'moon'} />
+          <span className="lrow-i sm" style={glyph === 'moon' ? { background: 'var(--surface-3)' } : null}>
+            <Icon name={glyph} />
+            {done && <span className="prog-check" aria-hidden="true"><Icon name="check" /></span>}
           </span>
         </button>
       })}

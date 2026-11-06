@@ -23,9 +23,17 @@ export function daysBetween(aISO, bISO) {
   return Math.round((b - a) / 86400000)
 }
 
-/** A program that is turned on and has a sequence and an anchor to project from. */
+/**
+ * A program with a sequence and an anchor to project from.
+ *
+ * The Plan tab is the one place the schedule is edited, so a sequence laid out there always
+ * drives the calendar — Home's strip, the calendar, reminders. The old `on` switch is ignored:
+ * with it off, the days fell back to a weekly plan (S.week) that no screen edits any more, and
+ * Home kept showing a schedule the Plan tab no longer had. S.week is only the fallback of a
+ * profile that has no sequence at all.
+ */
 export function programActive(program) {
-  return !!(program && program.on && Array.isArray(program.seq) && program.seq.length && program.anchor)
+  return !!(program && Array.isArray(program.seq) && program.seq.length && program.anchor)
 }
 
 /**
@@ -62,8 +70,8 @@ export function projectProgram(program, fromISO, days) {
 export const sessionsPerRound = program =>
   Array.isArray(program?.seq) ? program.seq.filter(s => s && s !== REST).length : 0
 
-/** A fresh program shell anchored today, off until the user turns it on. */
-export const emptyProgram = (anchor = isoOf(new Date())) => ({ on: false, seq: [], anchor })
+/** A fresh program shell anchored today; it schedules nothing until its sequence has a step. */
+export const emptyProgram = (anchor = isoOf(new Date())) => ({ seq: [], anchor })
 
 // Two ways to lay the sequence out. `cycle` repeats it every seq.length days from the anchor.
 // `week` keeps seven steps, Monday first, and anchors on a Monday, so programStep's day count
