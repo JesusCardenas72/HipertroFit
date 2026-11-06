@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { t, dateLocale } from '../lib/i18n.js'
@@ -18,11 +19,26 @@ export default function Home() {
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
   const today = new Date()
+  const hdrRef = useRef(null), titleRef = useRef(null)
+
+  // The mark is exactly as tall as the title + date beside it, whatever sets that height (UI size,
+  // font, a deload tag…): the title block is measured and the mark follows it before paint.
+  useLayoutEffect(() => {
+    const hdr = hdrRef.current, title = titleRef.current
+    if (!hdr || !title || typeof ResizeObserver === 'undefined') return
+    // the computed height, not getBoundingClientRect: <html> carries a zoom (UI size) and the rect
+    // comes back zoomed, while --brand-h is set in the same unzoomed CSS px the title is laid out in
+    const sync = () => hdr.style.setProperty('--brand-h', getComputedStyle(title).height)
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(title)
+    return () => ro.disconnect()
+  }, [])
 
   return <div className="narrow">
-    <div className="hdr hdr-home">
+    <div className="hdr hdr-home" ref={hdrRef}>
       <BrandMark className="hdr-brand" />
-      <div className="hdr-title"><h1>{user ? t('Hi {0}', user.name) : 'HipertroFit'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}<DeloadTitleTag /></div></div>
+      <div className="hdr-title" ref={titleRef}><h1>{user ? t('Hi {0}', user.name) : 'HipertroFit'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}<DeloadTitleTag /></div></div>
       <button className="iconbtn" onClick={() => nav('/settings')} aria-label={t('Settings')}><Icon name="gear" /></button>
     </div>
 
