@@ -4,7 +4,7 @@ import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, matchExercise, exOr, normalizeStr, muscleTagsOf, catalogueRow, imgSrc, gifSrc } from './lib/exercises.js'
 import { activeProfile, exAvailable, ALL_EQUIPMENT, ADJUSTABLE, newProfile, adjustableOf, adjustableFor } from './lib/equipment.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount, DAYN, DAYS, MONTHS_LONG, ACCENTS } from './lib/format.js'
-import { programActive, programMode, emptyProgram, sessionsPerRound, mondayOf, weekSequence, SEQ_CYCLE, SEQ_WEEK, REST } from './lib/program.js'
+import { programMode, emptyProgram, sessionsPerRound, mondayOf, weekSequence, SEQ_CYCLE, SEQ_WEEK, REST } from './lib/program.js'
 import { STRATEGIES, microcycleLen, strategyOf, cyclePosition, cycleEndOf, opensNextCycle } from './lib/microcycle.js'
 import { closeCycle, keepCycle, closableToday } from './lib/cycle-history.js'
 import { plannedVolume } from './lib/volume.js'
@@ -1885,7 +1885,6 @@ export function ProgramSheet({ close = () => {}, layout }) {
   // One date for both jobs: where the calendar projection starts drawing, and where the
   // session count starts counting. "The start of a microcycle" is exactly that day.
   const setAnchor = v => { if (v) mut(p => { p.anchor = v; p.cycleStart = v }) }
-  const setOn = v => mut(p => { p.on = v })
   const setStrategy = v => mut(p => { p.strategy = v })
   const setMicro = n => update(s => { s.microcycleSessions = Math.max(1, Math.round(n) || 1) })
   // Switching keeps each layout's own sequence and anchor, so going back restores the cycle.
@@ -1992,7 +1991,7 @@ export function ProgramSheet({ close = () => {}, layout }) {
   const listBox = reorder.listRef.current?.getBoundingClientRect() || { left: 0, top: 0 }
 
   const programming = <>
-    <div className="muted small" style={{ marginBottom: 14 }}>{t('Lay your microcycle out as a repeating sequence of training and rest days. It projects onto the calendar and, while on, overrides the weekly schedule from the start date.')}</div>
+    <div className="muted small" style={{ marginBottom: 14 }}>{t('Lay your microcycle out as a repeating sequence of training and rest days. From the start date it is what Home, the calendar and the reminders show.')}</div>
 
     {/* Planned sets per muscle group for one microcycle, recounted on every sequence edit —
         the same bars as the Home/Stats volume card, fed by the plan instead of the log. */}
@@ -2004,12 +2003,6 @@ export function ProgramSheet({ close = () => {}, layout }) {
       {planned.total
         ? <VolumeGroupBars vol={planned} title={false} isPlan />
         : <div className="muted small">{t('Add routines to the sequence to see the sets it plans per muscle group.')}</div>}
-    </div>
-
-    <div className="list" style={{ marginBottom: 4 }}>
-      <Row title={t('Use programming')} subtitle={programActive(prog) ? t('Overriding the weekly schedule') : t('Weekly schedule is in use')}>
-        <Switch checked={!!(prog && prog.on)} onChange={setOn} disabled={!seq.length} />
-      </Row>
     </div>
   </>
 
