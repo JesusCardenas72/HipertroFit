@@ -17,12 +17,17 @@ describe('daysBetween', () => {
 })
 
 describe('programActive', () => {
-  it('needs on, a non-empty sequence and an anchor', () => {
+  it('needs a non-empty sequence and an anchor', () => {
     expect(programActive(prog)).toBe(true)
     expect(programActive(null)).toBe(false)
-    expect(programActive({ ...prog, on: false })).toBe(false)
     expect(programActive({ ...prog, seq: [] })).toBe(false)
     expect(programActive({ ...prog, anchor: '' })).toBe(false)
+  })
+  // The Plan tab is the only schedule editor: a sequence saved with the old switch off still
+  // drives the calendar instead of handing it to a weekly plan nothing edits any more.
+  it('ignores the retired on/off switch', () => {
+    expect(programActive({ ...prog, on: false })).toBe(true)
+    expect(programStep({ ...prog, on: false }, '2026-09-09')).toBe('push')
   })
 })
 
@@ -40,9 +45,9 @@ describe('programStep', () => {
     expect(programStep(prog, '2026-09-14')).toBe('push')   // day 7 → index 2
   })
 
-  it('does not speak for dates before the anchor, or when inactive', () => {
+  it('does not speak for dates before the anchor, or without a sequence', () => {
     expect(programStep(prog, '2026-09-06')).toBe(null)
-    expect(programStep({ ...prog, on: false }, '2026-09-07')).toBe(null)
+    expect(programStep({ ...prog, seq: [] }, '2026-09-07')).toBe(null)
     expect(programStep(null, '2026-09-07')).toBe(null)
   })
 })
@@ -67,8 +72,8 @@ describe('sessionsPerRound & emptyProgram', () => {
     expect(sessionsPerRound({ seq: [REST, REST] })).toBe(0)
     expect(sessionsPerRound(null)).toBe(0)
   })
-  it('starts off, empty, anchored to the given day', () => {
-    expect(emptyProgram('2026-09-07')).toEqual({ on: false, seq: [], anchor: '2026-09-07' })
+  it('starts empty, anchored to the given day', () => {
+    expect(emptyProgram('2026-09-07')).toEqual({ seq: [], anchor: '2026-09-07' })
   })
 })
 

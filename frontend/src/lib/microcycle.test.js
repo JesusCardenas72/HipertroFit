@@ -258,7 +258,7 @@ describe('closing a microcycle by hand', () => {
   it('works on a profile with no program at all', () => {
     const S = { workouts: [w('2026-01-02')], program: null, microcycleSessions: 6 }
     const p = closeMicrocycle(S, 'full-body', '2026-01-10')
-    expect(p).toMatchObject({ on: false, seq: [], strategy: 'full-body', cycleStart: '2026-01-10' })
+    expect(p).toMatchObject({ seq: [], strategy: 'full-body', cycleStart: '2026-01-10' })
     expect(microcycleLen({ ...S, program: p })).toBe(3)
   })
 
