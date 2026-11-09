@@ -37,7 +37,11 @@ android {
         debug {
             if (firmaProps.exists()) signingConfig signingConfigs.hipertrofit
         }
+        // Lo que se publica (scripts/publicar.mjs) es este build: no depurable, con la misma
+        // clave que los debug. Un APK depurable instalado desde fuera de Play lo bloquea
+        // Google Play Protect como «Aplicación dañina» (pasó con la 3.3.0).
         release {
+            if (firmaProps.exists()) signingConfig signingConfigs.hipertrofit
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

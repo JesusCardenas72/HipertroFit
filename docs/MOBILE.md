@@ -124,7 +124,8 @@ apksigner sign --ks my.keystore --ks-key-alias opengym --out openGym.apk aligned
 
 HipertroFit's APK updates itself. `cd frontend && npm run publicar`
 ([`scripts/publicar.mjs`](../frontend/scripts/publicar.mjs)) runs the tests, builds the mobile
-bundle and `assembleDebug`, and force-pushes the APK plus a `version.json` (versionCode, SHA-256)
+bundle and `assembleRelease` (signed with the project key; it refuses to publish a debuggable
+or test-only APK, which Google Play Protect blocks as "Harmful app"), and force-pushes the APK plus a `version.json` (versionCode, SHA-256)
 to the `gh-pages` branch, served at `updateUrl` from `frontend/package.json`. On launch and on
 every return to the foreground the app reads that file ([`lib/app-update.js`](../frontend/src/lib/app-update.js));
 a higher versionCode is downloaded in the background and checked

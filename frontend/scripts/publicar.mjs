@@ -105,10 +105,16 @@ run('npx cap sync android')
 // overridePathCheck: la ruta del proyecto lleva una «ú» (C:\Jesús\…) y el plugin de Android
 // se niega a compilar con caracteres no ASCII si no se le dice que siga.
 // Con ruta completa: cmd no siempre busca ejecutables en la carpeta actual.
-run(`"${path.join(ANDROID, WIN ? 'gradlew.bat' : 'gradlew')}" assembleDebug -Pandroid.overridePathCheck=true`, ANDROID)
+// assembleRelease, no assembleDebug: un APK de depuración (android:debuggable=true) instalado
+// fuera de Play lo bloquea Google Play Protect como «Aplicación dañina» (pasó con la 3.3.0).
+// La release va firmada con la misma clave (build.gradle), así que se instala encima sin más.
+run(`"${path.join(ANDROID, WIN ? 'gradlew.bat' : 'gradlew')}" assembleRelease -Pandroid.overridePathCheck=true`, ANDROID)
 
-const salida = path.join(ANDROID, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
-if (!fs.existsSync(salida)) fallar('No se ha generado android/app/build/outputs/apk/debug/app-debug.apk.')
+const salida = path.join(ANDROID, 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk')
+if (!fs.existsSync(salida)) {
+  fallar('No se ha generado android/app/build/outputs/apk/release/app-release.apk ' +
+    '(sin la clave de ~/.hipertrofit Gradle deja un app-release-unsigned.apk, que no sirve).')
+}
 
 // La firma tiene que ser la de siempre (ver CERTIFICADO), con apksigner del SDK.
 const sdk = env.ANDROID_HOME || env.ANDROID_SDK_ROOT || ''
@@ -129,6 +135,18 @@ const firmas = [...certificados.matchAll(/certificate SHA-256 digest: ([0-9a-f]{
 if (firmas.length !== 1 || firmas[0] !== CERTIFICADO) {
   fallar(`El APK está firmado con otra clave (${firmas.join(', ') || 'ninguna'}), no con la de HipertroFit ` +
     `(${CERTIFICADO}). El móvil lo rechazaría como «Conflicto con un paquete ya instalado». No se ha subido nada.`)
+}
+// Nunca un APK depurable ni «solo pruebas»: Play Protect lo bloquea en el móvil.
+let manifiestoApk
+try {
+  manifiestoApk = execFileSync(path.join(herramientas, ultima, WIN ? 'aapt2.exe' : 'aapt2'),
+    ['dump', 'badging', salida], { env, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] })
+} catch (e) {
+  fallar('aapt2 no ha podido leer el manifiesto del APK.')
+}
+if (/^application-debuggable/m.test(manifiestoApk) || /^testOnly/m.test(manifiestoApk)) {
+  fallar('El APK es depurable (android:debuggable) o de solo pruebas. Google Play Protect lo bloquearía ' +
+    'como «Aplicación dañina». Publica el build release. No se ha subido nada.')
 }
 const datos = fs.readFileSync(salida)
 const mb = datos.length / 1024 / 1024
