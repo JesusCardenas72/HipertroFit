@@ -22,9 +22,10 @@ import { VOLUME_GROUPS, VOLUME_TARGET, volumeStatus, volumeColor, targetOf, grou
 // With `planned` (plannedVolume, the live Home/Stats panel) each row also reads the log against
 // the plan: the empty part of the bar shows, striped, the sets the microcycle still plans, and
 // past the stripes the plain track left up to the optimal maximum — the gap the plan keeps below
-// the band's top. A plan that reaches past that top is painted red. The count says the effective
-// sets done, the planned figure and the share executed. Without it (the Programming sheet, where
-// `vol` already is the plan) the bars read as before.
+// the band's top. A plan that reaches past that top is painted red. The figures under the name read,
+// from the left, "done / planned · max N · pct%": the effective sets done, the sets planned, the
+// optimal maximum and the share executed; the sets still needed (or in excess) stay at the right.
+// Without it (the Programming sheet, where `vol` already is the plan) the bars read as before.
 //
 // With `isPlan` (the Programming sheet, where `vol` is the plan and nothing else counts) each row
 // shows the same figure, read from the plan alone so that it follows every edit of the sequence:
@@ -81,6 +82,7 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
         {plan && <span><i className="plan" />{t('planned, to do')}</span>}
         {plan && <span><i className="gap" />{t('up to the optimal max')}</span>}
       </div>
+      {plan && <div>{t('Under each group: effective sets done / planned · optimal maximum · share executed.')}</div>
       {plan && <div>{t('The full bar is the optimal maximum; the plan should stay below it.')}</div>}
       {gaps && <div>{t('The figure on the right is the sets a group still needs for its minimum, counting what is still planned.')}</div>}
       {gaps && <div>{t('A figure with a minus is the sets a group will end up past its optimal maximum.')}</div>}
@@ -102,13 +104,20 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
           <div className={'vol-bar-row' + (g.parent ? ' sub' : '') + (peek === g.key ? ' peek' : '')}>
             <span className="nm" title={t(g.name)} {...bindPeek(g.key, !!g.short && t(g.short) !== t(g.name))}>{t(peek === g.key ? g.name : (g.short || g.name))}</span>
             <span className="v">
-              <b style={{ color }}>{t(plan ? '{0} eff' : '{0} sts', fmtNum(v))}</b>
-              {plan && <span className="pct">{p.pct == null ? '—' : p.pct + '%'}</span>}
+              {/* Left: effective sets done / planned · optimal maximum · share executed. */}
               {plan
-                ? <span className="rng" style={p.over ? { color: 'var(--red)' } : undefined}>
-                  {t('plan {0} · max {1}', fmtNum(p.planned), band.max)}
+                ? <span className="fig">
+                  <b style={{ color }}>{fmtNum(v)}</b>
+                  <span className="of" style={p.over ? { color: 'var(--red)' } : undefined}>{' / ' + fmtNum(p.planned)}</span>
+                  <span className="sep">{' · '}</span>
+                  <span className="mx">{t('max {0}', band.max)}</span>
+                  <span className="sep">{' · '}</span>
+                  <span className="pct">{p.pct == null ? '—' : p.pct + '%'}</span>
                 </span>
-                : g.target && <span className="rng">{band.min}–{band.max}</span>}
+                : <>
+                  <b style={{ color }}>{t('{0} sts', fmtNum(v))}</b>
+                  {g.target && <span className="rng">{band.min}–{band.max}</span>}
+                </>}
               {gaps && (gaps[g.key].excess
                 ? <span className="need over">−{t('{0} sets', gaps[g.key].excess)}</span>
                 : gaps[g.key].min > 0 && (gaps[g.key].remaining

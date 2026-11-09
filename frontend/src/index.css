@@ -1257,7 +1257,10 @@ h4.sec{
 @keyframes vol-peek{from{clip-path:inset(0 30% 0 0)}to{clip-path:inset(0 0 0 0)}}
 @media (prefers-reduced-motion:reduce){.vol-bars .v{transition:none}.vol-bar-row.peek .nm{animation:none}}
 .vol-bars .v b{font-weight:600}
-.vol-bars .v .pct{margin-left:6px;color:var(--label);font-weight:600}
+/* with a plan: "done / planned · max N · pct%" as one line of text, cut at its end on a narrow phone */
+.vol-bars .v .fig{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.vol-bars .v .fig .sep,.vol-bars .v .fig .mx{color:var(--label-3)}
+.vol-bars .v .pct{color:var(--label);font-weight:600}
 .vol-bars .v .rng{margin-left:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:calc(11px * var(--fs));color:var(--label-3)}
 /* the sets a group still needs to reach its minimum, at the right of its figures: always shown
    whole, on a narrow phone it is the plan's figure beside it that gets cut */
