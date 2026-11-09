@@ -100,14 +100,15 @@ export const WORK_SEC = 40
  * the rests are the ones the session itself would start: the group's rest between rounds of a
  * superset or sets of an exercise (warm-ups on their own clock), then the break between
  * exercises — the same helpers the session's timer reads, with `opts` the app's settings
- * (`restSec`, `warmupRestSec`, `restExSec`) and the running workout's override (`workoutRestEx`).
+ * (`restSec`, `warmupRestSec`, `restExSec`) and the running workout's overrides (`workoutRestEx`,
+ * and `sessionRestSec` for the rest between sets — see session-rest.js).
  */
 export function estimateSessionSec(entries, units, opts = {}) {
   const list = Array.isArray(entries) ? entries : []
   const groups = Array.isArray(units) ? units : []
   let total = 0
   groups.forEach((unit, u) => {
-    const restSec = restSecFor(list, unit, opts.restSec)
+    const restSec = restSecFor(list, unit, opts.restSec, opts.sessionRestSec)
     const rounds = Math.max(0, ...unit.map(i => list[i]?.sets?.length || 0))
     for (let k = 0; k < rounds; k++) {
       let last = null

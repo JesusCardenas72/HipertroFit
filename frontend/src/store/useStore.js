@@ -35,6 +35,10 @@ export const DEF = {
   // postponed, and the last reduction the user chose. See lib/mesocycle.js.
   meso: null,
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
+  // Sessions left paused instead of finished — each one the running session as it was, plus
+  // `pausedAt`. Resumable while their microcycle runs; not counted until finished. See
+  // lib/paused-workout.js.
+  paused: [],
   // How the active workout draws its sets: 'drum' (one at a time, full size — components/SetDrum)
   // or 'list' (every set of the exercise down one card).
   setView: 'drum',

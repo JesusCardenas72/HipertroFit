@@ -6,6 +6,8 @@ import { todayISO } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
 import { mesoState } from '../lib/mesocycle.js'
+import { pausedFor } from '../lib/paused-workout.js'
+import { resumePausedWorkout } from '../sheets.jsx'
 
 export default function TabBar({ onStart }) {
   const nav = useNavigate()
@@ -23,9 +25,13 @@ export default function TabBar({ onStart }) {
   const deload = mesoState(S).deload
   const on = k => cur === k || (cur === 'history' && k === 'stats') || (cur === 'settings' && k === 'home')
 
+  // Today's routine left paused in this microcycle: the button resumes it, with the pause glyph.
+  const todayR = S.active ? null : effectiveRoutine(S, todayISO())
+  const paused = todayR ? pausedFor(S, todayR.id) : null
   const startWorkout = () => {
     if (!S.active) {
-      const r = effectiveRoutine(S, todayISO())
+      if (paused) { resumePausedWorkout(paused.id); return }
+      const r = todayR
       if (r && r.ex.length) { onStart(r.id); return }
     } else useUI.getState().resumeWorkout()
     nav('/workout')
@@ -42,8 +48,8 @@ export default function TabBar({ onStart }) {
       <Tab k="home" icon="house" to="/home" label={t('Home')} mark={deload} />
       <Tab k="plan" icon="calendar" to="/plan" label={t('Plan')} />
       <button className={'start' + (S.active ? ' rec' : '')} onClick={startWorkout}>
-        <span className="cir"><Icon name={S.active ? 'play' : 'dumbbell'} /></span>
-        <span>{S.active ? t('Resume') : t('Start')}</span>
+        <span className="cir"><Icon name={S.active ? 'play' : paused ? 'pause' : 'dumbbell'} /></span>
+        <span>{S.active || paused ? t('Resume') : t('Start')}</span>
       </button>
       <Tab k="stats" icon="chart" to="/stats" label={t('Stats')} mark={deload} />
       <Tab k="library" icon="list" to="/library" label={t('Exercises')} />

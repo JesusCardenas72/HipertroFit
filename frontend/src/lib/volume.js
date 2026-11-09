@@ -27,6 +27,8 @@ import { volumeMusclesOf, LATS, REAR_DELTS } from './muscles.js'
 import { EXIDX } from './exercises.js'
 import { rirOf } from './effort.js'
 import { isWarmupRow } from './workout-model.js'
+import { resumableOf } from './paused-workout.js'
+import { todayISO } from './format.js'
 
 // This project's volume threshold. Distinct from effort.js HARD_RIR (3), which labels a
 // set "hard" for the muscle map; this is the product decision for what counts as volume.
@@ -178,11 +180,23 @@ export function groupVolume(workouts, pick = isEffectiveSet) {
  * since the block opened (lib/microcycle.js), off-plan sessions included. `sessions` says
  * how many that is, so the UI can show the block filling up rather than implying the count
  * is final.
+ *
+ * A session left paused in the block (lib/paused-workout.js) adds the sets already done in it:
+ * they were trained, whether or not the session is ever finished. It is not a session of the
+ * block yet, so `sessions` does not count it.
  */
-export function cycleVolume(S) {
+export function cycleVolume(S, today = todayISO()) {
   const win = cycleWorkouts(S)
   // Loose extra work adds its sets but is not a session of the block.
-  return { ...groupVolume(win), sessions: win.filter(w => !isExtra(w)).length }
+  return { ...groupVolume([...win, ...resumableOf(S, today)]), sessions: win.filter(w => !isExtra(w)).length }
+}
+
+// Credit the work sets of a paused session still to do — its plan from here on.
+function creditRemaining(groups, session) {
+  for (const e of session.entries || []) {
+    const n = (e.sets || []).filter(x => !x.done && !isWarmupRow(x)).length
+    if (n) creditSet(groups, entryMuscles(e), n)
+  }
 }
 
 // Credit every work set a routine configures (warm-ups never count); returns how many that is.
@@ -227,14 +241,21 @@ export function plannedVolume(S) {
  * what was done in that session — more or less than planned — replaces its plan. Nothing is ahead
  * once the block is complete, nor once its scheduled workout days are over: from then on the
  * calendar has no more sessions for it.
+ *
+ * A step whose routine is paused is half trained: its done sets already count (cycleVolume), so
+ * only the sets left in the paused session are ahead, not the routine's whole plan again.
  */
-export function plannedAhead(S, today) {
+export function plannedAhead(S, today = todayISO()) {
   const groups = {}
   for (const g of VOLUME_GROUPS) groups[g.key] = 0
   if (workoutDaysOver(S, today)) return { groups }
   const routines = (S && S.routines) || []
+  const paused = resumableOf(S, today).filter(p => p.routineId)
   for (const step of cycleStrip(S)) {
-    if (step.state !== 'done') creditRoutine(groups, routines.find(r => r.id === step.routineId))
+    if (step.state === 'done') continue
+    const k = paused.findIndex(p => p.routineId === step.routineId)
+    if (k >= 0) creditRemaining(groups, paused.splice(k, 1)[0])
+    else creditRoutine(groups, routines.find(r => r.id === step.routineId))
   }
   return { groups }
 }

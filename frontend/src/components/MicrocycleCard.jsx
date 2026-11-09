@@ -8,7 +8,8 @@ import { openNextCycle, closeMicrocycleSheet } from './MicrocycleActions.jsx'
 import { DeloadBadge, DeloadStatus } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { dayOverrideSheet, startFlow, loadStarterPlan } from '../sheets.jsx'
+import { dayOverrideSheet, startFlow, loadStarterPlan, resumePausedWorkout } from '../sheets.jsx'
+import { resumableOf, pausedFor, pausedOn } from '../lib/paused-workout.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
 import Icon from './Icon.jsx'
@@ -23,7 +24,7 @@ const STRATEGY_NAME = Object.fromEntries(STRATEGIES.map(s => [s.key, s.name]))
 // routine (or rest) of each day; a day already gone by without a session shows faded. Where the block stands in sessions is the "Session n of m" line under it, since
 // sessions are what complete a microcycle; complete, it runs on through its rest days and, once
 // they are over, asks to open the next one (lib/microcycle.js). Tapping a day opens its
-// reschedule sheet.
+// reschedule sheet — or, on a day with a session left paused (the pause glyph), resumes it.
 export default function MicrocycleCard() {
   const S = useStore(s => s.S)
   const nav = useNavigate()
@@ -43,8 +44,12 @@ export default function MicrocycleCard() {
   const next = planned || nextSessionRoutine(S)
   // Loose extra work logged today is not today's session — the row keeps offering it.
   const doneToday = S.workouts.filter(w => w.d === today && !isExtra(w)).at(-1) || null
+  // A session left paused in this microcycle is what today offers first: the one of today's
+  // routine when there is one, else the last one paused (lib/paused-workout.js).
+  const pausedNow = S.active ? null : (next && pausedFor(S, next.id, today)) || resumableOf(S, today)[0] || null
   const onToday = () => {
     if (S.active) { useUI.getState().resumeWorkout(); nav('/workout') }
+    else if (pausedNow) resumePausedWorkout(pausedNow.id)
     else if (next) startFlow(next.id)
     else dayOverrideSheet(today)
   }
@@ -74,16 +79,19 @@ export default function MicrocycleCard() {
       {days.map(d => {
         // A day reads as a deload when it was trained as one, or — not trained yet — when this
         // microcycle is the deload.
+        // A session left paused on this day, still resumable: two bars in place of its glyph.
+        const paused = !d.done && pausedOn(S, d.iso, today)
         const dl = d.done ? isDeloadWorkout(d.done) : meso.deload && !!d.r
-        const label = d.done ? (d.done.name || t('Workout done')) : d.r ? d.r.name : t('Rest day')
+        const label = d.done ? (d.done.name || t('Workout done')) : paused ? t('{0} — paused', paused.name) : d.r ? d.r.name : t('Rest day')
         // A day already gone by without a session is history, not a plan: shown faded.
-        const past = d.iso < today && !d.done
-        return <button key={d.iso} className={'prog-day' + (d.iso === today ? ' today' : '') + (past ? ' past' : '') + (dl ? ' deload' : '')}
-          title={dl ? label + ' · ' + t('Deload') : label} onClick={() => dayOverrideSheet(d.iso)}>
+        const past = d.iso < today && !d.done && !paused
+        return <button key={d.iso} className={'prog-day' + (d.iso === today ? ' today' : '') + (past ? ' past' : '') + (paused ? ' paused' : '') + (dl ? ' deload' : '')}
+          title={dl ? label + ' · ' + t('Deload') : label} aria-label={paused ? label : undefined}
+          onClick={() => paused ? resumePausedWorkout(paused.id) : dayOverrideSheet(d.iso)}>
           <span className="wd">{t(DAYS[d.wd])}</span>
           <span className="dn">{d.dn}</span>
-          <span className="lrow-i sm" style={d.done ? { background: 'var(--surface-3)', color: 'var(--green)' } : d.r ? null : { background: 'var(--surface-3)' }}>
-            <Icon name={d.done ? 'checkCircle' : d.r ? glyphOf(d.r.emoji) : 'moon'} />
+          <span className="lrow-i sm" style={d.done ? { background: 'var(--surface-3)', color: 'var(--green)' } : paused ? { background: 'var(--surface-3)', color: 'var(--orange)' } : d.r ? null : { background: 'var(--surface-3)' }}>
+            <Icon name={d.done ? 'checkCircle' : paused ? 'pause' : d.r ? glyphOf(d.r.emoji) : 'moon'} />
           </span>
         </button>
       })}
@@ -101,18 +109,19 @@ export default function MicrocycleCard() {
     {/* Once today's session is logged the row stops asking for it — the strip already knows. */}
     <div className="today-row" {...tappable(onToday)}>
       <div className="row" style={{ gap: 9, minWidth: 0 }}>
-        <span className="lrow-i" style={{ background: S.active ? 'var(--orange)' : doneToday ? 'var(--surface-3)' : next ? 'var(--acc)' : 'var(--surface-3)' }}>
-          <Icon name={S.active ? 'timer' : doneToday ? 'checkCircle' : next ? glyphOf(next.emoji) : 'moon'}
-            style={doneToday && !S.active ? { color: 'var(--green)' } : undefined} />
+        <span className="lrow-i" style={{ background: S.active || pausedNow ? 'var(--orange)' : doneToday ? 'var(--surface-3)' : next ? 'var(--acc)' : 'var(--surface-3)' }}>
+          <Icon name={S.active ? 'timer' : pausedNow ? 'pause' : doneToday ? 'checkCircle' : next ? glyphOf(next.emoji) : 'moon'}
+            style={doneToday && !S.active && !pausedNow ? { color: 'var(--green)' } : undefined} />
         </span>
         <div style={{ minWidth: 0 }}>
           <div className="lbl2">{t('Today')}</div>
           <div className="ttl">{S.active ? t('{0} — in progress', S.active.name)
+            : pausedNow ? t('{0} — paused', pausedNow.name)
             : doneToday ? (doneToday.name ? t('{0} — done', doneToday.name) : t('Workout done'))
-            : next ? next.name : t('Rest day')}{!planned && next && !doneToday && !S.active ? ' · ' + t('next in sequence') : ''}</div>
+            : next ? next.name : t('Rest day')}{!planned && next && !doneToday && !S.active && !pausedNow ? ' · ' + t('next in sequence') : ''}</div>
         </div>
       </div>
-      {S.active ? <span className="tag" style={{ color: 'var(--orange)', background: 'color-mix(in srgb,var(--orange) 16%,transparent)' }}>{t('Resume')}</span>
+      {S.active || pausedNow ? <span className="tag" style={{ color: 'var(--orange)', background: 'color-mix(in srgb,var(--orange) 16%,transparent)' }}>{t('Resume')}</span>
         : doneToday ? <span className="tag" style={{ color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 16%,transparent)' }}>{t('Done')}</span>
         : next && meso.deload ? <DeloadBadge>{t('Start deload')}</DeloadBadge>
         : next ? <span className="tag acc">{t('Start')}</span>

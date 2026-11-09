@@ -6,6 +6,7 @@ import { useUI } from '../store/useUI.js'
 import { STRATEGIES, cyclePosition, strategyOf, trainingSteps, microcycleLen, cycleEndOf } from '../lib/microcycle.js'
 import { closeCycle, askCycleEnd } from '../lib/cycle-history.js'
 import { mesoState, carriedBase } from '../lib/mesocycle.js'
+import { resumableOf } from '../lib/paused-workout.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { deloadControlSheet } from './Deload.jsx'
 import { programSheet } from '../sheets.jsx'
@@ -57,6 +58,9 @@ function CloseMicrocycle({ close }) {
         {pick === x.key && <Icon name="check" style={{ color: 'var(--acc)' }} />}
       </div>)}
     </div>
+    {resumableOf(S).length > 0 && <div className="small row" style={{ gap: 6, color: 'var(--orange)', marginBottom: 14 }}>
+      <Icon name="pause" />{t('Its paused workouts can no longer be resumed once it closes.')}
+    </div>}
     <Button variant="primary" icon="flag" onClick={confirm}>{t('Close and start new microcycle')}</Button>
     <div style={{ height: 8 }} />
     <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>

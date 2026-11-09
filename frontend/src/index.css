@@ -560,6 +560,8 @@ h4.sec{
 /* start a routine without leaving the Plan */
 .plan-start{width:36px;height:36px;flex:none;border-radius:50%;background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc)}
 .plan-start.rec{background:var(--acc);color:var(--on-acc)}
+/* A routine left paused in this microcycle (lib/paused-workout.js): its button resumes it. */
+.plan-start.paused{background:color-mix(in srgb,var(--orange) 18%,transparent);color:var(--orange)}
 /* the plan editor's rows ride springs like the dock's thumbnails (components/routineMagnets.js),
    which own every transform — so no CSS transition on them */
 .routine-list{position:relative;isolation:isolate}
@@ -1309,6 +1311,8 @@ h4.sec{
 .prog-prev.week7 .prog-day{flex:1 1 0;min-width:0;padding:7px 2px 6px}
 .prog-day.deload .wd,.prog-day.deload .dn{color:var(--deload)}
 .prog-day.past{opacity:.45}
+/* A day with a session left paused: the pause glyph, ringed, since tapping it resumes the session. */
+.prog-day.paused .lrow-i.sm{box-shadow:inset 0 0 0 1.5px var(--orange)}
 .prog-day.deload.today{box-shadow:inset 0 0 0 1.5px var(--deload)}
 
 /* --- stat tiles --- */

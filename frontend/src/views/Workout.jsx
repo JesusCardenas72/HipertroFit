@@ -12,10 +12,12 @@ import { dateLocale } from '../lib/i18n-core.js'
 import { api } from '../lib/api.js'
 import { insertionAfterEntry, insertionIndexAfterCurrentUnit, markResumeAt, nextUnfinishedUnit, resumeEntryIdx, setProgressHighWater, supersetFlowStep, restAfterSet, restOnRecheck, restSecFor, restSecAfterSet, unitEntryIdx } from '../lib/supersetFlow.js'
 import { exerciseRestChoice, restBetweenExercisesSec, restExLabel, settingChoice, REST_EX_PRESETS } from '../lib/rest-between.js'
+import { REST_SET_PRESETS, isRestSec, sessionRestFor, withoutUnitPicks, pickUnitRest, pickSessionRest, sessionHasRestPicks } from '../lib/session-rest.js'
 import Media, { Thumb } from '../components/Media.jsx'
-import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, swapActiveWorkoutExercise } from '../sheets.jsx'
+import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, swapActiveWorkoutExercise, pauseWorkout, resumePausedWorkout, discardPausedWorkout } from '../sheets.jsx'
+import { resumableOf } from '../lib/paused-workout.js'
 import Icon from '../components/Icon.jsx'
-import { Button, Check, NumberField, Segmented, SelectSheet } from '../components/ui.jsx'
+import { Button, Check, NumberField, Segmented, SelectRow, SelectSheet } from '../components/ui.jsx'
 import { nextPrescription, applyPrescription, loadScaleFor } from '../lib/progression.js'
 import { ladderOf, stepLoad, snapLoad, stepOf } from '../lib/load-scale.js'
 import { progressionGuidance } from '../lib/progression-copy.js'
@@ -59,9 +61,19 @@ function StartChooser() {
   const todayR = effectiveRoutine(S, todayISO())
   const todayOvr = S.dayPlan[todayISO()] !== undefined
   const others = S.routines.filter(r => r !== todayR)
+  // Sessions left paused in this microcycle come first: they are already under way.
+  const paused = resumableOf(S)
+  const resumeTag = { color: 'var(--orange)', background: 'color-mix(in srgb,var(--orange) 16%,transparent)' }
   return <div className="narrow">
     <div className="hdr"><div><h1>{t('Start workout')}</h1><div className="sub">{t(DAYN[new Date().getDay()])} — {todayR ? t('today is {0}', todayR.name) : t('rest day, but no one’s stopping you')}</div></div></div>
     <DeloadStatus />
+    {paused.length > 0 && <><h4 className="sec">{t('Paused')}</h4>
+      <div className="list" data-testid="paused-list">{paused.map(p => <div key={p.id} className="item" onClick={() => resumePausedWorkout(p.id)}>
+        <span className="lrow-i" style={{ background: 'var(--orange)' }}><Icon name="pause" /></span>
+        <div className="grow"><div className="tt">{p.name}</div>
+          <div className="ss">{fmtDate(p.d, true)} · {t('{0} sets', setsDoneActive(p) + '/' + p.entries.reduce((n, e) => n + e.sets.length, 0))}</div></div>
+        <button className="iconbtn" aria-label={t('Discard')} onClick={e => { e.stopPropagation(); discardPausedWorkout(p) }}><Icon name="trash" /></button>
+        <span className="tag" style={resumeTag}>{t('Resume')}</span></div>)}</div></>}
     {todayR && <div className="card" style={{ borderColor: 'var(--acc)' }}>
       <h2 className="accent">{t("Today's plan")}{todayOvr ? ' · ' + t('rescheduled') : ''}</h2>
       <div className="row between" style={{ marginBottom: 12 }}>
@@ -298,10 +310,11 @@ function ExerciseBlock({ entryIdx, compact, drum, table, aims = false, nameless,
         style={entry.note ? { color: 'var(--acc)' } : undefined}
         onClick={() => exerciseNoteSheet(entryIdx)}><Icon name="pencil" /></button>
       <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
-      {/* The break after this exercise, before the next one — for this workout only. */}
+      {/* The rest between this exercise's sets (a superset's: between its rounds) — for this
+          workout only. Lit while it has a rest of its own. See lib/session-rest.js. */}
       {!S.active.backfill && <button type="button" className="iconbtn" data-testid="ex-rest"
-        aria-label={t('Rest after this exercise')} title={t('Rest after this exercise')}
-        style={entry.restExSec != null ? { color: 'var(--acc)' } : undefined}
+        aria-label={t('Rest between sets')} title={t('Rest between sets')}
+        style={isRestSec(entry.restSec) ? { color: 'var(--acc)' } : undefined}
         onClick={() => exerciseRestSheet(entryIdx)}><Icon name="timer" /></button>}
       {/* How this exercise has gone so far: its progress curve, as on Stats. */}
       <button type="button" className="iconbtn" aria-label={t('Exercise progress')} title={t('Exercise progress')}
@@ -455,33 +468,81 @@ function ExerciseBlock({ entryIdx, compact, drum, table, aims = false, nameless,
 
 const DOUBLE_TAP_MS = 350
 
-// Two taps on the same thing (`key`) within DOUBLE_TAP_MS: true on the second.
-// The break after one exercise of the running workout: 'workout' follows the workout's own
-// choice (and through it Settings), anything else overrides it for this exercise only.
+// The rest between the sets of one exercise of the running workout — in a superset, between its
+// rounds, for every member of it — for this workout only. 'session' drops it, back to what the
+// session gives the exercise without it: the header's pick, else the routine's rest, else
+// Settings. Kept in the routine only if you say so once the session is filed (session-rest.js).
 function exerciseRestSheet(entryIdx) {
   const { S, update } = useStore.getState()
   const A = S.active
   const entry = A?.entries[entryIdx]
   if (!entry) return
-  const workoutChoice = A.restExSec === 'sets' || typeof A.restExSec === 'number' ? A.restExSec : settingChoice(S.restExSec)
-  const own = entry.restExSec === 'sets' || typeof entry.restExSec === 'number' ? entry.restExSec : null
+  const unit = supersetUnits(A.entries).find(u => u.includes(entryIdx)) || [entryIdx]
+  const own = sessionRestFor(A.entries, unit, null)
+  const without = restSecFor(withoutUnitPicks(A.entries, unit), unit, S.restSec, A.restSec)
   useUI.getState().openSheet(close => <SelectSheet
-    title={t('Rest after {0}', exerciseNameFor(exOr(entry.id)))}
-    value={own ?? 'workout'}
+    title={unit.length > 1 ? t('Rest between rounds of the superset (this workout)')
+      : t('Rest between sets of {0} (this workout)', exerciseNameFor(exOr(entry.id)))}
+    value={own ?? 'session'}
     options={[
-      { value: 'workout', label: t('This workout setting'), subtitle: restExLabel(workoutChoice, t) },
-      { value: 'sets', label: restExLabel('sets', t) },
-      { value: 0, label: restExLabel(0, t) },
-      ...REST_EX_PRESETS.map(v => ({ value: v, label: restExLabel(v, t) })),
+      { value: 'session', label: isRestSec(A.restSec) ? t('This workout setting') : t('As planned'), subtitle: restExLabel(without, t) },
+      ...REST_SET_PRESETS.map(v => ({ value: v, label: restExLabel(v, t) })),
     ]}
-    onChange={v => update(s => {
-      const e = s.active?.entries[entryIdx]
-      if (!e) return
-      if (v === 'workout') delete e.restExSec
-      else e.restExSec = v
-    })}
+    onChange={v => update(s => { if (s.active) pickUnitRest(s.active, unit, v === 'session' ? null : v) })}
     close={close} />)
 }
+
+// The rests of the whole running workout, from its header: between sets for every exercise at
+// once (it replaces the ones picked on an exercise — the last choice holds), and between
+// exercises. This workout only: the routine and Settings stay as they are, and when the session
+// is filed the rests between sets it changed can be kept for the routine (session-rest.js).
+function SessionRestSheet({ close }) {
+  const S = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  const A = S.active
+  useEffect(() => { if (!A) close() }, [!A])
+  if (!A) return null
+  const own = A.entries.filter(e => isRestSec(e.restSec)).length
+  const restEx = A.restExSec === 'sets' || typeof A.restExSec === 'number' ? A.restExSec : null
+  return <>
+    <h3>{t('Rests (this workout)')}</h3>
+    <div className="muted small" style={{ marginBottom: 12, lineHeight: 1.45 }}>
+      {t('Only for this session. When you finish it you can keep the rests between sets for the next sessions of this routine.')}
+    </div>
+    <div className="sect-b">
+      <SelectRow icon="timer" title={t('Between sets')} sheetTitle={t('Rest between sets (this workout)')}
+        value={isRestSec(A.restSec) ? A.restSec : 'plan'}
+        options={[
+          { value: 'plan', label: t('As planned'), subtitle: t('Each exercise’s rest from the routine, else Settings ({0})', restExLabel(S.restSec > 0 ? S.restSec : 0, t)) },
+          ...REST_SET_PRESETS.map(v => ({ value: v, label: restExLabel(v, t) })),
+        ]}
+        onChange={v => update(s => { if (s.active) pickSessionRest(s.active, v === 'plan' ? null : v) })} />
+      {supersetUnits(A.entries).length > 1 && <SelectRow icon="cornerDownRight" title={t('Between exercises')}
+        sheetTitle={t('Rest between exercises (this workout)')}
+        value={restEx ?? 'app'}
+        options={[
+          { value: 'app', label: t('App setting'), subtitle: restExLabel(settingChoice(S.restExSec), t) },
+          { value: 'sets', label: restExLabel('sets', t) },
+          { value: 0, label: restExLabel(0, t) },
+          ...REST_EX_PRESETS.map(v => ({ value: v, label: restExLabel(v, t) })),
+        ]}
+        onChange={v => update(s => {
+          if (!s.active) return
+          // As between sets, the session's choice is for every exercise: one an exercise of a
+          // session from before this sheet kept for itself goes with it.
+          s.active.entries.forEach(e => { delete e.restExSec })
+          if (v === 'app') delete s.active.restExSec
+          else s.active.restExSec = v
+        })} />}
+    </div>
+    {own > 0 && <div className="muted small" style={{ marginTop: 8 }}>
+      {t(own === 1 ? '1 exercise has a rest of its own; choosing one here replaces it.' : '{0} exercises have a rest of their own; choosing one here replaces it.', own)}
+    </div>}
+    <div style={{ height: 8 }} />
+  </>
+}
+
+// Two taps on the same thing (`key`) within DOUBLE_TAP_MS: true on the second.
 
 function useDoubleTap() {
   const last = useRef({ key: null, at: 0 })
@@ -1505,7 +1566,7 @@ function ActiveWorkout() {
       // The rest this set has earned: the exercise's own restSec when it set one, the global
       // timer when it did not, and the longest of the group's across a superset (issue #10).
       // Resolved once here so every branch below times the same break.
-      const workRestSec = restSecFor(fresh.entries, freshUnit || [idx], S.restSec)
+      const workRestSec = restSecFor(fresh.entries, freshUnit || [idx], S.restSec, fresh.restSec)
       // A warm-up set rests on its own clock (Settings ▸ Warm-up rest, none by default).
       const restSec = restSecAfterSet(fresh.entries[idx].sets[i], workRestSec, S.warmupRestSec)
       // Once the exercise (or superset) is finished, the break before the next one can have its
@@ -1595,24 +1656,9 @@ function ActiveWorkout() {
       onKind={(si, k) => setKind(idx, si, k)} onRemoveSetAt={si => removeSetAt(idx, si)} />
   ))
 
-  // This session's rest between exercises: 'app' follows Settings, anything else overrides it
-  // for this workout only (S.active.restExSec).
-  const workoutRestEx = A.restExSec === 'sets' || typeof A.restExSec === 'number' ? A.restExSec : null
-  const openRestExPicker = () => useUI.getState().openSheet(close => <SelectSheet
-    title={t('Rest between exercises (this workout)')}
-    value={workoutRestEx ?? 'app'}
-    options={[
-      { value: 'app', label: t('App setting'), subtitle: restExLabel(settingChoice(S.restExSec), t) },
-      { value: 'sets', label: restExLabel('sets', t) },
-      { value: 0, label: restExLabel(0, t) },
-      ...REST_EX_PRESETS.map(v => ({ value: v, label: restExLabel(v, t) })),
-    ]}
-    onChange={v => update(s => {
-      if (!s.active) return
-      if (v === 'app') delete s.active.restExSec
-      else s.active.restExSec = v
-    })}
-    close={close} />)
+  // The session's own rests (between sets for every exercise, between exercises), from the header.
+  const openSessionRest = () => useUI.getState().openSheet(close => <SessionRestSheet close={close} />)
+  const restPicked = sessionHasRestPicks(A) || A.restExSec === 'sets' || typeof A.restExSec === 'number'
 
   // Live-presence heartbeat so the admin dashboard can show who's training now. Signed-in only —
   // guests have no server session. Reads fresh state each tick so progress stays current.
@@ -1657,7 +1703,7 @@ function ActiveWorkout() {
   // How long the session should take in all, beside the clock — only where the view asks for
   // it, and never for a past workout, which has no timers.
   const estSec = sessionView && !A.backfill ? estimateSessionSec(A.entries, units, {
-    restSec: S.restSec, warmupRestSec: S.warmupRestSec, restExSec: S.restExSec, workoutRestEx: A.restExSec,
+    restSec: S.restSec, warmupRestSec: S.warmupRestSec, restExSec: S.restExSec, workoutRestEx: A.restExSec, sessionRestSec: A.restSec,
   }) : 0
   // The toggle walks drum → list → table → session → drum and names the view it leads to.
   const nextView = SET_VIEWS[(SET_VIEWS.indexOf(S.setView) + 1) % SET_VIEWS.length] || 'drum'
@@ -1842,7 +1888,13 @@ function ActiveWorkout() {
           <div className="wtop-name"><span>{A.name}</span><Icon name={slimTop ? 'chevronDown' : 'chevronUp'} /></div>
           <div className="sub">{A.backfill ? fmtDate(A.d, true) : <Elapsed start={A.start} />}{estSec > 0 && <> / {t('~{0} min', Math.round(estSec / 60))}</>} ·{t('{0} sets', done + '/' + total)}{slimTop && !!A.entries.length && <> · {position}</>}</div>
         </button>
+        {/* Pause sets the session aside unfiled, to be resumed within this microcycle; a past
+            workout being logged has no clock to stop. */}
+        <div className="row" style={{ gap: 2, flex: 'none' }}>
+        {!A.backfill && <button className="iconbtn" style={{ color: 'var(--orange)' }} aria-label={t('Pause')} title={t('Pause')}
+          onClick={pauseWorkout}><Icon name="pause" /></button>}
         <button className="iconbtn" style={{ color: 'var(--acc)' }} aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
+        </div>
       </div>
       <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
       {/* The running order at a glance: tap a thumbnail to jump, press and hold one to drag its
@@ -1867,11 +1919,12 @@ function ActiveWorkout() {
           aria-label={A.note ? t('Edit session note') : t('Add session note')} onClick={sessionNoteSheet}>
           <Icon name="pencil" />{t('Note')}
         </button>
-        {/* The break before the next exercise, adjustable for this session without leaving it.
-            Nothing to adjust on a past workout (no timers) or with a single exercise. */}
-        {!A.backfill && units.length > 1 && <button className="giftoggle inline" data-testid="rest-ex"
-          style={{ marginLeft: 'auto' }} onClick={openRestExPicker}>
-          <Icon name="timer" /><span>{t('Between exercises')}</span>
+        {/* Every rest of this session, adjustable without leaving it: between sets for all its
+            exercises, and between exercises. Lit while the session has changed one. Nothing to
+            adjust on a past workout (no timers). */}
+        {!A.backfill && <button className={'giftoggle inline' + (restPicked ? '' : ' plain')} data-testid="rest-ex"
+          style={{ marginLeft: 'auto' }} aria-label={t('Rests (this workout)')} onClick={openSessionRest}>
+          <Icon name="timer" /><span>{t('Rests')}</span>
         </button>}
       </div>}
       </>}

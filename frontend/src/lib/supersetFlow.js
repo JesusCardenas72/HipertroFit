@@ -1,6 +1,7 @@
 // Pure decisions for the active-workout superset flow. Keeping these independent of React and
 // the stores makes the uneven-round and re-check rules explicit and directly testable.
 import { isWarmupRow } from './workout-model.js'
+import { sessionRestFor } from './session-rest.js'
 
 const hasWork = (entries, idx) => !!entries[idx]?.sets?.some(set => !set.done)
 const hasWarmupLeft = (entries, idx) => !!entries[idx]?.sets?.some(set => !set.done && isWarmupRow(set))
@@ -98,10 +99,15 @@ export function restOnRecheck({ timerRunning, unitDone, lastUnit, runningKind = 
  * `defaultRestSec` of 0 is the rest timer turned off (v1.2.11). That silences the members that
  * have no rest of their own, but an exercise that explicitly asks for one still gets it — the
  * setting is a default, and this field overrides the default.
+ *
+ * A rest picked during the session comes before all of that (session-rest.js): the unit's own
+ * pick (`entry.restSec`), else the session's (`sessionRestSec`, S.active.restSec).
  */
-export function restSecFor(entries, unit, defaultRestSec) {
+export function restSecFor(entries, unit, defaultRestSec, sessionRestSec) {
   const fallback = defaultRestSec > 0 ? defaultRestSec : 0
   const idxs = Array.isArray(unit) && unit.length ? unit : []
+  const picked = sessionRestFor(entries, idxs, sessionRestSec)
+  if (picked != null) return picked
   if (!idxs.length) return fallback
   return idxs.reduce((longest, idx) => {
     const own = entries?.[idx]?.target?.restSec

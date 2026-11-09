@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { t } from '../lib/i18n.js'
 import { loadOfWorkouts, MUSCLE_NAME } from '../lib/muscles.js'
 import { cyclePosition, workoutDaysOver } from '../lib/microcycle.js'
+import { resumableOf } from '../lib/paused-workout.js'
 import { cycleVolume, groupVolume, plannedVolume, plannedAhead } from '../lib/volume.js'
 import BodyMap, { BodyMapLegend } from './BodyMap.jsx'
 import VolumeGroupBars from './VolumeGroupBars.jsx'
@@ -22,7 +23,9 @@ import { logExtraSheet } from '../sheets.jsx'
 export default function MuscleVolumeCard({ S }) {
   const [sel, setSel] = useState(null)
   const [cycle, pick, list] = useCycleChoice(S)
-  const win = cycle.workouts
+  // The running block's sessions plus the sets done in any left paused in it: trained work all
+  // the same (lib/paused-workout.js), on the muscle map as on the bars.
+  const win = cycle.current ? [...cycle.workouts, ...resumableOf(S)] : cycle.workouts
   const pos = cyclePosition(S)
   const vol = cycle.current ? cycleVolume(S) : { ...groupVolume(win), sessions: cycle.sessions }
   const planned = cycle.current ? plannedVolume(S) : null

@@ -5,6 +5,7 @@ import { daysBetween } from '../lib/program.js'
 import { isExtra } from '../lib/microcycle.js'
 import { cycleHistory } from '../lib/cycle-history.js'
 import { groupVolume } from '../lib/volume.js'
+import { resumableOf } from '../lib/paused-workout.js'
 import { useUI } from '../store/useUI.js'
 import { DeloadBadge } from './Deload.jsx'
 import Icon from './Icon.jsx'
@@ -16,7 +17,9 @@ import Icon from './Icon.jsx'
 /** [the microcycle shown, choose(id | null for the running one), every microcycle newest first]. */
 export function useCycleChoice(S) {
   const [id, setId] = useState(null)
-  const list = useMemo(() => cycleHistory(S), [S])
+  // The running one also carries the sessions left paused in it: their done sets are trained
+  // work and count in its figures (lib/paused-workout.js).
+  const list = useMemo(() => cycleHistory(S).map(c => (c.current ? { ...c, paused: resumableOf(S) } : c)), [S])
   const cycle = (id != null && list.find(c => c.id === id && !c.current)) || list[0]
   return [cycle, setId, list]
 }
@@ -26,7 +29,7 @@ export const cycleDates = c => fmtDate(c.start) + ' – ' + (c.current ? t('toda
 
 /** The figures that sum a microcycle up: sessions, effective sets and days. */
 export function cycleStats(c) {
-  const vol = groupVolume(c.workouts)
+  const vol = groupVolume([...c.workouts, ...(c.paused || [])])
   const days = daysBetween(c.start, c.current ? todayISO() : c.end) + 1
   return { sessions: c.workouts.filter(w => !isExtra(w)).length, planned: c.sessions, len: c.len, effective: vol.effective, days: Math.max(1, days) }
 }

@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => {
     toast: vi.fn(),
     scrollCalls: [],
     swapActiveWorkoutExercise: vi.fn(),
+    pauseWorkout: vi.fn(),
     sheet: null,
   }
   state.openSheet = vi.fn((render, opts) => { state.sheet = { render, opts }; return { close: vi.fn() } })
@@ -80,6 +81,9 @@ vi.mock('../sheets.jsx', () => ({
   // sessionNoteSheet during render, so a missing export is a render crash, not a no-op.
   exerciseNoteSheet: vi.fn(),
   sessionNoteSheet: vi.fn(),
+  pauseWorkout: mocks.pauseWorkout,
+  resumePausedWorkout: vi.fn(),
+  discardPausedWorkout: vi.fn(),
 }))
 vi.mock('../components/Media.jsx', () => ({ default: () => null, Thumb: () => null }))
 // api.js reads navigator.userAgent at module scope. This file installs its own DOM inside the
@@ -501,13 +505,20 @@ describe('Workout set completion flow', () => {
       expect(mocks.startRest).toHaveBeenCalledWith(90, expect.any(Number), expect.any(String))
     })
 
-    it('shows the chip without the time, and only when there is a next exercise', async () => {
+    it('shows the rests chip in every live session, lit once the session has changed a rest', async () => {
       await mount([exercise('a', [false]), exercise('b', [false])], 0, { restExSec: 120 })
-      expect(container.querySelector('[data-testid="rest-ex"]').textContent).toBe('Between exercises')
+      const chip = () => container.querySelector('[data-testid="rest-ex"]')
+      expect(chip().textContent).toBe('Rests')
+      expect(chip().className).toContain('plain')
 
       await unmount()
-      await mount([exercise('only', [false])])
-      expect(container.querySelector('[data-testid="rest-ex"]')).toBe(null)
+      await mount([exercise('only', [false])], 0, { active: { restSec: 60 } })
+      expect(chip().textContent).toBe('Rests')
+      expect(chip().className).not.toContain('plain')
+
+      await unmount()
+      await mount([exercise('only', [false])], 0, { active: { backfill: { durationMin: 60 } } })
+      expect(chip()).toBe(null)
     })
 
     // Re-checking the closing set while the rest from the set before it is still counting: that
@@ -700,6 +711,24 @@ describe('Workout discard timer lifecycle', () => {
   })
 })
 
+describe('Workout pause', () => {
+  it('sets a live session aside from the header, beside Finish', async () => {
+    mocks.pauseWorkout.mockClear()
+    await mount([exercise('plain-bench', [true, false])])
+    const pause = container.querySelector('button[aria-label="Pause"]')
+    expect(pause).toBeTruthy()
+    expect(pause.nextElementSibling.getAttribute('aria-label')).toBe('Finish')
+    await act(async () => { pause.dispatchEvent(new dom.Event('click', { bubbles: true })) })
+    expect(mocks.pauseWorkout).toHaveBeenCalledOnce()
+  })
+
+  it('offers no pause while logging a past workout: it has no clock to stop', async () => {
+    await mount([exercise('plain-bench', [false])], 0, { active: { d: '2026-01-05', backfill: { durationMin: 60, replaceId: null } } })
+    expect(container.querySelector('button[aria-label="Pause"]')).toBe(null)
+    expect(container.querySelector('button[aria-label="Finish"]')).toBeTruthy()
+  })
+})
+
 describe('progression guidance', () => {
   it('no longer spells the rule out on the card: it is behind the Target card', async () => {
     await mount([exercise('plain-bench', [false, false, false], {
@@ -822,6 +851,108 @@ describe('progression guidance', () => {
     expect(decided.sets[0]).toEqual({ w: 60, r: 5, done: true })
     expect(decided.sets[1]).toEqual({ w: 62.5, r: 3, done: false })
     expect(container.querySelector('.dpask')).toBe(null)
+  })
+})
+
+// Rests between sets picked during the session (lib/session-rest.js): an exercise's timer for
+// that exercise (a superset's for the whole superset), the header's for every exercise.
+describe('rest between sets picked during the session', () => {
+  const heavy = { mode: 'reps', reps: 5, weight: 60, bodyweight: false, restSec: 180 }
+  const openSheet = async () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const sheetRoot = createRoot(host)
+    const close = vi.fn()
+    await act(async () => { sheetRoot.render(mocks.sheet.render(close)) })
+    return { host, close, unmount: () => act(async () => { sheetRoot.unmount() }) }
+  }
+  const pick = async (host, label) => {
+    const option = [...host.querySelectorAll('button.lrow')].find(b => b.querySelector('.lrow-t')?.textContent === label)
+    expect(option).toBeTruthy()
+    await act(async () => { option.click() })
+  }
+
+  it('rests an exercise at its own pick instead of the plan', async () => {
+    await mount([exercise('picked', [false, false], { asked: true, target: heavy, restSec: 45 })])
+    await toggleSetOf(0, 0)
+    expect(mocks.startRest).toHaveBeenLastCalledWith(45, expect.any(Number), 'sets')
+  })
+
+  it('rests every exercise at the session’s pick, over the routine’s rest', async () => {
+    await mount([exercise('heavy', [false, false], { asked: true, target: heavy })], 0, { active: { restSec: 120 } })
+    await toggleSetOf(0, 0)
+    expect(mocks.startRest).toHaveBeenLastCalledWith(120, expect.any(Number), 'sets')
+  })
+
+  it('lets an exercise’s pick beat the session’s', async () => {
+    await mount([exercise('heavy', [false, false], { asked: true, target: heavy, restSec: 30 })], 0, { active: { restSec: 120 } })
+    await toggleSetOf(0, 0)
+    expect(mocks.startRest).toHaveBeenLastCalledWith(30, expect.any(Number), 'sets')
+  })
+
+  it('rests a superset’s rounds at its pick', async () => {
+    await mount([
+      exercise('superset-a', [true, false], { sg: 'g', asked: true, restSec: 50 }),
+      exercise('superset-b', [false, false], { sg: 'g', asked: true }),
+    ], 1)
+    await toggleSetOf(1, 0)
+    expect(mocks.startRest).toHaveBeenLastCalledWith(50, expect.any(Number), 'sets')
+  })
+
+  it('picks the rest between sets from the exercise’s timer, for this exercise only', async () => {
+    await mount([exercise('a', [false]), exercise('b', [false])])
+    await act(async () => { container.querySelector('.exhead-tg').click() })
+    const timer = container.querySelector('[data-testid="ex-rest"]')
+    expect(timer.getAttribute('aria-label')).toBe('Rest between sets')
+    await act(async () => { timer.click() })
+    const sheet = await openSheet()
+    expect(sheet.host.querySelector('h3').textContent).toBe('Rest between sets of Unknown exercise (this workout)')
+    // What it follows without a pick: Settings' 90 s, as the routine gives it none.
+    expect(sheet.host.querySelector('.lrow-s').textContent).toBe('01:30')
+    await pick(sheet.host, '00:45')
+    expect(sheet.close).toHaveBeenCalled()
+    expect(mocks.S.active.entries.map(e => e.restSec)).toEqual([45, undefined])
+    await sheet.unmount()
+  })
+
+  it('picks it for the whole superset from any member’s timer, and drops it again', async () => {
+    await mount([
+      exercise('superset-a', [false], { sg: 'g' }),
+      exercise('superset-b', [false], { sg: 'g' }),
+    ])
+    await act(async () => { container.querySelector('.exhead-tg').click() })
+    await act(async () => { container.querySelector('[data-testid="ex-rest"]').click() })
+    let sheet = await openSheet()
+    expect(sheet.host.querySelector('h3').textContent).toBe('Rest between rounds of the superset (this workout)')
+    await pick(sheet.host, '02:30')
+    await sheet.unmount()
+    expect(mocks.S.active.entries.map(e => e.restSec)).toEqual([150, 150])
+
+    await rerender()
+    await act(async () => { container.querySelector('[data-testid="ex-rest"]').click() })
+    sheet = await openSheet()
+    await pick(sheet.host, 'As planned')
+    await sheet.unmount()
+    expect(mocks.S.active.entries.some(e => 'restSec' in e)).toBe(false)
+  })
+
+  it('opens the session’s rests from the header: between sets always, between exercises with a next one', async () => {
+    await mount([exercise('only', [false])])
+    await act(async () => { container.querySelector('[data-testid="rest-ex"]').click() })
+    let sheet = await openSheet()
+    let rows = [...sheet.host.querySelectorAll('.lrow-t')].map(n => n.textContent)
+    expect(rows).toEqual(['Between sets'])
+    await sheet.unmount()
+
+    await unmount()
+    await mount([exercise('a', [false], { restSec: 60 }), exercise('b', [false])], 0, { active: { restSec: 120 } })
+    await act(async () => { container.querySelector('[data-testid="rest-ex"]').click() })
+    sheet = await openSheet()
+    rows = [...sheet.host.querySelectorAll('.lrow-t')].map(n => n.textContent)
+    expect(rows).toEqual(['Between sets', 'Between exercises'])
+    expect(sheet.host.querySelector('.lrow-v').textContent).toBe('02:00')
+    expect(sheet.host.textContent).toContain('1 exercise has a rest of its own')
+    await sheet.unmount()
   })
 })
 

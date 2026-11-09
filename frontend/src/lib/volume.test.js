@@ -439,4 +439,30 @@ describe('plannedAhead', () => {
     expect(gap(S([logged('2026-09-01', 'push', 'curl', 'biceps', 1)]), 'biceps')).toBe(9)
     expect(gap(S([logged('2026-09-01', 'push', 'curl', 'biceps', 5)]), 'biceps')).toBe(5)
   })
+
+  // Push paused after 2 of its 3 curl sets (lib/paused-workout.js).
+  const pausedPush = {
+    id: 'p', d: '2026-09-01', start: 1, pausedAt: 2, routineId: 'push',
+    entries: [{ id: 'curl', tg: 'biceps', sets: [set, set, { done: false, w: 10, r: 10 }] }],
+  }
+  it('counts the sets done in a paused session toward the volume, without making it a session', () => {
+    const v = cycleVolume({ ...S(), paused: [pausedPush] }, TODAY)
+    expect(v.groups.biceps).toBe(2)
+    expect(v.sessions).toBe(0)
+  })
+  it('leaves out the sets of a paused session still to do, and its warm-ups', () => {
+    const warm = { ...pausedPush, entries: [{ ...pausedPush.entries[0], sets: [{ done: true, warmup: true, w: 5, r: 10 }, ...pausedPush.entries[0].sets] }] }
+    expect(cycleVolume({ ...S(), paused: [warm] }, TODAY).groups.biceps).toBe(2)
+  })
+  it('plans only what is left of a paused session, so its step is not counted twice', () => {
+    const st = { ...S(), paused: [pausedPush] }
+    expect(plannedAhead(st, TODAY).groups).toMatchObject({ biceps: 1, legs: 4 })
+    // 2 done + 1 still to do of a minimum of 10: the same gap as before anything was trained.
+    expect(minimumGaps(cycleVolume(st, TODAY), plannedAhead(st, TODAY)).find(g => g.key === 'biceps').remaining).toBe(7)
+  })
+  it('stops counting a paused session once it can no longer be resumed', () => {
+    const st = { ...S(), program: { ...S().program, cycleStart: '2026-09-02' }, paused: [pausedPush] }
+    expect(cycleVolume(st, TODAY).groups.biceps).toBe(0)
+  })
 })
+

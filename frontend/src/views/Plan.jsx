@@ -4,7 +4,8 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { uid, exCount } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
-import { folderSheet, loadStarterPlan, planToolsSheet, ProgramSheet, startFlow } from '../sheets.jsx'
+import { folderSheet, loadStarterPlan, planToolsSheet, ProgramSheet, startFlow, resumePausedWorkout } from '../sheets.jsx'
+import { pausedFor } from '../lib/paused-workout.js'
 import { dropRoutine, groupRoutines, planDropIntent, planRows, toggleFolder } from '../lib/folders.js'
 import Icon from '../components/Icon.jsx'
 import MicrocycleActions from '../components/MicrocycleActions.jsx'
@@ -346,15 +347,19 @@ export default function Plan() {
   }
   // Start any routine straight from here. One session at a time: while one is running only its
   // own routine offers a way back into it (the tab bar's Resume does the same from anywhere).
+  // A routine left paused in this microcycle resumes from here, shown with the pause glyph.
   const startButton = r => {
     const running = S.active?.routineId === r.id
-    if (S.active ? !running : !r.ex.length) return null
-    const label = running ? t('Resume') : t('Start {0}', r.name)
-    return <button className={'iconbtn plan-start' + (running ? ' rec' : '')} aria-label={label} title={label}
+    const paused = !S.active && pausedFor(S, r.id)
+    if (S.active ? !running : !r.ex.length && !paused) return null
+    const label = running || paused ? t('Resume') : t('Start {0}', r.name)
+    return <button className={'iconbtn plan-start' + (running ? ' rec' : paused ? ' paused' : '')} aria-label={label} title={label}
       onClick={e => {
         e.stopPropagation()
-        if (running) { useUI.getState().resumeWorkout(); nav('/workout') } else startFlow(r.id)
-      }}><Icon name="play" /></button>
+        if (running) { useUI.getState().resumeWorkout(); nav('/workout') }
+        else if (paused) resumePausedWorkout(paused.id)
+        else startFlow(r.id)
+      }}><Icon name={paused ? 'pause' : 'play'} /></button>
   }
   const routineRow = r => {
     const [cls, attrs] = rowProps('routine', r.id)

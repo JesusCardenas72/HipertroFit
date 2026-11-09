@@ -103,13 +103,15 @@ export function cycleHistory(S) {
 }
 
 /**
- * What closing the running microcycle writes, as a patch for S: { program, cycleLog, meso }.
+ * What closing the running microcycle writes, as a patch for S: { program, cycleLog, meso,
+ * paused }.
  *
  * The new block follows `strategy` and opens today — or the day after a session already
  * logged today, which stays in the block it closed (nextCycleStart). The closed block ends the
  * day before. One with nothing logged in it is not written to the log: it is replaced, and the
  * new one keeps its number. The mesocycle moves down with the count (shiftMeso), so a deload
- * marked for the next microcycle lands on the one that opens.
+ * marked for the next microcycle lands on the one that opens. Sessions left paused in the
+ * closed block can no longer be resumed, so they go (lib/paused-workout.js).
  */
 export function closeCycle(S, strategy = strategyOf(S), today = todayISO()) {
   const blocks = countedBlocks(S)
@@ -119,7 +121,7 @@ export function closeCycle(S, strategy = strategyOf(S), today = todayISO()) {
   const log = [...cycleLogOf(S), ...splitEntries(S, blocks)]
   const empty = !cur.workouts.length
   if (!empty) log.push(entryOf(S, cur, k, addDays(program.cycleStart, -1)))
-  return { program, cycleLog: log, meso: shiftMeso(S, empty ? k : k + 1) }
+  return { program, cycleLog: log, meso: shiftMeso(S, empty ? k : k + 1), paused: [] }
 }
 
 /**

@@ -12,6 +12,7 @@ import LineChart from '../components/LineChart.jsx'
 import Heatmap from '../components/Heatmap.jsx'
 import Icon from '../components/Icon.jsx'
 import BodyMap, { BodyMapLegend } from '../components/BodyMap.jsx'
+import { resumableOf } from '../lib/paused-workout.js'
 import { loadOfWorkouts, muscleBalanceWindow, rankOf, MUSCLE_NAME, musclesOf } from '../lib/muscles.js'
 import { fatigueOf, strengthOf, STRENGTH_FLOOR, LB_TO_KG } from '../lib/recovery.js'
 import { strengthExerciseRowsForMuscle } from '../lib/strength-exercises.js'
@@ -138,7 +139,8 @@ function MuscleBalance({ S }) {
   // behind picked with its dates (CyclePicker).
   const micro = win === 'micro'
   const [cycle, pickCycle, cycles] = useCycleChoice(S)
-  const inWin = micro ? cycle.workouts : muscleBalanceWindow(S.workouts, win, now)
+  // The running microcycle counts the sets done in a session left paused in it (lib/paused-workout.js).
+  const inWin = micro ? (cycle.current ? [...cycle.workouts, ...resumableOf(S)] : cycle.workouts) : muscleBalanceWindow(S.workouts, win, now)
   // Effective-set volume per group over that same microcycle, to read against the target band.
   const microVol = useMemo(() => (!micro ? null : cycle.current ? cycleVolume(S)
     : { ...groupVolume(cycle.workouts), sessions: cycle.sessions }), [micro, S, cycle])

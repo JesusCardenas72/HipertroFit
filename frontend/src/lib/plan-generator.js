@@ -270,8 +270,9 @@ export function applyDraft(s, draft, { name, label = x => x, today = todayISO() 
   }
   // The running microcycle closes into the log, so what was trained before the new plan
   // stays on record with its dates.
-  const { program: closed, cycleLog } = closeCycle(s, SPLITS[draft.split].strategy, today)
+  const { program: closed, cycleLog, paused } = closeCycle(s, SPLITS[draft.split].strategy, today)
   s.cycleLog = cycleLog
+  s.paused = paused
   s.program = {
     ...closed, on: true, anchor: closed.cycleStart,
     seq: draft.seq.map(k => (k === 'rest' ? REST : ids[k])),

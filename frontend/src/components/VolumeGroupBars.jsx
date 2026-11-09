@@ -82,7 +82,7 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
         {plan && <span><i className="plan" />{t('planned, to do')}</span>}
         {plan && <span><i className="gap" />{t('up to the optimal max')}</span>}
       </div>
-      {plan && <div>{t('Under each group: effective sets done / planned · optimal maximum · share executed.')}</div>
+      {plan && <div>{t('Under each group: effective sets done / planned · optimal maximum · share executed.')}</div>}
       {plan && <div>{t('The full bar is the optimal maximum; the plan should stay below it.')}</div>}
       {gaps && <div>{t('The figure on the right is the sets a group still needs for its minimum, counting what is still planned.')}</div>}
       {gaps && <div>{t('A figure with a minus is the sets a group will end up past its optimal maximum.')}</div>}

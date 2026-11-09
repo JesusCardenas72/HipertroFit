@@ -7,6 +7,7 @@ import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount
 import { programActive, programMode, emptyProgram, sessionsPerRound, mondayOf, weekSequence, SEQ_CYCLE, SEQ_WEEK, REST } from './lib/program.js'
 import { STRATEGIES, microcycleLen, strategyOf, cyclePosition, cycleEndOf, opensNextCycle } from './lib/microcycle.js'
 import { closeCycle, keepCycle, closableToday } from './lib/cycle-history.js'
+import { resumableOf, pausedFor, pauseActive, resumePaused, discardPaused } from './lib/paused-workout.js'
 import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
 import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber, carriedBase } from './lib/mesocycle.js'
@@ -42,6 +43,8 @@ import { previousRoutineConfig, seedConfig, changedGlobals, applyGlobals, isGlob
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
 import { routineFromSession, sessionChangedRoutine } from './lib/routine-from-session.js'
+import { sessionRestChanges, withSessionRests } from './lib/session-rest.js'
+import { restExLabel } from './lib/rest-between.js'
 import { isWarmupRow } from './lib/workout-model.js'
 import { isFavorite, canFavorite, toggleFavorite, favoritesFirst, favoriteMap } from './lib/favorites.js'
 import { PATTERNS, patternOf } from './lib/movement-patterns.js'
@@ -2254,6 +2257,9 @@ function ChangeCycle({ onGo, close }) {
       {t('Microcycle #{0} is complete: {1} of {2} sessions, since {3}.', meso.number, pos.sessions, pos.len, fmtDate(pos.start))}
       {' '}{due && due >= todayISO() ? t('Its days run until {0}, rest days included.', fmtDate(due, true)) : t('All its days have passed.')}
     </div>
+    {resumableOf(st).length > 0 && <div className="small row" style={{ gap: 6, color: 'var(--orange)', marginBottom: 14 }}>
+      <Icon name="pause" />{t('Starting the next one ends this one: its paused workouts can no longer be resumed.')}
+    </div>}
     <Button variant="primary" icon="flag" onClick={() => go(s => closeCycle(s))}>{t('Start microcycle #{0}', carriedBase(st) + 1)}</Button>
     <div style={{ height: 8 }} />
     <Button icon="plus" onClick={() => go(s => keepCycle(s))}>{t('Train it in microcycle #{0}', meso.number)}</Button>
@@ -2265,6 +2271,10 @@ function ChangeCycle({ onGo, close }) {
 /* ============================ workout lifecycle ============================ */
 export function startFlow(routineId) {
   const st = S()
+  // This routine was left paused in the running microcycle: pick it up again, or start over.
+  const paused = !st.active && pausedFor(st, routineId)
+  if (paused) return ui().openSheet(close => <PausedChoice p={paused} close={close}
+    onStartOver={() => { update(s => { Object.assign(s, discardPaused(s, paused.id)) }); startFlow(routineId) }} />, { kind: 'center' })
   if (opensNextCycle(st, routineId)) {
     // A session already logged today keeps the block open today: dates cannot split a day, so
     // this one goes in it too.
@@ -2295,6 +2305,54 @@ export function beginWorkout(routineId, bw, deload = 0) {
   })
   useUI.getState().stopRest()
   nav('/workout')
+}
+
+/* ============================ pause and resume ============================ */
+// A session set aside instead of finished: its clock stops and it waits, unfiled, to be taken
+// up again while its microcycle runs. See lib/paused-workout.js.
+export function pauseWorkout() {
+  const patch = pauseActive(S())
+  if (!patch) return
+  update(s => { Object.assign(s, patch) })
+  ui().stopRest()
+  ui().stopWork()
+  toast(t('Workout paused — resume it any time in this microcycle'))
+  nav('/home')
+}
+export function resumePausedWorkout(id) {
+  const st = S()
+  if (st.active) { toast(t('Pause or finish the current workout first.')); return }
+  const patch = resumePaused(st, id)
+  if (!patch) { toast(t('This workout can no longer be resumed.')); return }
+  update(s => { Object.assign(s, patch) })
+  ui().stopRest()
+  // The workout screen re-centres the set to do next, as with any resumed session.
+  ui().resumeWorkout()
+  nav('/workout')
+}
+export function discardPausedWorkout(p) {
+  confirmSheet({
+    title: t('Discard paused workout?'), message: t('The sets you logged in this session will be lost.'),
+    confirmText: t('Discard'), danger: true,
+    onConfirm: () => update(s => { Object.assign(s, discardPaused(s, p.id)) }),
+  })
+}
+const setsTotalActive = A => A.entries.reduce((n, e) => n + e.sets.length, 0)
+// Starting a routine that has a session paused: resume it where it was left, or drop it and
+// start the routine over.
+function PausedChoice({ p, close, onStartOver }) {
+  return <div style={{ textAlign: 'center', padding: '4px 0' }}>
+    <div style={{ fontSize: 44, display: 'flex', justifyContent: 'center', color: 'var(--orange)' }}><Icon name="pause" /></div>
+    <h3 style={{ margin: '8px 0' }}>{t('{0} is paused', p.name)}</h3>
+    <div className="muted" style={{ marginBottom: 18, lineHeight: 1.5 }}>
+      {t('Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.', fmtDate(p.d, true), setsDoneActive(p), setsTotalActive(p))}
+    </div>
+    <Button variant="primary" icon="play" onClick={() => { close(); resumePausedWorkout(p.id) }}>{t('Resume workout')}</Button>
+    <div style={{ height: 8 }} />
+    <Button icon="reset" onClick={() => { close(); onStartOver() }}>{t('Start over')}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
+  </div>
 }
 
 /* ============================ log a past workout ============================ */
@@ -2723,8 +2781,52 @@ function doFinishWorkout() {
   useUI.getState().stopRest()
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
   const summary = () => ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: true })
-  if (nextEx) ui().openSheet(close => <UpdateRoutinePrompt routineId={routine.id} name={routine.name} ex={nextEx} close={close} then={summary} />, { kind: 'center', locked: true })
-  else summary()
+  // Rests changed during the session, asked about after the routine itself: if it was just
+  // replaced with this session's plan, the rests are kept in that one. A past workout has no
+  // timers to have changed.
+  const rests = () => {
+    const now = S()
+    const r = !past && routine ? now.routines.find(x => x.id === routine.id) : null
+    if (r && sessionRestChanges(A, r.ex, supersetUnits(A.entries), now.restSec).length) {
+      ui().openSheet(close => <SaveRestsPrompt routineId={r.id} name={r.name} session={A} close={close} then={summary} />, { kind: 'center', locked: true })
+    } else summary()
+  }
+  if (nextEx) ui().openSheet(close => <UpdateRoutinePrompt routineId={routine.id} name={routine.name} ex={nextEx} close={close} then={rests} />, { kind: 'center', locked: true })
+  else rests()
+}
+
+// Asked once, right after a session whose rests between sets differ from its routine's: keep
+// them for the routine's next sessions, or leave the routine as it was. Only that routine and
+// only the exercises whose rest changed take the new one; Settings and other routines never do.
+// See lib/session-rest.js.
+function SaveRestsPrompt({ routineId, name, session, close, then }) {
+  const st = useStore(s => s.S)
+  const r = st.routines.find(x => x.id === routineId)
+  const units = supersetUnits(session.entries)
+  const changes = r ? sessionRestChanges(session, r.ex, units, st.restSec) : []
+  const keep = () => {
+    update(s => {
+      const rt = s.routines.find(x => x.id === routineId)
+      if (rt) rt.ex = withSessionRests(rt.ex, sessionRestChanges(session, rt.ex, units, s.restSec))
+    })
+    toast(t('Rests saved in the routine'))
+    close(); then()
+  }
+  const label = sec => restExLabel(sec, t)
+  return <div style={{ textAlign: 'center', padding: '4px 0' }}>
+    <div style={{ fontSize: 40, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="timer" /></div>
+    <h3 style={{ margin: '8px 0' }}>{t('Keep these rests?')}</h3>
+    <div className="muted" style={{ marginBottom: 14, lineHeight: 1.5 }}>{t('You changed rests during this workout. Use them from now on in the sessions of “{0}”? Other routines and Settings stay as they are.', name)}</div>
+    <div className="sect-b" style={{ textAlign: 'left', marginBottom: 16 }} data-testid="rest-changes">
+      {changes.map(c => <div key={c.idx} className="lrow">
+        <span className="lrow-m"><span className="lrow-t capitalize">{exerciseNameFor(exOr(c.id))}</span></span>
+        <span className="lrow-v">{label(c.from)} → {label(c.to)}</span>
+      </div>)}
+    </div>
+    <Button variant="primary" icon="check" onClick={keep}>{t('Save in the routine')}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={() => { close(); then() }}>{t('Only this time')}</Button>
+  </div>
 }
 
 // Asked once, right after a session that changed its routine's plan. Either answer goes on to
