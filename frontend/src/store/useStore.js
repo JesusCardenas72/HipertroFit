@@ -3,7 +3,7 @@ import { api, setRemoteAuth } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
 import { registerCustom, registerMuscleEdits, registerPatternEdits } from '../lib/exercises.js'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from '../lib/muscles.js'
-import { setVolumeSplit } from '../lib/volume.js'
+import { setVolumeSplit, setVolumeMethod } from '../lib/volume.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
 import { MOBILE, initReminderSync, nativeLoad, nativeSave, syncReminder, writeAutoBackup } from '../lib/mobile.js'
@@ -73,6 +73,11 @@ export const DEF = {
   // Whether the volume panel shows Back and Legs as one group or split into their parts, each
   // on its own (lib/volume.js volumeGroups). See Settings ▸ Training volume.
   volumeSplit: { back: false, legs: false },
+  // How each group's target band is set (lib/volume.js): 'classic' — the reference volume
+  // landmarks per muscle — or 'simple', where the band follows the group's priority
+  // (volumePriority: { groupKey: 'low' | 'medium' | 'high' }). See Settings ▸ Training volume.
+  volumeMethod: 'classic',
+  volumePriority: {},
   // Last AI analyses answered through the server (newest first, capped) — see lib/ai-report.js.
   aiReports: [],
 }
@@ -137,6 +142,7 @@ export const useStore = create((set, get) => {
     registerPatternEdits(S.exPatterns)
     setSecondaryWeight(S.secondaryVolume)
     setVolumeSplit(S.volumeSplit)
+    setVolumeMethod(S.volumeMethod, S.volumePriority)
     localStorage.setItem(KEY, out)
     saved = { S, json }
     set({ S })
@@ -176,7 +182,7 @@ export const useStore = create((set, get) => {
   }
 
   return {
-    S: (() => { const s = loadState(); registerCustom(s.customEx); registerMuscleEdits(s.exMuscles); registerPatternEdits(s.exPatterns); setSecondaryWeight(s.secondaryVolume); setVolumeSplit(s.volumeSplit); return s })(),
+    S: (() => { const s = loadState(); registerCustom(s.customEx); registerMuscleEdits(s.exMuscles); registerPatternEdits(s.exPatterns); setSecondaryWeight(s.secondaryVolume); setVolumeSplit(s.volumeSplit); setVolumeMethod(s.volumeMethod, s.volumePriority); return s })(),
     user: (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })(),
     ready: false,
     needsMobileOnboarding: false,   // mobile build only — set true by boot() on a genuine first launch

@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from './muscles.js'
 import {
-  EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS, ALL_GROUP_KEYS, volumeGroups, setVolumeSplit, targetOf,
+  EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS, ALL_GROUP_KEYS, volumeGroups, setVolumeSplit, setVolumeMethod, volumeMethod, targetOf, PRIORITY_TARGET, priorityOf,
   isEffectiveSet, groupVolume, cycleVolume, plannedVolume, plannedAhead, volumeStatus, volumeColor, groupProgress, cycleExecution, minimumGaps,
 } from './volume.js'
 
@@ -294,13 +294,13 @@ describe('split back / legs groups', () => {
   it('judges each part against its own band', () => {
     const band = (split, key) => targetOf(volumeGroups(split).find(g => g.key === key))
     expect(band({ back: true }, 'upper-back')).toEqual({ min: 10, max: 22 })
-    expect(band({ back: true }, 'lats')).toEqual({ min: 10, max: 20 })
+    expect(band({ back: true }, 'lats')).toEqual({ min: 14, max: 22 })   // classic landmarks
     expect(band({ back: true }, 'erectors')).toEqual({ min: 0, max: 6 })
-    expect(band({ legs: true }, 'quads')).toEqual({ min: 8, max: 18 })
-    expect(band({ legs: true }, 'hamstrings')).toEqual({ min: 6, max: 16 })
+    expect(band({ legs: true }, 'quads')).toEqual({ min: 12, max: 18 })
+    expect(band({ legs: true }, 'hamstrings')).toEqual({ min: 10, max: 16 })
     expect(band({ legs: true }, 'glutes')).toEqual({ min: 4, max: 12 })
     expect(band({ legs: true }, 'calves')).toEqual({ min: 8, max: 20 })
-    expect(band({}, 'back')).toEqual(VOLUME_TARGET)
+    expect(band({}, 'back')).toEqual({ min: 14, max: 22 })
     expect(volumeStatus(0, band({ back: true }, 'erectors'))).toBe('ok')
     expect(volumeStatus(7, band({ back: true }, 'erectors'))).toBe('high')
     expect(volumeStatus(21, band({ back: true }, 'upper-back'))).toBe('ok')
@@ -350,21 +350,21 @@ describe('minimumGaps', () => {
   const remaining = (key, done) => minimumGaps({ groups: { [key]: done } }).find(g => g.key === key).remaining
 
   it('counts the whole sets that take a group up to its minimum', () => {
-    expect(remaining('chest', 0)).toBe(10)     // nothing done: the whole minimum
-    expect(remaining('chest', 7.6)).toBe(3)    // 2.4 short is three sets; two would leave it at 9.6
-    expect(remaining('chest', 9.6)).toBe(1)
-    expect(remaining('chest', 10)).toBe(0)
+    expect(remaining('chest', 0)).toBe(12)     // nothing done: the whole minimum (classic chest 12–20)
+    expect(remaining('chest', 9.6)).toBe(3)    // 2.4 short is three sets; two would leave it at 11.6
+    expect(remaining('chest', 11.6)).toBe(1)
+    expect(remaining('chest', 12)).toBe(0)
   })
   it('owes nothing past the minimum', () => {
     expect(remaining('chest', 14)).toBe(0)
   })
   it('reads the figure the panel shows, to one decimal', () => {
-    expect(remaining('chest', 9.96)).toBe(0)  // shown as 10 on the panel
+    expect(remaining('chest', 11.96)).toBe(0)  // shown as 12 on the panel
   })
   it('judges a split part against its own minimum', () => {
     setVolumeSplit({ back: true, legs: true })
-    expect(remaining('hamstrings', 4.5)).toBe(2)  // minimum 6
-    expect(remaining('lats', 0)).toBe(10)         // minimum 10
+    expect(remaining('hamstrings', 8.5)).toBe(2)  // minimum 10
+    expect(remaining('lats', 0)).toBe(14)         // minimum 14
   })
   it('owes nothing where the band has no minimum', () => {
     setVolumeSplit({ back: true })
@@ -377,10 +377,10 @@ describe('minimumGaps', () => {
   it('counts the volume still to come towards the minimum', () => {
     const gap = (done, left) => minimumGaps({ groups: { chest: done } }, { groups: { chest: left } })
       .find(g => g.key === 'chest').remaining
-    expect(gap(0, 7)).toBe(3)      // the plan alone leaves it three short
-    expect(gap(2, 7)).toBe(1)      // off-plan work brings that down
-    expect(gap(0, 7.6)).toBe(3)    // 2.4 short, still whole sets
-    expect(gap(0, 12)).toBe(0)     // the plan covers it
+    expect(gap(0, 9)).toBe(3)      // the plan alone leaves it three short of 12
+    expect(gap(2, 9)).toBe(1)      // off-plan work brings that down
+    expect(gap(0, 9.6)).toBe(3)    // 2.4 short, still whole sets
+    expect(gap(0, 14)).toBe(0)     // the plan covers it
   })
   it('counts the sets past the optimal maximum, on the same reading', () => {
     const excess = (done, left) => minimumGaps({ groups: { chest: done } }, { groups: { chest: left } })
@@ -432,12 +432,12 @@ describe('plannedAhead', () => {
     expect(plannedAhead(S([], []), TODAY).groups.biceps).toBe(0)
   })
   it('keeps the gap of the plan, and off-plan work brings it down', () => {
-    expect(gap(S(), 'biceps')).toBe(7)    // 3 planned of a minimum of 10
-    expect(gap(S([logged('2026-09-01', null, 'curl', 'biceps', 2)]), 'biceps')).toBe(5)
+    expect(gap(S(), 'biceps')).toBe(11)   // 3 planned of a minimum of 14
+    expect(gap(S([logged('2026-09-01', null, 'curl', 'biceps', 2)]), 'biceps')).toBe(9)
   })
   it('grows the gap when a session falls short of its plan, and shrinks it when it goes past', () => {
-    expect(gap(S([logged('2026-09-01', 'push', 'curl', 'biceps', 1)]), 'biceps')).toBe(9)
-    expect(gap(S([logged('2026-09-01', 'push', 'curl', 'biceps', 5)]), 'biceps')).toBe(5)
+    expect(gap(S([logged('2026-09-01', 'push', 'curl', 'biceps', 1)]), 'biceps')).toBe(13)
+    expect(gap(S([logged('2026-09-01', 'push', 'curl', 'biceps', 5)]), 'biceps')).toBe(9)
   })
 
   // Push paused after 2 of its 3 curl sets (lib/paused-workout.js).
@@ -457,8 +457,8 @@ describe('plannedAhead', () => {
   it('plans only what is left of a paused session, so its step is not counted twice', () => {
     const st = { ...S(), paused: [pausedPush] }
     expect(plannedAhead(st, TODAY).groups).toMatchObject({ biceps: 1, legs: 4 })
-    // 2 done + 1 still to do of a minimum of 10: the same gap as before anything was trained.
-    expect(minimumGaps(cycleVolume(st, TODAY), plannedAhead(st, TODAY)).find(g => g.key === 'biceps').remaining).toBe(7)
+    // 2 done + 1 still to do of a minimum of 14: the same gap as before anything was trained.
+    expect(minimumGaps(cycleVolume(st, TODAY), plannedAhead(st, TODAY)).find(g => g.key === 'biceps').remaining).toBe(11)
   })
   it('stops counting a paused session once it can no longer be resumed', () => {
     const st = { ...S(), program: { ...S().program, cycleStart: '2026-09-02' }, paused: [pausedPush] }
@@ -466,3 +466,52 @@ describe('plannedAhead', () => {
   })
 })
 
+describe('volume target method', () => {
+  afterEach(() => { setVolumeMethod('classic', {}); setVolumeSplit() })
+  const band = (groups, key) => targetOf(groups.find(g => g.key === key))
+
+  it('classic: each group with landmarks is judged from minimum effective to maximum adaptive', () => {
+    const gs = volumeGroups({ back: true, legs: true }, 'classic')
+    expect(band(gs, 'biceps')).toEqual({ min: 14, max: 20 })
+    expect(band(gs, 'chest')).toEqual({ min: 12, max: 20 })
+    expect(band(gs, 'delts')).toEqual({ min: 8, max: 12 })       // the lateral head's row
+    expect(band(gs, 'quads')).toEqual({ min: 12, max: 18 })
+    expect(band(gs, 'hamstrings')).toEqual({ min: 10, max: 16 })
+    expect(band(gs, 'glutes')).toEqual({ min: 4, max: 12 })
+    expect(band(gs, 'lats')).toEqual({ min: 14, max: 22 })
+    expect(band(gs, 'triceps')).toEqual({ min: 12, max: 20 })
+    expect(band(gs, 'abs')).toEqual({ min: 16, max: 20 })
+    expect(gs.find(g => g.key === 'biceps').ref).toEqual({ mv: 8, mrv: 26, freq: '2–6', reps: '8–15' })
+  })
+
+  it('classic: groups the table has no row for keep their own band', () => {
+    const split = volumeGroups({ back: true, legs: true }, 'classic')
+    expect(band(split, 'calves')).toEqual({ min: 8, max: 20 })
+    expect(band(split, 'erectors')).toEqual({ min: 0, max: 6 })
+    expect(band(split, 'upper-back')).toEqual({ min: 10, max: 22 })
+    const whole = volumeGroups({}, 'classic')
+    expect(band(whole, 'legs')).toEqual(VOLUME_TARGET)
+    expect(band(whole, 'back')).toEqual({ min: 14, max: 22 })    // read from the lats row
+  })
+
+  it("simple: the band follows each group's priority, medium by default", () => {
+    const gs = volumeGroups({ back: true }, 'simple', { chest: 'high', biceps: 'low', abs: 'bogus' })
+    expect(band(gs, 'chest')).toEqual({ min: 12, max: 15 })
+    expect(band(gs, 'biceps')).toEqual({ min: 6, max: 8 })
+    expect(band(gs, 'abs')).toEqual({ min: 8, max: 10 })         // unknown value -> default
+    expect(band(gs, 'legs')).toEqual(PRIORITY_TARGET.medium)
+    expect(band(gs, 'erectors')).toEqual(PRIORITY_TARGET.low)    // direct sets only: starts low
+    expect(priorityOf({}, 'triceps')).toBe('medium')
+  })
+
+  it('the store setting moves the groups every reader sees, keeping the split', () => {
+    setVolumeSplit({ legs: true })
+    setVolumeMethod('simple', { quads: 'high' })
+    expect(volumeMethod()).toBe('simple')
+    expect(VOLUME_GROUPS.some(g => g.key === 'quads')).toBe(true)
+    expect(targetOf(VOLUME_GROUPS.find(g => g.key === 'quads'))).toEqual({ min: 12, max: 15 })
+    setVolumeMethod('anything')
+    expect(volumeMethod()).toBe('classic')
+    expect(targetOf(VOLUME_GROUPS.find(g => g.key === 'quads'))).toEqual({ min: 12, max: 18 })
+  })
+})

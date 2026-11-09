@@ -49,7 +49,7 @@ function setText(s) {
 
 // `judge` adds the low/ok/high status — only for a whole microcycle's worth of sets. The block in
 // progress is partial by definition, and a status on it would read "low" to a model on day one.
-// A group with a band of its own (the parts of a split Back or Legs) carries it as `target`.
+// Every group carries the band its method gives it (lib/volume.js volumeGroups) as `target`.
 function volumeRows(v, judge) {
   return VOLUME_GROUPS.map(g => {
     const sets = round1(v.groups[g.key] || 0)

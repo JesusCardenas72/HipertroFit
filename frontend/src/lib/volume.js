@@ -38,7 +38,7 @@ export const EFFECTIVE_RIR = 4
 // group can carry its own `target` instead — the parts of a split Back or Legs do, see below.
 export const VOLUME_TARGET = { min: 10, max: 20 }
 
-/** The band a group is judged against: its own target, or the shared 10–20. */
+/** The band a group is judged against: the one its method gave it, or the shared 10–20. */
 export const targetOf = g => (g && g.target) || VOLUME_TARGET
 
 // The muscle groups shown on the home volume panel, in display order, each folding one or
@@ -86,10 +86,64 @@ const CHEST = { key: 'chest', name: 'Chest', muscles: ['chest'] }
 /** The user's split choice, tidied: { back, legs } booleans, anything else is "not split". */
 export const normalizeVolumeSplit = split => ({ back: !!(split && split.back), legs: !!(split && split.legs) })
 
-/** The panel's groups for a split choice, in display order. */
-export function volumeGroups(split) {
+// ---- How the target band of each group is set (Settings ▸ Training volume, S.volumeMethod) ----
+//
+// Two methods, the user's choice:
+//   - 'classic' — the reference volume landmarks per muscle: maintenance (mv), minimum effective
+//     (min), maximum adaptive (max) and maximum recoverable (mrv) sets per microcycle, with the
+//     usual weekly frequency and rep range. The band a group is judged against is min–max (the
+//     optimal volume); mv/mrv/freq/reps travel along as reference (`ref`) for the Settings table.
+//     The dataset does not separate the delt heads, so the delts row uses the lateral head's
+//     landmarks; a split Back's lats and an unsplit Back both read the lats (dorsal) row. Groups
+//     the table has no row for (whole legs, calves, upper back, erectors) keep their own band.
+//   - 'simple' — each group gets a priority and the priority sets the band: low 6–8, medium
+//     8–10, high 12–15 effective sets per microcycle.
+export const VOLUME_METHODS = ['classic', 'simple']
+export const PRIORITIES = ['low', 'medium', 'high']
+export const PRIORITY_TARGET = { low: { min: 6, max: 8 }, medium: { min: 8, max: 10 }, high: { min: 12, max: 15 } }
+// Erectors count direct sets only (see BACK_SPLIT), so they start low; everything else medium.
+const DEFAULT_PRIORITY = { erectors: 'low' }
+
+const landmark = (mv, min, max, mrv, freq, reps) => ({ target: { min, max }, ref: { mv, mrv, freq, reps } })
+const LATS_ROW = landmark(10, 14, 22, 25, '2–4', '6–20')
+export const CLASSIC_LANDMARKS = {
+  biceps: landmark(8, 14, 20, 26, '2–6', '8–15'),
+  delts: landmark(0, 8, 12, 14, '2–6', '10–20'),
+  chest: landmark(10, 12, 20, 22, '1–3', '8–12'),
+  quads: landmark(8, 12, 18, 20, '1–3', '8–15'),
+  hamstrings: landmark(6, 10, 16, 20, '2–3', '3–20'),
+  glutes: landmark(0, 4, 12, 16, '2–3', '8–12'),
+  lats: LATS_ROW,
+  back: LATS_ROW,
+  triceps: landmark(0, 12, 20, 26, '2–4', '6–20'),
+  abs: landmark(0, 16, 20, 26, '3–5', '8–20'),
+}
+
+/** The method in force, tidied: 'classic' unless 'simple' was chosen. */
+export const normalizeVolumeMethod = m => (m === 'simple' ? 'simple' : 'classic')
+
+/** A group's priority under the simplified method: the user's pick, else its default. */
+export const priorityOf = (priorities, key) => {
+  const p = priorities && priorities[key]
+  return PRIORITIES.includes(p) ? p : (DEFAULT_PRIORITY[key] || 'medium')
+}
+
+// A group with the band the chosen method gives it.
+function withTarget(g, method, priorities) {
+  if (method === 'simple') {
+    const priority = priorityOf(priorities, g.key)
+    return { ...g, priority, target: PRIORITY_TARGET[priority] }
+  }
+  const row = CLASSIC_LANDMARKS[g.key]
+  return row ? { ...g, target: row.target, ref: row.ref } : { ...g, target: g.target || VOLUME_TARGET }
+}
+
+/** The panel's groups for a split choice and target method, in display order. */
+export function volumeGroups(split, method = 'classic', priorities = {}) {
   const { back, legs } = normalizeVolumeSplit(split)
+  const m = normalizeVolumeMethod(method)
   return [...(legs ? LEGS_SPLIT : [LEGS]), CHEST, ...(back ? BACK_SPLIT : [BACK]), ...REST_GROUPS]
+    .map(g => withTarget(g, m, priorities))
 }
 
 /** Every group key any split can produce — the fixed vocabulary the AI response schema allows. */
@@ -99,6 +153,7 @@ export const ALL_GROUP_KEYS = [...new Set([...volumeGroups({ back: true, legs: t
 // pushed in by the store, so every reader (panel, plan, AI digest and proposals) agrees on it
 // without threading it through. A live binding: importers always see the current list.
 export let VOLUME_GROUPS = volumeGroups()
+let CONFIG = { split: undefined, method: 'classic', priorities: {} }
 
 // muscle slug -> the groups it counts toward (rear delts count toward two once back is split).
 let GROUP_OF = {}
@@ -110,9 +165,20 @@ indexGroups()
 
 /** Set which groups are split into their parts from here on (store -> lib). */
 export function setVolumeSplit(split) {
-  VOLUME_GROUPS = volumeGroups(split)
+  CONFIG = { ...CONFIG, split }
+  VOLUME_GROUPS = volumeGroups(CONFIG.split, CONFIG.method, CONFIG.priorities)
   indexGroups()
 }
+
+/** Set how each group's target band is chosen from here on (store -> lib): method + priorities. */
+export function setVolumeMethod(method, priorities) {
+  CONFIG = { ...CONFIG, method: normalizeVolumeMethod(method), priorities: priorities || {} }
+  VOLUME_GROUPS = volumeGroups(CONFIG.split, CONFIG.method, CONFIG.priorities)
+  indexGroups()
+}
+
+/** The method in force ('classic' | 'simple'). */
+export const volumeMethod = () => CONFIG.method
 
 /** A completed work set that counts as volume: RIR <= 4, or unrated (counted, per product). */
 export const isEffectiveSet = s => { const r = rirOf(s); return r == null || r <= EFFECTIVE_RIR }

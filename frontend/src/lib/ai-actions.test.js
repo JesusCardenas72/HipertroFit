@@ -30,10 +30,10 @@ describe('volumeProposal', () => {
 
   it('spreads the work and never adds more than MAX_STEP sets to one exercise', () => {
     const S = fullBody([curl(1), { ...curl(1), id: 'x-curl-2' }])
-    const p = volumeProposal(S, 'biceps', 'up')        // 6 → needs 4 more: two exercises, +1 each… then +1 again
-    expect(p.after).toBeGreaterThanOrEqual(10)
+    const p = volumeProposal(S, 'biceps', 'up')        // 6 → needs 8 more (classic biceps band 14–20): two exercises, +1 each… then +1 again
+    expect(p.after).toBeGreaterThanOrEqual(14)
     for (const ch of p.changes) expect(ch.to - ch.from).toBeLessThanOrEqual(MAX_STEP)
-    expect(p.changes.map(c => c.to - c.from)).toEqual([1, 1])
+    expect(p.changes.map(c => c.to - c.from)).toEqual([2, 1])
   })
 
   it('stops short rather than breaking MAX_STEP, and says how far it got', () => {

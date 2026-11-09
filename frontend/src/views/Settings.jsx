@@ -19,7 +19,7 @@ import { restSound, exerciseEndSound, progressSound, playProgressSound, customSo
 import { playClips, stopClips } from '../lib/sound.js'
 import { REST_EX_PRESETS, restExLabel, settingChoice } from '../lib/rest-between.js'
 import { DEFAULT_SECONDARY, normalizeSecondaryWeight } from '../lib/muscles.js'
-import { VOLUME_TARGET, normalizeVolumeSplit } from '../lib/volume.js'
+import { normalizeVolumeSplit, normalizeVolumeMethod, volumeGroups, PRIORITIES, PRIORITY_TARGET } from '../lib/volume.js'
 import { UI_SCALE, DEFAULT_DISPLAY, loadDisplay, saveDisplay, clampScale, dragScale } from '../lib/display.js'
 
 /* A stored sound — the rest-end bell, the exercise-end bells or the "time to progress" celebration —
@@ -468,8 +468,12 @@ function VolumeCard({ S, update }) {
       value: v,
       label: secondaryLabel(v) + (v === DEFAULT_SECONDARY ? ' · ' + t('default') : ''),
     }))
-  return <Section title={t('Training volume')}
-    footer={t('Effective sets are counted per muscle group over the current microcycle, against a target of {0}–{1}. An exercise’s main muscle always scores a full set; this is what its supporting muscles add. Changing it also moves the muscle map and the recovery estimate.', VOLUME_TARGET.min, VOLUME_TARGET.max)}>
+  const method = normalizeVolumeMethod(S.volumeMethod)
+  const groups = volumeGroups(split, method, S.volumePriority)
+  const setPriority = (key, p) => update(s => { s.volumePriority = { ...(s.volumePriority || {}), [key]: p } })
+  return <>
+  <Section title={t('Training volume')}
+    footer={t('Effective sets are counted per muscle group over the current microcycle, against the target range of the method below. An exercise’s main muscle always scores a full set; this is what its supporting muscles add. Changing it also moves the muscle map and the recovery estimate.')}>
     <SelectRow icon="target" iconTint="var(--teal)" title={t('Secondary muscle value')}
       value={value} onChange={v => update(s => { s.secondaryVolume = v })} options={options} />
     {/* Back and Legs each fold several muscles into one bar; either can be shown as its parts
@@ -483,7 +487,33 @@ function VolumeCard({ S, update }) {
       <Switch checked={!!split.legs} onChange={v => update(s => { s.volumeSplit = { ...normalizeVolumeSplit(s.volumeSplit), legs: v } })} />
     </Row>
   </Section>
+  {/* How each group's target range is set (lib/volume.js volumeGroups): the classic volume
+      landmarks, shown read-only for reference, or a priority per group. */}
+  <Section title={t('Volume target method')}
+    footer={method === 'simple'
+      ? t('Effective sets per microcycle by priority: low {0}–{1}, medium {2}–{3}, high {4}–{5}.',
+        PRIORITY_TARGET.low.min, PRIORITY_TARGET.low.max, PRIORITY_TARGET.medium.min, PRIORITY_TARGET.medium.max, PRIORITY_TARGET.high.min, PRIORITY_TARGET.high.max)
+      : t('Target range: minimum effective to maximum adaptive volume, in effective sets per microcycle. Groups without landmarks keep their own range.')}>
+    <Row icon="target" iconTint="var(--purple)" title={t('Method')}>
+      <Segmented className="seg-inline"
+        options={[{ value: 'classic', label: t('Classic') }, { value: 'simple', label: t('Simplified') }]}
+        value={method} onChange={v => update(s => { s.volumeMethod = v })} />
+    </Row>
+    {groups.map(g => method === 'simple'
+      ? <Row key={g.key} title={t(g.name)} subtitle={t('{0}–{1} sets', g.target.min, g.target.max)}>
+        <Segmented className="seg-inline"
+          options={PRIORITIES.map(p => ({ value: p, label: t(PRIORITY_LABEL[p]) }))}
+          value={g.priority} onChange={p => setPriority(g.key, p)} />
+      </Row>
+      : <Row key={g.key} title={t(g.name)} value={t('{0}–{1} sets', g.target.min, g.target.max)}
+        subtitle={g.ref
+          ? t('Maintenance {0} · max recoverable {1} · {2} days/week · {3} reps', g.ref.mv, g.ref.mrv, g.ref.freq, g.ref.reps)
+          : t('No landmarks — own range')} />)}
+  </Section>
+  </>
 }
+
+const PRIORITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High' }
 
 function NotificationsCard({ S, update, toast }) {
   if (MOBILE) return <MobileReminderCard S={S} update={update} toast={toast} />

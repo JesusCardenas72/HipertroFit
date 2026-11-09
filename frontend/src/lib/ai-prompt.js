@@ -70,7 +70,7 @@ export function buildPrompt(digest, { lang = 'en', focus = 'overview', json = fa
     '',
     'How the app trains (use these rules, do not replace them with others):',
     `- Volume is counted in effective sets: completed work sets at RIR <= ${EFFECTIVE_RIR} (unrated sets count). Secondary muscles earn partial credit.`,
-    `- Target per muscle group per microcycle: ${VOLUME_TARGET.min}–${VOLUME_TARGET.max} effective sets, unless the group row carries its own target. Erectors with their own target count direct sets only.`,
+    `- Target per muscle group per microcycle: the effective-set range in the group row's own target (default ${VOLUME_TARGET.min}–${VOLUME_TARGET.max} effective sets when a row has none). Erectors count direct sets only.`,
     '- A microcycle is a count of sessions, not a week: full-body 3, upper-lower 4, push/pull/legs 6.',
     `- A deload microcycle (25–50% less work) is suggested after ${DELOAD_AFTER} loading microcycles and required after ${DELOAD_MAX}.`,
     '- Double progression: add reps within the range at the same weight; once every set reaches the top, add weight or a set. Reps falling from set to set mean fatigue: no overload next session.',

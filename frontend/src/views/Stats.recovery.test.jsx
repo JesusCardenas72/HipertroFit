@@ -245,7 +245,7 @@ describe('Stats muscle recovery view runtime', () => {
     expect(lastMap().load.chest).toBe(7)
   })
 
-  it('opens on the microcycle window and reads its volume against the 10-20 target band', async () => {
+  it("opens on the microcycle window and reads its volume against each group's own target band", async () => {
     await mountStats()
     // Five completed sessions, all inside the same 6-session microcycle — the running one,
     // named with its dates on the picker.
@@ -253,10 +253,11 @@ describe('Stats muscle recovery view runtime', () => {
     expect(container.textContent).toContain('5 of 6 sessions')
     expect(container.textContent).toContain('Effective sets')
     // How to read the bars folds behind the info button.
-    expect(container.textContent).not.toContain('Target 10–20 effective sets per muscle group each microcycle')
+    const help = 'Each muscle group has its own target range of effective sets per microcycle: minimum effective to maximum adaptive volume.'
+    expect(container.textContent).not.toContain(help)
     await click(container.querySelector('.vol-info'))
-    expect(container.textContent).toContain('Target 10–20 effective sets per muscle group each microcycle')
-    expect(container.textContent).toContain('in range 10–20')
+    expect(container.textContent).toContain(help)
+    expect(container.textContent).toContain('Chest7 sts12–20')   // classic chest band
 
     // The band is per microcycle only — the day windows go back to the relative balance map.
     await click(balanceRangeButton('30d'))

@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { t } from '../lib/i18n.js'
 import { fmtNum } from '../lib/format.js'
 import Icon from './Icon.jsx'
-import { VOLUME_GROUPS, VOLUME_TARGET, volumeStatus, volumeColor, targetOf, groupProgress, cycleExecution, minimumGaps } from '../lib/volume.js'
+import { VOLUME_GROUPS, volumeMethod, volumeStatus, volumeColor, targetOf, groupProgress, cycleExecution, minimumGaps } from '../lib/volume.js'
 
 // Effective sets per muscle group for one microcycle, read against the 10–20 target band.
 // Shared by Home and Stats so the two can never report different numbers for the same block.
@@ -59,7 +59,6 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
   const [info, setInfo] = useState(false)
   const [peek, bindPeek] = usePeek()
   if (!vol) return null
-  const split = VOLUME_GROUPS.some(g => g.parent)
   const plan = planned && planned.total > 0 ? planned : null
   const gaps = ahead || isPlan ? Object.fromEntries(minimumGaps(vol, ahead).map(g => [g.key, g])) : null
   const exec = plan && cycleExecution(vol, plan)
@@ -73,12 +72,13 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
         aria-expanded={info} aria-label={t('How to read this')} title={t('How to read this')}><Icon name="info" /></button>
     </div>
     {info && <div className="vol-help small">
-      <div>{t('Target {0}–{1} effective sets per muscle group each microcycle', VOLUME_TARGET.min, VOLUME_TARGET.max)}</div>
-      {split && <div>{t('Split groups show their own range.')}</div>}
+      <div>{volumeMethod() === 'simple'
+        ? t('Each muscle group has its own target range of effective sets per microcycle, set by its priority (Settings ▸ Training volume).')
+        : t('Each muscle group has its own target range of effective sets per microcycle: minimum effective to maximum adaptive volume.')}</div>
       <div className="vol-legend">
-        <span><i style={{ background: 'var(--orange)' }} />{t('under')} {VOLUME_TARGET.min}</span>
-        <span><i style={{ background: 'var(--green)' }} />{t('in range')} {VOLUME_TARGET.min}–{VOLUME_TARGET.max}</span>
-        <span><i style={{ background: 'var(--red)' }} />{t('over')} {VOLUME_TARGET.max}</span>
+        <span><i style={{ background: 'var(--orange)' }} />{t('under the minimum')}</span>
+        <span><i style={{ background: 'var(--green)' }} />{t('in range')}</span>
+        <span><i style={{ background: 'var(--red)' }} />{t('over the maximum')}</span>
         {plan && <span><i className="plan" />{t('planned, to do')}</span>}
         {plan && <span><i className="gap" />{t('up to the optimal max')}</span>}
       </div>

@@ -77,7 +77,7 @@ describe('buildDigest', () => {
     const d = digestOf(S)
     expect(d.volume.planned.sessions).toBe(3)
     const chest = d.volume.planned.groups.find(g => g.group === 'chest')
-    expect(chest).toEqual({ group: 'chest', sets: 9, status: 'low' })
+    expect(chest).toEqual({ group: 'chest', sets: 9, status: 'low', target: { min: 12, max: 20 } })
     expect(d.findings).toContainEqual({ type: 'volume-low', group: 'chest', sets: 9, source: 'plan' })
     expect(d.microcycle).toMatchObject({ strategy: 'full-body', length: 3, next_session: 1, next_routine: 'Push' })
   })
