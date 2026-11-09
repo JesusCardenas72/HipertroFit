@@ -18,10 +18,15 @@ android {
             }
         }
     }
+    // namespace es solo el paquete Java del código (src/main/java/ch/duartesantos/opengym).
     namespace "ch.duartesantos.opengym"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "ch.duartesantos.opengym"
+        // Identificador propio desde la 3.4.0. Con el de openGym (ch.duartesantos.opengym),
+        // que su autor distribuye firmado con otra clave, Google Play Protect bloqueaba la app
+        // como «Aplicación dañina». No volver a cambiarlo: Android trata otro identificador como
+        // otra app (no actualiza, instala aparte). publicar.mjs comprueba que sea este.
+        applicationId "io.github.jesuscardenas72.hipertrofit"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 58

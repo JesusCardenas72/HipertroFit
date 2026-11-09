@@ -38,6 +38,8 @@ const WIN = process.platform === 'win32'
 // SHA-256 del certificado de ~/.hipertrofit/hipertrofit.keystore (CN=HipertroFit), el que llevan
 // todas las versiones desde la 3.0.4. No tocar.
 const CERTIFICADO = '9a2a3ec0e21396d239f486369126524eb90559547a083a3fffeaec0d31aa949a'
+// applicationId desde la 3.4.0 (antes ch.duartesantos.opengym, el de openGym). No tocar.
+const PAQUETE = 'io.github.jesuscardenas72.hipertrofit'
 
 const git = (args, cwd = FRONT) => execFileSync('git', args, { cwd, encoding: 'utf-8' }).trim()
 const fallar = mensaje => {
@@ -147,6 +149,13 @@ try {
 if (/^application-debuggable/m.test(manifiestoApk) || /^testOnly/m.test(manifiestoApk)) {
   fallar('El APK es depurable (android:debuggable) o de solo pruebas. Google Play Protect lo bloquearía ' +
     'como «Aplicación dañina». Publica el build release. No se ha subido nada.')
+}
+// Y con el identificador propio: con el de openGym, firmado por su autor con otra clave, Play
+// Protect la bloqueaba como suplantación; y con otro cualquiera el móvil no la actualizaría.
+const paquete = /^package: name='([^']+)'/m.exec(manifiestoApk)?.[1]
+if (paquete !== PAQUETE) {
+  fallar(`El APK tiene el identificador ${paquete || '(ninguno)'}, no ${PAQUETE}. ` +
+    'Revisa applicationId en android/app/build.gradle. No se ha subido nada.')
 }
 const datos = fs.readFileSync(salida)
 const mb = datos.length / 1024 / 1024
