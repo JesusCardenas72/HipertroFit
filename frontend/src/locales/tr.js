@@ -1474,4 +1474,7 @@ export default {
   'Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.': '{0} tarihinde {2} setin {1} tanesi yapılmışken duraklatıldı. Kaldığın yerden devam et ya da baştan başla — kaydedilen setler kaybolur.',
   'Starting the next one ends this one: its paused workouts can no longer be resumed.': 'Sonrakini başlatmak bunu kapatır: duraklatılan antrenmanlarına artık devam edilemez.',
   'Its paused workouts can no longer be resumed once it closes.': 'Kapatıldığında duraklatılan antrenmanlarına artık devam edilemez.',
+  'Sets missing this microcycle': 'Bu mikrodöngüde eksik setler',
+  'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Bu rutin sıranın dışında: plana ek olarak yaparsan her grubun minimumuna ulaşması için kalan setler.',
+  '{0} here': 'burada {0}',
 }

@@ -1474,4 +1474,7 @@ export default {
   'Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.': 'На паузе с {0}, выполнено {1} из {2} подходов. Продолжи с того места, где остановился, или начни заново — записанные подходы пропадут.',
   'Starting the next one ends this one: its paused workouts can no longer be resumed.': 'Начало следующего закрывает этот: его тренировки на паузе больше нельзя будет продолжить.',
   'Its paused workouts can no longer be resumed once it closes.': 'После закрытия его тренировки на паузе больше нельзя будет продолжить.',
+  'Sets missing this microcycle': 'Недостающие подходы в этом микроцикле',
+  'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Эта программа вне последовательности: сколько каждой группе не хватает до минимума, если выполнить её сверх плана.',
+  '{0} here': '{0} здесь',
 }

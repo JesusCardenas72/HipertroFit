@@ -1474,4 +1474,7 @@ export default {
   'Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.': '{0}에 {2}세트 중 {1}세트를 마치고 일시정지했어요. 멈춘 곳부터 이어하거나 처음부터 다시 시작하세요 — 기록한 세트는 사라져요.',
   'Starting the next one ends this one: its paused workouts can no longer be resumed.': '다음 마이크로사이클을 시작하면 이번 것이 종료돼요: 일시정지된 운동은 더 이상 이어할 수 없어요.',
   'Its paused workouts can no longer be resumed once it closes.': '종료하면 일시정지된 운동은 더 이상 이어할 수 없어요.',
+  'Sets missing this microcycle': '이번 마이크로사이클에 부족한 세트',
+  'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': '이 루틴은 순서 밖에 있습니다: 계획에 더해 이 루틴을 하면 각 그룹이 최소치까지 남는 세트입니다.',
+  '{0} here': '여기서 {0}',
 }

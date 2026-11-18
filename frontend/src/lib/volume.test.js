@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from './muscles.js'
 import {
   EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS, ALL_GROUP_KEYS, volumeGroups, setVolumeSplit, setVolumeMethod, volumeMethod, targetOf, PRIORITY_TARGET, priorityOf,
-  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, plannedAhead, volumeStatus, volumeColor, groupProgress, cycleExecution, minimumGaps,
+  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, plannedAhead, anytimeRoutineGaps, isAnytimeRoutine, volumeStatus, volumeColor, groupProgress, cycleExecution, minimumGaps,
 } from './volume.js'
 
 // A work set with an optional RIR. Inline exercise metadata (tg/mg/sm) resolves through
@@ -513,5 +513,50 @@ describe('volume target method', () => {
     setVolumeMethod('anything')
     expect(volumeMethod()).toBe('classic')
     expect(targetOf(VOLUME_GROUPS.find(g => g.key === 'quads'))).toEqual({ min: 12, max: 18 })
+  })
+})
+
+describe('anytimeRoutineGaps', () => {
+  const routines = [
+    { id: 'push', ex: [{ id: 'curl', tg: 'biceps', sets: 3 }] },
+    { id: 'legs', ex: [{ id: 'squat', tg: 'quads', sets: 4 }] },
+  ]
+  const TODAY = '2026-09-02'
+  const S = (workouts = [], seq = ['push', 'legs']) =>
+    ({ routines, workouts, cycleLog: [], program: { on: false, seq, anchor: '2026-09-01', strategy: 'custom' } })
+  const anytime = sets => ({ id: 'extra', ex: sets ? [{ id: 'curl', tg: 'biceps', sets }] : [] })
+  const biceps = (st, r) => anytimeRoutineGaps(st, r, TODAY).find(g => g.key === 'biceps')
+
+  it('tells routines outside the sequence from its steps', () => {
+    expect(isAnytimeRoutine(S(), 'extra')).toBe(true)
+    expect(isAnytimeRoutine(S(), 'push')).toBe(false)
+    expect(isAnytimeRoutine(S([], []), 'push')).toBe(true)
+    expect(isAnytimeRoutine(S(), null)).toBe(false)
+  })
+  it('starts from the gap Home shows, with nothing programmed yet', () => {
+    const g = biceps(S(), anytime(0))
+    expect(g.before).toBe(11)   // 3 planned of a minimum of 14
+    expect(g.remaining).toBe(11)
+    expect(g.adds).toBe(0)
+  })
+  it('takes every programmed set off the gap, live', () => {
+    expect(biceps(S(), anytime(2)).remaining).toBe(9)
+    expect(biceps(S(), anytime(6)).remaining).toBe(5)
+    expect(biceps(S(), anytime(6)).before).toBe(11)
+  })
+  it('stops at zero and flags the sets past the maximum', () => {
+    const g = biceps(S(), anytime(20))   // 3 + 20 = 23 against a maximum of 20
+    expect(g.remaining).toBe(0)
+    expect(g.excess).toBe(3)
+  })
+  it('counts on top of what the block already logged', () => {
+    const st = S([{ d: '2026-09-01', routineId: null, entries: [{ id: 'curl', tg: 'biceps', sets: [{ done: true, w: 10, r: 10 }, { done: true, w: 10, r: 10 }] }] }])
+    expect(biceps(st, anytime(0)).before).toBe(9)
+    expect(biceps(st, anytime(4)).remaining).toBe(5)
+  })
+  it('leaves other groups as they were', () => {
+    const legs = anytimeRoutineGaps(S(), anytime(4), TODAY).find(g => g.key === 'legs')
+    expect(legs.remaining).toBe(legs.before)
+    expect(legs.adds).toBe(0)
   })
 })

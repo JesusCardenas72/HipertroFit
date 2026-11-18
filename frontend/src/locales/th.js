@@ -1487,4 +1487,7 @@ export default {
   'Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.': 'หยุดชั่วคราวเมื่อ {0} โดยทำไปแล้ว {1} จาก {2} เซ็ต ฝึกต่อจากจุดที่ค้างไว้ หรือเริ่มใหม่ — เซ็ตที่บันทึกไว้จะหายไป',
   'Starting the next one ends this one: its paused workouts can no longer be resumed.': 'การเริ่มไมโครไซเคิลถัดไปจะปิดอันนี้: การฝึกที่หยุดชั่วคราวไว้จะไม่สามารถฝึกต่อได้อีก',
   'Its paused workouts can no longer be resumed once it closes.': 'เมื่อปิดแล้ว การฝึกที่หยุดชั่วคราวไว้จะไม่สามารถฝึกต่อได้อีก',
+  'Sets missing this microcycle': 'เซตที่ยังขาดในไมโครไซเคิลนี้',
+  'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'รูทีนนี้อยู่นอกลำดับ: แต่ละกลุ่มยังขาดกี่เซตจนถึงขั้นต่ำ หากทำรูทีนนี้เพิ่มจากแผน',
+  '{0} here': '{0} ที่นี่',
 }

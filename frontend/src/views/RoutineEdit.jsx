@@ -13,6 +13,8 @@ import { glyphOf } from '../lib/glyphs.js'
 import { Button, Row, SelectRow, Switch } from '../components/ui.jsx'
 import { POLICIES_FOR, POLICY_NAME, POLICY_DESC } from '../lib/progression.js'
 import BodyMap from '../components/BodyMap.jsx'
+import AnytimeRoutineGaps from '../components/AnytimeRoutineGaps.jsx'
+import { isAnytimeRoutine } from '../lib/volume.js'
 import { folderOf, moveRoutineToFolder } from '../lib/folders.js'
 import { loadOfRoutine, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
 import { dropActiveWorkoutEntry, moveActiveWorkoutUnitTo } from '../lib/active-workout-order.js'
@@ -537,6 +539,10 @@ export default function RoutineEdit() {
         </div>
       </div>
     })()}
+
+    {/* A routine outside the sequence is trained any time: show what it takes off the gaps of
+        the running microcycle, set by set as it is programmed. */}
+    {isAnytimeRoutine(S, r.id) && <AnytimeRoutineGaps S={S} routine={r} />}
 
     <div className="small dim row" style={{ margin: '10px 2px', gap: 5 }}><Icon name="link" style={{ fontSize: 13 }} />{t('Tap the link button on an exercise to superset it with the one above — you’ll do them back-to-back.')}</div>
     <Button variant="primary" onClick={addExercise} icon="plus">{t('Add exercise')}</Button>

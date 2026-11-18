@@ -1479,4 +1479,7 @@ export default {
   'Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.': 'Szüneteltetve: {0}, {2} sorozatból {1} kész. Folytasd ott, ahol abbahagytad, vagy kezdd újra — a rögzített sorozatok elvesznek.',
   'Starting the next one ends this one: its paused workouts can no longer be resumed.': 'A következő indítása lezárja ezt: a szüneteltetett edzései már nem folytathatók.',
   'Its paused workouts can no longer be resumed once it closes.': 'Lezárás után a szüneteltetett edzései már nem folytathatók.',
+  'Sets missing this microcycle': 'Hiányzó sorozatok ebben a mikrociklusban',
+  'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Ez a rutin a sorrenden kívül van: mennyi hiányzik még az egyes csoportoknak a minimumhoz, ha a terv mellett ezt is elvégzed.',
+  '{0} here': '{0} itt',
 }

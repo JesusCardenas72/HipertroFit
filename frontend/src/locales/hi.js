@@ -1474,4 +1474,7 @@ export default {
   'Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.': '{0} को {2} में से {1} सेट पूरे करके रोका गया। जहाँ छोड़ा था वहीं से जारी रखें, या फिर से शुरू करें — इसमें दर्ज सेट हट जाएँगे।',
   'Starting the next one ends this one: its paused workouts can no longer be resumed.': 'अगला शुरू करने से यह बंद हो जाएगा: इसके रुके हुए वर्कआउट अब जारी नहीं किए जा सकेंगे।',
   'Its paused workouts can no longer be resumed once it closes.': 'बंद होने के बाद इसके रुके हुए वर्कआउट जारी नहीं किए जा सकेंगे।',
+  'Sets missing this microcycle': 'इस माइक्रोसाइकिल में बाकी सेट',
+  'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'यह रूटीन क्रम से बाहर है: योजना के साथ इसे करने पर हर समूह को अपने न्यूनतम के लिए अभी कितने सेट चाहिए।',
+  '{0} here': '{0} यहाँ',
 }

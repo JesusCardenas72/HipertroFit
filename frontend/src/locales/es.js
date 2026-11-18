@@ -1561,4 +1561,7 @@ export default {
   'Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.': 'Se pausó el {0} con {1} de {2} series hechas. Retómalo donde lo dejaste o empieza de nuevo: se perderán las series registradas.',
   'Starting the next one ends this one: its paused workouts can no longer be resumed.': 'Empezar el siguiente cierra este: sus entrenamientos en pausa ya no se podrán retomar.',
   'Its paused workouts can no longer be resumed once it closes.': 'Al cerrarlo, sus entrenamientos en pausa ya no se podrán retomar.',
+  'Sets missing this microcycle': 'Series que faltan en este microciclo',
+  'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Esta rutina está fuera de la secuencia: lo que le falta a cada grupo para su mínimo si la haces además de lo planificado.',
+  '{0} here': '{0} aquí',
 }

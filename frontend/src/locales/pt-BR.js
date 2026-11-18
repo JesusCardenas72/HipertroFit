@@ -980,6 +980,9 @@ export const PT_BR_OVERRIDES = {
   'Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.': 'Pausado em {0} com {1} de {2} séries feitas. Retome de onde parou ou recomece — as séries registradas serão perdidas.',
   'Starting the next one ends this one: its paused workouts can no longer be resumed.': 'Começar o próximo encerra este: os treinos em pausa dele não poderão mais ser retomados.',
   'Its paused workouts can no longer be resumed once it closes.': 'Ao encerrá-lo, os treinos em pausa dele não poderão mais ser retomados.',
+  'Sets missing this microcycle': 'Séries faltando neste microciclo',
+  'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Esta rotina está fora da sequência: o que falta para cada grupo atingir o mínimo se você fizer ela além do plano.',
+  '{0} here': '{0} aqui',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

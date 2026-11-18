@@ -21,7 +21,7 @@
 // quads + glutes + hamstrings stacked. Secondary muscles still earn partial credit (the
 // 0.4 weight from musclesOf), which is the usual way fractional volume is counted.
 
-import { cycleWorkouts, cycleStrip, workoutDaysOver, microcycleLen, isExtra } from './microcycle.js'
+import { cycleWorkouts, cycleStrip, workoutDaysOver, microcycleLen, isExtra, trainingSteps } from './microcycle.js'
 import { REST } from './program.js'
 import { volumeMusclesOf, LATS, REAR_DELTS } from './muscles.js'
 import { EXIDX } from './exercises.js'
@@ -386,4 +386,35 @@ export function minimumGaps(vol, ahead) {
       excess: Math.max(0, Math.ceil(round1(p.done + left - p.max))),
     }
   })
+}
+
+/**
+ * Whether a routine sits outside the sequence — one kept to train any time (Workout ▸ Other
+ * routines) rather than a step of the block. Its sets are not in plannedAhead, so they are what it
+ * would add on top of the plan.
+ */
+export const isAnytimeRoutine = (S, routineId) =>
+  !!routineId && !trainingSteps(S && S.program).includes(routineId)
+
+/**
+ * What a routine outside the sequence would do to the running microcycle's gaps, read live while
+ * it is being programmed: per group, the sets still missing for its minimum without it (`before`,
+ * the figure Home shows) and once its work sets are done on top of the plan (`remaining`), the
+ * sets it adds (`adds`) and those the group would end up past its optimal maximum (`excess`). The
+ * same reading as minimumGaps over cycleVolume and plannedAhead, with the routine credited the
+ * way plannedVolume credits a step — so every set programmed here takes one off the gap of each
+ * group it trains, at that group's share. Groups without a minimum and that the routine leaves
+ * untouched and in range are left out; the counts are per group and not to be added up.
+ */
+export function anytimeRoutineGaps(S, routine, today = todayISO()) {
+  const vol = cycleVolume(S, today)
+  const ahead = plannedAhead(S, today)
+  const adds = {}
+  for (const g of VOLUME_GROUPS) adds[g.key] = 0
+  creditRoutine(adds, routine)
+  const withIt = { groups: Object.fromEntries(VOLUME_GROUPS.map(g => [g.key, (ahead.groups[g.key] || 0) + adds[g.key]])) }
+  const before = Object.fromEntries(minimumGaps(vol, ahead).map(g => [g.key, g]))
+  return minimumGaps(vol, withIt)
+    .map(g => ({ ...g, before: before[g.key].remaining, adds: round1(adds[g.key]) }))
+    .filter(g => g.min > 0 || g.adds > 0 || g.excess > 0)
 }

@@ -1474,4 +1474,7 @@ export default {
   'Paused {0} with {1} of {2} sets done. Resume it where you left off, or start over — the sets logged in it will be lost.': '于 {0} 暂停，已完成 {2} 组中的 {1} 组。从中断处继续，或重新开始——其中记录的组将会丢失。',
   'Starting the next one ends this one: its paused workouts can no longer be resumed.': '开始下一个会结束当前小周期：其中暂停的训练将无法再继续。',
   'Its paused workouts can no longer be resumed once it closes.': '结束后，其中暂停的训练将无法再继续。',
+  'Sets missing this microcycle': '本微周期还缺的组数',
+  'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': '此计划不在顺序中：在计划之外完成它后，每个肌群距离最低量还缺多少组。',
+  '{0} here': '此处 {0}',
 }
