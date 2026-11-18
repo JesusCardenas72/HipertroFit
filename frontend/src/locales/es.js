@@ -1577,5 +1577,7 @@ export default {
   '{0} over the max': '{0} sobre el máx.',
   '{0} to the min': 'faltan {0} al mín.',
   'Add exercises to see how this session changes the volume of your microcycle.': 'Añade ejercicios para ver cómo cambia esta sesión el volumen de tu microciclo.',
-  'This session takes some groups past their optimal maximum.': 'Esta sesión lleva algunos grupos por encima de su máximo óptimo.',
+  'Make a superset': 'Hacer superserie',
+  'Clear the plan': 'Vaciar la programación',
+  'This session takes some groups past their optimal maximum.':'Esta sesión lleva algunos grupos por encima de su máximo óptimo.',
 }

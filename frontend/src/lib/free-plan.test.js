@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { freePlanItem, stepFreeSets, freePlanVolume, freePlanProjection, freePlanEntries, FREE_MAX_SETS } from './free-plan.js'
+import { freePlanItem, stepFreeSets, freePlanVolume, freePlanProjection, freePlanEntries, FREE_MAX_SETS, toggleFreeLink, linkedToNext, removeFreeItem, freePlanDraft } from './free-plan.js'
 import { isWarmupRow } from './workout-model.js'
 
 // Single-muscle exercises with inline metadata (ids not in the catalogue), as in volume.test.js.
@@ -30,6 +30,50 @@ describe('free plan lines', () => {
     expect(stepFreeSets(items, 0, -1)[0].sets).toBe(1)
     expect(stepFreeSets([{ ...items[0], sets: FREE_MAX_SETS }], 0, 1)[0].sets).toBe(FREE_MAX_SETS)
     expect(stepFreeSets(items, 0, 2)[0].sets).toBe(3)
+  })
+})
+
+describe('supersets in the plan', () => {
+  const line = (id, sg) => ({ id, sets: 3, ...(sg ? { sg } : {}) })
+  it('joins a line with the next one', () => {
+    const out = toggleFreeLink([line('a'), line('b'), line('c')], 0)
+    expect(out[0].sg).toBeTruthy()
+    expect(out[0].sg).toBe(out[1].sg)
+    expect(out[2].sg).toBeUndefined()
+    expect(linkedToNext(out, 0)).toBe(true)
+    expect(linkedToNext(out, 1)).toBe(false)
+  })
+  it('extends a superset to a third line', () => {
+    const out = toggleFreeLink([line('a', 'x'), line('b', 'x'), line('c')], 1)
+    expect(out.map(it => it.sg)).toEqual(['x', 'x', 'x'])
+  })
+  it('splits a superset at the link, undoing a line left alone', () => {
+    const out = toggleFreeLink([line('a', 'x'), line('b', 'x'), line('c', 'x')], 0)
+    expect(out[0].sg).toBeUndefined()
+    expect(out[1].sg).toBeTruthy()
+    expect(out[1].sg).toBe(out[2].sg)
+    expect(out[1].sg).not.toBe('x')
+    const pair = toggleFreeLink([line('a', 'x'), line('b', 'x')], 0)
+    expect(pair.every(it => !it.sg)).toBe(true)
+  })
+  it('removing a line undoes a superset left with one exercise', () => {
+    const out = removeFreeItem([line('a', 'x'), line('b', 'x'), line('c')], 1)
+    expect(out).toEqual([line('a'), line('c')])
+  })
+  it('carries the superset into the session entries', () => {
+    const entries = freePlanEntries(S(), [line('curl', 'x'), line('squat', 'x')])
+    expect(entries.map(e => e.sg)).toEqual(['x', 'x'])
+  })
+})
+
+describe('freePlanDraft', () => {
+  it('keeps id, sets and superset of each line, nothing else', () => {
+    expect(freePlanDraft([{ id: 'curl', ex: curl, sets: 4, sg: 'x' }, { id: 'squat', ex: squat, sets: 2, sg: 'x' }]))
+      .toEqual([{ id: 'curl', sets: 4, sg: 'x' }, { id: 'squat', sets: 2, sg: 'x' }])
+  })
+  it('reads a broken draft safely', () => {
+    expect(freePlanDraft(null)).toEqual([])
+    expect(freePlanDraft([null, { sets: 3 }, { id: 'curl', sets: 99, sg: 'x' }])).toEqual([{ id: 'curl', sets: FREE_MAX_SETS }])
   })
 })
 

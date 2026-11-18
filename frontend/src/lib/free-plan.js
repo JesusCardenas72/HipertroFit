@@ -7,7 +7,7 @@
 // and what its own steps still plan (plannedAhead). Every planned set is taken as effective, the
 // same assumption plannedVolume makes, so the three figures sit on one scale.
 import { VOLUME_GROUPS, setCredit, cycleVolume, plannedAhead, targetOf, volumeStatus } from './volume.js'
-import { buildSets, freestyleConfig, defaultConfig, applyIntensifierPlan } from './history.js'
+import { buildSets, freestyleConfig, defaultConfig, applyIntensifierPlan, pairAdjacent } from './history.js'
 import { loadScaleFor } from './progression.js'
 import { applyDeload } from './mesocycle.js'
 import { isWarmupRow } from './workout-model.js'
@@ -20,14 +20,61 @@ const clampSets = n => Math.max(1, Math.min(FREE_MAX_SETS, Math.round(n) || 1))
 // What the exercise would start a freestyle session with: its last target, else the defaults.
 const configOf = (S, id) => freestyleConfig(S, { id, ...defaultConfig(id) })
 
-/** A new line of the plan: the exercise (`ex`, its catalogue or custom entry) and its work sets. */
+/**
+ * A new line of the plan: the exercise id and its work sets. The line keeps no copy of the
+ * exercise, so it can be stored as the draft (S.freePlan) as it is; `ex` (the catalogue or custom
+ * entry) may be attached to read its muscles, and is dropped by freePlanDraft.
+ */
 export function freePlanItem(S, ex) {
-  return { id: ex.id, ex, sets: clampSets(configOf(S, ex.id).sets) }
+  return { id: ex.id, sets: clampSets(configOf(S, ex.id).sets) }
 }
 
 /** Change one line's work sets by `delta`, kept within 1…FREE_MAX_SETS. */
 export const stepFreeSets = (items, i, delta) =>
   items.map((it, k) => (k === i ? { ...it, sets: clampSets(it.sets + delta) } : it))
+
+// A superset id left on a line with no neighbour sharing it is not a superset any more.
+function cleanSg(items) {
+  return items.map((it, i) => {
+    if (!it.sg || items[i - 1]?.sg === it.sg || items[i + 1]?.sg === it.sg) return it
+    const { sg, ...rest } = it
+    return rest
+  })
+}
+
+/** Whether line `i` and the next one are done back to back, as a superset. */
+export const linkedToNext = (items, i) => !!items[i]?.sg && items[i].sg === items[i + 1]?.sg
+
+/**
+ * Join line `i` and the next one in a superset (merging any superset either already belongs to),
+ * or, if they are joined, split the superset there: the lines after the cut take a new id, and a
+ * line left on its own stops being a superset.
+ */
+export function toggleFreeLink(items, i) {
+  if (!items[i] || !items[i + 1]) return items
+  if (!linkedToNext(items, i)) return pairAdjacent(items, i, i + 1)
+  const sg = items[i].sg
+  let fresh = sg + '-b'
+  while (items.some(it => it.sg === fresh)) fresh += 'b'
+  const next = items.map(it => ({ ...it }))
+  for (let k = i + 1; k < next.length && next[k].sg === sg; k++) next[k].sg = fresh
+  return cleanSg(next)
+}
+
+/** Take line `i` out of the plan; a superset left with one line is undone. */
+export const removeFreeItem = (items, i) => cleanSg(items.filter((_, k) => k !== i))
+
+/**
+ * The plan as it is stored between visits (S.freePlan): id, sets and superset of each line, and
+ * nothing for a line without an exercise. Read back the same way, so a draft saved by an older
+ * build or edited by hand cannot break the sheet.
+ */
+export function freePlanDraft(items) {
+  const out = (Array.isArray(items) ? items : [])
+    .filter(it => it && it.id)
+    .map(it => ({ id: it.id, sets: clampSets(it.sets), ...(it.sg ? { sg: String(it.sg) } : {}) }))
+  return cleanSg(out)
+}
 
 /** The effective sets the plan credits each group: { groupKey: sets }. */
 export function freePlanVolume(items) {
@@ -82,13 +129,13 @@ function fitWorkRows(rows, n) {
  * number of work sets the user planned. On a deload the rows take the cut like any other session.
  */
 export function freePlanEntries(S, items, { deload = 0 } = {}) {
-  return (items || []).map(it => {
+  return freePlanDraft(items).map(it => {
     const cfg = { ...configOf(S, it.id), sets: clampSets(it.sets) }
     const full = { ...cfg, id: it.id }
     const step = loadScaleFor(full, S.unit)
     let sets = fitWorkRows(buildSets(S, full, { step, preferLast: true }), cfg.sets)
     sets = applyIntensifierPlan(sets, full)
     if (deload > 0) sets = applyDeload(sets, deload, step)
-    return { id: it.id, target: cfg, plan: null, sets }
+    return { id: it.id, target: cfg, plan: null, sets, ...(it.sg ? { sg: it.sg } : {}) }
   })
 }

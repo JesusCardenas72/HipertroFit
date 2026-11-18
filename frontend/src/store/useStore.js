@@ -66,6 +66,9 @@ export const DEF = {
   // counts changed by hand — choices only; the routines exist once "Create plan" is pressed.
   // See views/PlanGenerate.jsx planGenOf.
   planGen: null,
+  // The freestyle session being planned before it starts — [{ id, sets, sg? }] — kept from one
+  // visit of the planner to the next and dropped when that session starts. See lib/free-plan.js.
+  freePlan: null,
   // What one set of an exercise's secondary muscles is worth as volume, 0…1 (a primary is
   // always 1). Feeds lib/muscles.js musclesOf, so it moves the home volume panel, the muscle
   // map and the recovery model together. See Settings ▸ Training volume.

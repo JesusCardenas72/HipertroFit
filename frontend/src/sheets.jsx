@@ -11,7 +11,7 @@ import { resumableOf, pausedFor, pauseActive, resumePaused, discardPaused } from
 import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
 import FreePlanVolume from './components/FreePlanVolume.jsx'
-import { freePlanItem, stepFreeSets, freePlanProjection, freePlanEntries } from './lib/free-plan.js'
+import { freePlanItem, stepFreeSets, freePlanProjection, freePlanEntries, freePlanDraft, toggleFreeLink, linkedToNext, removeFreeItem } from './lib/free-plan.js'
 import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber, carriedBase } from './lib/mesocycle.js'
 import { DeloadBadge } from './components/Deload.jsx'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, upcomingDays, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, stepEffort, capEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
@@ -2311,6 +2311,8 @@ export function beginWorkout(routineId, bw, deload = 0, freeItems = null) {
       ...(excluded ? { excludeFromProgression: true } : {}),
       ...(deload > 0 ? { deload } : {})
     }
+    // The saved freestyle plan has become this session: the next one is planned afresh.
+    if (!r && freeItems && freeItems.length) s.freePlan = null
   })
   useUI.getState().stopRest()
   nav('/workout')
@@ -2322,8 +2324,11 @@ export function beginWorkout(routineId, bw, deload = 0, freeItems = null) {
 // workout" then opens the session with them; with nothing picked it starts empty, as before.
 function FreePlanSheet({ onStart, close }) {
   const st = useStore(s => s.S)
-  const [items, setItems] = useState([])
-  const rows = useMemo(() => freePlanProjection(st, items), [st, items])
+  // The plan lives in the profile (S.freePlan) from the first exercise on, so closing the sheet
+  // and opening it again finds it as it was; it goes once the session it plans starts.
+  const items = useMemo(() => freePlanDraft(st.freePlan), [st.freePlan])
+  const setItems = fn => update(s => { s.freePlan = freePlanDraft(fn(freePlanDraft(s.freePlan))) })
+  const rows = useMemo(() => freePlanProjection(st, items.map(it => ({ ...it, ex: exOr(it.id) }))), [st, items])
   const total = items.reduce((n, it) => n + it.sets, 0)
   const add = () => {
     const p = exercisePicker(ex => { p.close(); setItems(xs => [...xs, freePlanItem(S(), ex)]) })
@@ -2331,22 +2336,38 @@ function FreePlanSheet({ onStart, close }) {
   return <>
     <h3 style={{ marginBottom: 4 }}>{t('Plan your freestyle workout')}</h3>
     <div className="muted small" style={{ marginBottom: 10 }}>{t('Pick the exercises and their sets: you will see how they change this microcycle’s volume before you start.')}</div>
-    {items.map((it, i) => <div key={i} className="free-plan-ex">
-      <Thumb ex={exOr(it.id)} muscle />
-      <div className="grow">
-        <div className="tt capitalize">{exerciseNameFor(exOr(it.id))}</div>
-        <div className="ss small muted capitalize">{t(muscleLabel(exOr(it.id).tg || exOr(it.id).bp))}</div>
+    {items.map((it, i) => {
+      const inSs = linkedToNext(items, i) || linkedToNext(items, i - 1)
+      return <div key={i}>
+        <div className={'free-plan-ex' + (inSs ? ' ss' : '')}>
+          <Thumb ex={exOr(it.id)} muscle />
+          <div className="grow">
+            <div className="tt capitalize">{exerciseNameFor(exOr(it.id))}</div>
+            <div className="ss small muted capitalize">{t(muscleLabel(exOr(it.id).tg || exOr(it.id).bp))}</div>
+          </div>
+          <div className="sets">
+            <button className="iconbtn" aria-label={t('Remove set')} onClick={() => setItems(xs => stepFreeSets(xs, i, -1))}><Icon name="minus" /></button>
+            <b>{it.sets}</b>
+            <button className="iconbtn" aria-label={t('Add set')} onClick={() => setItems(xs => stepFreeSets(xs, i, 1))}><Icon name="plus" /></button>
+            <button className="iconbtn" aria-label={t('Remove')} onClick={() => setItems(xs => removeFreeItem(xs, i))}><Icon name="trash" /></button>
+          </div>
+        </div>
+        {/* Between two exercises: join them in a superset, or split it there. */}
+        {i < items.length - 1 && <div className="free-plan-link">
+          <button className={'chip nocap' + (linkedToNext(items, i) ? ' on' : '')} aria-pressed={linkedToNext(items, i)}
+            onClick={() => setItems(xs => toggleFreeLink(xs, i))}>
+            <Icon name={linkedToNext(items, i) ? 'link' : 'linkSlash'} />
+            {linkedToNext(items, i) ? t('Superset') : t('Make a superset')}
+          </button>
+        </div>}
       </div>
-      <div className="sets">
-        <button className="iconbtn" aria-label={t('Remove set')} onClick={() => setItems(xs => stepFreeSets(xs, i, -1))}><Icon name="minus" /></button>
-        <b>{it.sets}</b>
-        <button className="iconbtn" aria-label={t('Add set')} onClick={() => setItems(xs => stepFreeSets(xs, i, 1))}><Icon name="plus" /></button>
-        <button className="iconbtn" aria-label={t('Remove')} onClick={() => setItems(xs => xs.filter((_, k) => k !== i))}><Icon name="trash" /></button>
-      </div>
-    </div>)}
+    })}
     <div style={{ height: 8 }} />
     <Button icon="plus" onClick={add}>{t('Add exercise')}</Button>
     {items.length > 0 && <div className="muted small" style={{ marginTop: 8 }}>{t('{0} work sets in {1}', total, exCount(items.length))}</div>}
+    {items.length > 0 && <button className="chip nocap free-plan-clear" style={{ marginTop: 8 }} onClick={() => setItems(() => [])}>
+      <Icon name="trash" />{t('Clear the plan')}
+    </button>}
     <FreePlanVolume rows={rows} />
     <div style={{ height: 14 }} />
     <Button variant="primary" icon="play" onClick={() => { close(); onStart(items) }}>
