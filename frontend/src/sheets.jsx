@@ -10,6 +10,8 @@ import { closeCycle, keepCycle, closableToday } from './lib/cycle-history.js'
 import { resumableOf, pausedFor, pauseActive, resumePaused, discardPaused } from './lib/paused-workout.js'
 import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
+import FreePlanVolume from './components/FreePlanVolume.jsx'
+import { freePlanItem, stepFreeSets, freePlanProjection, freePlanEntries } from './lib/free-plan.js'
 import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber, carriedBase } from './lib/mesocycle.js'
 import { DeloadBadge } from './components/Deload.jsx'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, upcomingDays, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, stepEffort, capEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
@@ -118,12 +120,13 @@ function WeightInput({ value, setValue, unit }) {
 }
 
 /* ============================ body weight ============================ */
-function BwSheet({ required, onDone, close }) {
+function BwSheet({ required, onDone, onFree, close }) {
   const st = useStore(s => s.S)
   const unit = st.unit
   const bw = lastBW(st)
   const [v, setV] = useState(bw ? bw.w : 70)
-  const save = () => {
+  // `then` lets the freestyle button reuse the same weigh-in and start a session without routine.
+  const save = (then = onDone) => {
     const n = Math.round((v || 0) * 10) / 10
     if (!n || n <= 0) { toast(t('Enter a valid weight')); return }
     update(s => {
@@ -133,7 +136,7 @@ function BwSheet({ required, onDone, close }) {
       s.bodyweight.sort((a, b) => (a.d < b.d ? -1 : 1))
     })
     close()
-    if (onDone) onDone(n); else toast(t('Weight saved'))
+    if (then) then(n); else toast(t('Weight saved'))
   }
   const recent = [...st.bodyweight].reverse().slice(0, 3)
   const delEntry = d => update(s => { s.bodyweight = s.bodyweight.filter(b => b.d !== d) })
@@ -153,7 +156,10 @@ function BwSheet({ required, onDone, close }) {
     <div className="muted small">{required ? t('Slide or tap to set your weight — tracked before every workout so your curve stays honest.') : t('Today') + ', ' + fmtDate(todayISO(), true)}</div>
     <WeightInput value={v} setValue={setV} unit={unit} />
     <div style={{ height: 14 }} />
-    <Button variant="primary" onClick={save}>{required ? t('Save & start workout') : t('Save')}</Button>
+    <Button variant="primary" onClick={() => save()}>{required ? t('Save & start workout') : t('Save')}</Button>
+    {required && onFree && <>
+      <div style={{ height: 8 }} /><Button className="free" icon="freeWorkout" onClick={() => save(onFree)}>{t('Freestyle workout')}</Button>
+    </>}
     {required && <>
       <div style={{ height: 8 }} /><Button variant="ghost" className="dim" onClick={() => { close(); onDone && onDone(null) }}>{t('Start without weighing in')}</Button>
       <div style={{ height: 2 }} /><Button variant="ghost" className="dim" icon="reset" onClick={() => { close(); nav('/workout') }}>{t('Choose a different workout')}</Button>
@@ -2279,15 +2285,24 @@ export function startFlow(routineId) {
 function sessionFlow(routineId) {
   // On a deload microcycle the app proposes the cut and the user sets it, per session — so
   // the sheet sits between weighing in and walking up to the bar. See lib/mesocycle.js.
-  bwSheet({ required: true, onDone: bw => {
-    if (mesoState(S()).deload) deloadSheet(pct => beginWorkout(routineId, bw, pct))
-    else beginWorkout(routineId, bw)
-  } })
+  // A freestyle session is planned before it starts: the planner shows what it does to the
+  // microcycle's volume (freePlanSheet), then starts it with those exercises.
+  const begin = (rid, bw, pct = 0) => rid ? beginWorkout(rid, bw, pct)
+    : freePlanSheet(items => beginWorkout(null, bw, pct, items))
+  const go = rid => bw => {
+    if (mesoState(S()).deload) deloadSheet(pct => begin(rid, bw, pct))
+    else begin(rid, bw)
+  }
+  // Starting a routine, the check-in also offers a freestyle session instead.
+  bwSheet({ required: true, onDone: go(routineId), onFree: routineId ? go(null) : null })
 }
-export function beginWorkout(routineId, bw, deload = 0) {
+export function beginWorkout(routineId, bw, deload = 0, freeItems = null) {
   const st = S()
   const r = routineId ? st.routines.find(x => x.id === routineId) : null
-  const { entries, excluded } = buildSessionEntries(st, r, { deload })
+  const built = buildSessionEntries(st, r, { deload })
+  const excluded = built.excluded
+  // A freestyle session planned in freePlanSheet starts with its exercises already in.
+  const entries = !r && freeItems && freeItems.length ? freePlanEntries(st, freeItems, { deload }) : built.entries
   update(s => {
     s.active = {
       id: uid(), d: todayISO(), start: Date.now(), routineId,
@@ -2298,6 +2313,50 @@ export function beginWorkout(routineId, bw, deload = 0) {
   })
   useUI.getState().stopRest()
   nav('/workout')
+}
+
+/* ============================ freestyle planner ============================ */
+// Before a freestyle session: pick its exercises and work sets and see, group by group, how they
+// move the running microcycle's volume against its optimal range (lib/free-plan.js). "Start
+// workout" then opens the session with them; with nothing picked it starts empty, as before.
+function FreePlanSheet({ onStart, close }) {
+  const st = useStore(s => s.S)
+  const [items, setItems] = useState([])
+  const rows = useMemo(() => freePlanProjection(st, items), [st, items])
+  const total = items.reduce((n, it) => n + it.sets, 0)
+  const add = () => {
+    const p = exercisePicker(ex => { p.close(); setItems(xs => [...xs, freePlanItem(S(), ex)]) })
+  }
+  return <>
+    <h3 style={{ marginBottom: 4 }}>{t('Plan your freestyle workout')}</h3>
+    <div className="muted small" style={{ marginBottom: 10 }}>{t('Pick the exercises and their sets: you will see how they change this microcycle’s volume before you start.')}</div>
+    {items.map((it, i) => <div key={i} className="free-plan-ex">
+      <Thumb ex={exOr(it.id)} muscle />
+      <div className="grow">
+        <div className="tt capitalize">{exerciseNameFor(exOr(it.id))}</div>
+        <div className="ss small muted capitalize">{t(muscleLabel(exOr(it.id).tg || exOr(it.id).bp))}</div>
+      </div>
+      <div className="sets">
+        <button className="iconbtn" aria-label={t('Remove set')} onClick={() => setItems(xs => stepFreeSets(xs, i, -1))}><Icon name="minus" /></button>
+        <b>{it.sets}</b>
+        <button className="iconbtn" aria-label={t('Add set')} onClick={() => setItems(xs => stepFreeSets(xs, i, 1))}><Icon name="plus" /></button>
+        <button className="iconbtn" aria-label={t('Remove')} onClick={() => setItems(xs => xs.filter((_, k) => k !== i))}><Icon name="trash" /></button>
+      </div>
+    </div>)}
+    <div style={{ height: 8 }} />
+    <Button icon="plus" onClick={add}>{t('Add exercise')}</Button>
+    {items.length > 0 && <div className="muted small" style={{ marginTop: 8 }}>{t('{0} work sets in {1}', total, exCount(items.length))}</div>}
+    <FreePlanVolume rows={rows} />
+    <div style={{ height: 14 }} />
+    <Button variant="primary" icon="play" onClick={() => { close(); onStart(items) }}>
+      {items.length ? t('Start workout') : t('Start without a plan')}
+    </Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
+  </>
+}
+export function freePlanSheet(onStart) {
+  return ui().openSheet(close => <FreePlanSheet onStart={onStart} close={close} />)
 }
 
 /* ============================ pause and resume ============================ */

@@ -3,6 +3,7 @@ import { t } from '../lib/i18n.js'
 import { fmtNum } from '../lib/format.js'
 import Icon from './Icon.jsx'
 import { VOLUME_GROUPS, volumeMethod, volumeStatus, volumeColor, targetOf, groupProgress, cycleExecution, minimumGaps } from '../lib/volume.js'
+import { glyphOfMuscle } from '../lib/glyphs.js'
 
 // Effective sets per muscle group for one microcycle, read against the 10–20 target band.
 // Shared by Home and Stats so the two can never report different numbers for the same block.
@@ -33,6 +34,12 @@ import { VOLUME_GROUPS, volumeMethod, volumeStatus, volumeColor, targetOf, group
 // sets it has to spare past its optimal maximum.
 const PARENT_NAME = { back: 'Back muscles', legs: 'Legs' }
 const PEEK_HOLD_MS = 200
+
+// The artwork of a group: the first of its muscles that has a picture (lib/glyphs.js).
+const groupGlyph = g => {
+  for (const m of g.muscles || []) { const k = glyphOfMuscle(m); if (k) return k }
+  return null
+}
 
 // Holding a name that isn't shown whole — cut off with an ellipsis, or abbreviated (`short`) —
 // opens it: the figures beside it fold away and the full name slides out, until the finger
@@ -102,7 +109,11 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
         return <Fragment key={g.key}>
           {first && <span className="vol-group-h">{t(PARENT_NAME[g.parent])}</span>}
           <div className={'vol-bar-row' + (g.parent ? ' sub' : '') + (peek === g.key ? ' peek' : '')}>
-            <span className="nm" title={t(g.name)} {...bindPeek(g.key, !!g.short && t(g.short) !== t(g.name))}>{t(peek === g.key ? g.name : (g.short || g.name))}</span>
+            <div className="vol-name">
+              <span className="nm" title={t(g.name)} {...bindPeek(g.key, !!g.short && t(g.short) !== t(g.name))}>{t(peek === g.key ? g.name : (g.short || g.name))}</span>
+              {/* The group's muscle artwork, at the right end of its name. */}
+              {groupGlyph(g) && <Icon name={groupGlyph(g)} className="vol-glyph" />}
+            </div>
             <span className="v">
               {/* Left: effective sets done / planned · optimal maximum · share executed. */}
               {plan
