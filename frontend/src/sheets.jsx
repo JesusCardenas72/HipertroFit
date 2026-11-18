@@ -2285,16 +2285,17 @@ export function startFlow(routineId) {
 function sessionFlow(routineId) {
   // On a deload microcycle the app proposes the cut and the user sets it, per session — so
   // the sheet sits between weighing in and walking up to the bar. See lib/mesocycle.js.
-  // A freestyle session is planned before it starts: the planner shows what it does to the
-  // microcycle's volume (freePlanSheet), then starts it with those exercises.
-  const begin = (rid, bw, pct = 0) => rid ? beginWorkout(rid, bw, pct)
-    : freePlanSheet(items => beginWorkout(null, bw, pct, items))
-  const go = rid => bw => {
-    if (mesoState(S()).deload) deloadSheet(pct => begin(rid, bw, pct))
-    else begin(rid, bw)
+  const go = (rid, items) => bw => {
+    const begin = pct => beginWorkout(rid, bw, pct, items)
+    if (mesoState(S()).deload) deloadSheet(begin)
+    else begin(0)
   }
-  // Starting a routine, the check-in also offers a freestyle session instead.
-  bwSheet({ required: true, onDone: go(routineId), onFree: routineId ? go(null) : null })
+  // A freestyle session is planned first, before the check-in: the planner shows what it does to
+  // the microcycle's volume (freePlanSheet), then the weigh-in starts it with those exercises.
+  if (!routineId) return freePlanSheet(items => bwSheet({ required: true, onDone: go(null, items) }))
+  // Starting a routine, the check-in also offers a freestyle session instead: the weight is
+  // already in, so its planner comes after it.
+  bwSheet({ required: true, onDone: go(routineId), onFree: bw => freePlanSheet(items => go(null, items)(bw)) })
 }
 export function beginWorkout(routineId, bw, deload = 0, freeItems = null) {
   const st = S()
