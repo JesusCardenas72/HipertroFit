@@ -139,6 +139,17 @@ export default function MicrocycleCard() {
         : next ? <span className="tag acc">{t('Start')}</span>
         : <Icon name="plus" className="chev" />}
     </div>
+    {/* Under today's session: a session without routine, for a day off the plan. */}
+    {!S.active && next && <div className="today-row free" data-testid="home-free" {...tappable(() => startFlow(null))}>
+      <div className="row" style={{ gap: 9, minWidth: 0 }}>
+        <span className="lrow-i"><Icon name="freeWorkout" /></span>
+        <div style={{ minWidth: 0 }}>
+          <div className="ttl">{t('Freestyle workout')}</div>
+          <div className="muted small">{t('Pick exercises as you go')}</div>
+        </div>
+      </div>
+      <span className="tag">{t('Start')}</span>
+    </div>}
 
     {over && <CycleOverBanner S={S} number={meso.number} />}
     {meso.suggest && <DeloadBanner meso={meso} />}
