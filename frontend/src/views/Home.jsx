@@ -28,10 +28,33 @@ export default function Home() {
     if (!hdr || !title || typeof ResizeObserver === 'undefined') return
     // the computed height, not getBoundingClientRect: <html> carries a zoom (UI size) and the rect
     // comes back zoomed, while --brand-h is set in the same unzoomed CSS px the title is laid out in
-    const sync = () => hdr.style.setProperty('--brand-h', getComputedStyle(title).height)
+    const brandH = () => hdr.style.setProperty('--brand-h', getComputedStyle(title).height)
+    // The settings button keeps its place at every UI size: the mark and the title grow with it
+    // only while they fit in the room the button leaves, then stay frozen at that size (--hdr-k
+    // scales both). Widths are layout px (offsetWidth/scrollWidth), unaffected by <html>'s zoom.
+    let k = 1
+    const MIN_K = 0.55 // a very long name truncates rather than shrinking to nothing
+    const fit = () => {
+      const brand = hdr.querySelector('.hdr-brand'), btn = hdr.querySelector('.iconbtn')
+      const h1 = title.querySelector('h1'), sub = title.querySelector('.sub')
+      if (!brand || !btn || !h1 || !sub) return
+      const gap = parseFloat(getComputedStyle(hdr).columnGap) || 0
+      const room = hdr.clientWidth - btn.offsetWidth - gap * 2
+      // what the mark and the title take now, brought back to their unscaled (k = 1) width
+      const natural = (brand.offsetWidth + Math.max(h1.scrollWidth, sub.scrollWidth)) / k
+      if (!(natural > 0) || !(room > 0)) return
+      const next = Math.max(MIN_K, Math.min(1, room / natural))
+      if (Math.abs(next - k) < 0.004) return
+      k = next
+      hdr.style.setProperty('--hdr-k', String(Math.floor(k * 1000) / 1000))
+    }
+    const sync = () => { brandH(); fit() }
     sync()
     const ro = new ResizeObserver(sync)
     ro.observe(title)
+    ro.observe(hdr)
+    const mark = hdr.querySelector('.hdr-brand')
+    if (mark) ro.observe(mark)
     return () => ro.disconnect()
   }, [])
 

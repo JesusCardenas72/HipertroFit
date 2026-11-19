@@ -266,13 +266,19 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
    size at every UI size. Where the three do not fit on one line the header takes two: the mark on its own,
    then the title with the settings button at its right. The title is never squeezed, so it only truncates
    past the width of its own line. */
-.hdr-home{flex-wrap:wrap}
+/* Update: the three always stay on one line and the settings button never moves. When the UI size
+   would take the mark and the title past the room left by the button, they stop growing: --hdr-k
+   (Home.jsx) scales both down to exactly that room, so above that size they stay frozen. */
+.hdr-home{flex-wrap:nowrap;--hdr-k:1}
+.hdr-home h1{font-size:calc(34px * var(--fs) * var(--hdr-k))}
+.hdr-home .sub{font-size:calc(15px * var(--fs) * var(--hdr-k));margin-top:calc(4px * var(--hdr-k))}
+.hdr-home .iconbtn{flex:none}
 /* --brand-h is the title block's measured height (Home.jsx); the calc is only the fallback without
    ResizeObserver: h1 line (34px × 1.06) + .sub margin (4px) + .sub line (15px × 1.29). The width
    follows from the mark's own aspect ratio */
 .hdr-brand{flex:none;height:var(--brand-h, calc((34px * 1.06 + 15px * 1.29) * var(--fs) + 4px));width:auto;aspect-ratio:auto;object-fit:contain;align-self:flex-end}
 .hdr-home .iconbtn{margin-left:auto}
-.hdr-title{flex:1 1 auto;min-width:0;max-width:calc(100% - 48px)}
+.hdr-title{flex:0 1 auto;min-width:0}
 .hdr-title h1,.hdr-title .sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .iconbtn{
