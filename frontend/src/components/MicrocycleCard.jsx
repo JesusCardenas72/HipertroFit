@@ -95,7 +95,11 @@ export default function MicrocycleCard() {
               : d.state === 'planned' && r ? r.name : t('Rest day')
         // A day gone by without a session is history, not a plan: shown faded.
         const past = !paused && (d.state === 'missed' || d.state === 'past')
-        const glyph = done ? (r ? glyphOf(r.emoji) : 'dumbbell') : paused ? 'pause' : (d.state === 'planned' || d.state === 'missed') && r ? glyphOf(r.emoji) : 'moon'
+        // A day trained without a routine (freestyle) shows the freestyle picture; a routine since
+        // deleted, the plain dumbbell.
+        // Today, while a freestyle session is under way, it shows that picture already.
+        const freeNow = d.iso === today && !done && S.active && !S.active.routineId
+        const glyph = freeNow ? 'freeWorkout' : done ? (r ? glyphOf(r.emoji) : !d.done.routineId ? 'freeWorkout' : 'dumbbell') : paused ? 'pause' : (d.state === 'planned' || d.state === 'missed') && r ? glyphOf(r.emoji) : 'moon'
         return <button key={d.iso} className={'prog-day' + (d.iso === today ? ' today' : '') + (past ? ' past' : '') + (done ? ' done' : '') + (paused ? ' paused' : '') + (dl ? ' deload' : '')}
           title={dl ? label + ' · ' + t('Deload') : label} aria-label={paused ? label : undefined}
           onClick={() => paused ? resumePausedWorkout(paused.id) : dayOverrideSheet(d.iso)}>
