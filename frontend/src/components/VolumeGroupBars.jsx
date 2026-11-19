@@ -2,38 +2,34 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { t } from '../lib/i18n.js'
 import { fmtNum } from '../lib/format.js'
 import Icon from './Icon.jsx'
-import { VOLUME_GROUPS, volumeMethod, volumeStatus, volumeColor, targetOf, groupProgress, cycleExecution, minimumGaps } from '../lib/volume.js'
+import { VOLUME_GROUPS, volumeMethod, volumeStatus, volumeColor, targetOf, groupProgress, cycleExecution, minimumGaps, volumeVerdict, groupExecution } from '../lib/volume.js'
+import ZoneBar from './ZoneBar.jsx'
+import { VERDICT } from './volume-verdict.js'
 import { glyphOfMuscle } from '../lib/glyphs.js'
 
-// Effective sets per muscle group for one microcycle, read against the 10–20 target band.
-// Shared by Home and Stats so the two can never report different numbers for the same block.
-// With `ahead` (plannedAhead, the volume still to come; empty for a block already behind) each row
-// also shows, at the right of its figures, the sets its group will still need to reach its minimum
-// once that is done, or the sets it will have to spare past its optimal maximum.
+// Effective sets per muscle group for one microcycle, read against each group's target band.
+// Shared by Home and Stats so the two can never report different numbers for the same block, and
+// by the Programming sheet (`isPlan`, where `vol` is the plan itself and nothing else counts).
 //
-// Each group is three lines: its name, the figures under it, then the bar on its own across the
-// full width. The bar is measured against the top of the band, not against the best-worked group: full
-// width is the band's top (20 sets for most), so a short bar means "short of the target", not
-// "trained less than legs".
+// Each group is three lines: its name, with the share of its volume already executed right beside
+// it (of its plan, or of its minimum without one — groupExecution); one line that says where the
+// group stands (volumeVerdict) with the figures at its right (done / planned · band); then the bar
+// across the full width.
+//
+// The bar is components/ZoneBar.jsx: the band's three zones as a tinted track, one block per set
+// over it, the sets done filled in the colour of the group's status and those the microcycle still
+// plans (`planned`, plannedVolume) striped after them, in red when the plan goes past the maximum.
+//
+// The verdict reads minimumGaps over `ahead` (plannedAhead, the volume still to come; empty for a
+// block already behind): the sets a group will still need for its minimum once that is done, or
+// those it will end up past its optimal maximum.
 //
 // A split Back or Legs (Settings ▸ Training volume) shows its parts together under the whole
-// group's name, indented, each with its own band next to the count — the parts are judged on
-// different ranges, so the shared 10–20 in the legend no longer speaks for them.
-//
-// With `planned` (plannedVolume, the live Home/Stats panel) each row also reads the log against
-// the plan: the empty part of the bar shows, striped, the sets the microcycle still plans, and
-// past the stripes the plain track left up to the optimal maximum — the gap the plan keeps below
-// the band's top. A plan that reaches past that top is painted red. The figures under the name read,
-// from the left, "done / planned · max N · pct%": the effective sets done, the sets planned, the
-// optimal maximum and the share executed; the sets still needed (or in excess) stay at the right.
-// Without it (the Programming sheet, where `vol` already is the plan) the bars read as before.
-//
-// With `isPlan` (the Programming sheet, where `vol` is the plan and nothing else counts) each row
-// shows the same figure, read from the plan alone so that it follows every edit of the sequence:
-// the sets it lacks for its minimum, whether it lands on the minimum or the plan covers it, or the
-// sets it has to spare past its optimal maximum.
+// group's name, indented, each with its own band — the parts are judged on different ranges.
 const PARENT_NAME = { back: 'Back muscles', legs: 'Legs' }
 const PEEK_HOLD_MS = 200
+// What the percentage beside a group's name is read against.
+const EXEC_OF = { plan: 'Executed of planned', min: 'Done of the minimum', max: 'Done of the optimal maximum' }
 
 // The artwork of a group: the first of its muscles that has a picture (lib/glyphs.js).
 const groupGlyph = g => {
@@ -67,9 +63,8 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
   const [peek, bindPeek] = usePeek()
   if (!vol) return null
   const plan = planned && planned.total > 0 ? planned : null
-  const gaps = ahead || isPlan ? Object.fromEntries(minimumGaps(vol, ahead).map(g => [g.key, g])) : null
+  const gaps = Object.fromEntries(minimumGaps(vol, ahead).map(g => [g.key, g]))
   const exec = plan && cycleExecution(vol, plan)
-  const pctOf = n => Math.min(100, Math.round(n * 100)) + '%'
   return <>
     {/* The how-to-read text (target band, split ranges, colour key) folds behind the info icon
         so the rows get the room; the execution line and any warning stay in view. */}
@@ -83,16 +78,16 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
         ? t('Each muscle group has its own target range of effective sets per microcycle, set by its priority (Settings ▸ Training volume).')
         : t('Each muscle group has its own target range of effective sets per microcycle: minimum effective to maximum adaptive volume.')}</div>
       <div className="vol-legend">
-        <span><i style={{ background: 'var(--orange)' }} />{t('under the minimum')}</span>
-        <span><i style={{ background: 'var(--green)' }} />{t('in range')}</span>
-        <span><i style={{ background: 'var(--red)' }} />{t('over the maximum')}</span>
+        <span><i className="zone low" />{t('under the minimum')}</span>
+        <span><i className="zone ok" />{t('in range')}</span>
+        <span><i className="zone high" />{t('over the maximum')}</span>
         {plan && <span><i className="plan" />{t('planned, to do')}</span>}
-        {plan && <span><i className="gap" />{t('up to the optimal max')}</span>}
       </div>
-      {plan && <div>{t('Under each group: effective sets done / planned · optimal maximum · share executed.')}</div>}
-      {plan && <div>{t('The full bar is the optimal maximum; the plan should stay below it.')}</div>}
-      {gaps && <div>{t('The figure on the right is the sets a group still needs for its minimum, counting what is still planned.')}</div>}
-      {gaps && <div>{t('A figure with a minus is the sets a group will end up past its optimal maximum.')}</div>}
+      <div>{t('Each block is one set. The tint behind it is the zone it falls in; filled blocks are the sets done.')}</div>
+      <div>{plan
+        ? t('The percentage beside each group is the share of its planned volume already executed.')
+        : t('The percentage beside each group is the share of its minimum already done.')}</div>
+      <div>{t('The line under each group says how many sets it still needs for its minimum, counting what is still planned, or how many it will end up past its optimal maximum.')}</div>
     </div>}
     {exec && <div className="vol-exec small">
       {t('Executed {0} of {1} planned sets', exec.done, exec.planned)} <b>{exec.pct}%</b>
@@ -105,41 +100,32 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
         const v = p.done
         const color = volumeColor(volumeStatus(v, band))
         const first = g.parent && (VOLUME_GROUPS[i - 1] || {}).parent !== g.parent
-        const scale = band.max || 1
+        const left = (ahead && ahead.groups[g.key]) || 0
+        const verdict = volumeVerdict(gaps[g.key], { done: v, left, max: band.max, isPlan })
+        const [say, sayColor] = VERDICT[verdict.kind]
+        const ex = groupExecution(p)
         return <Fragment key={g.key}>
           {first && <span className="vol-group-h">{t(PARENT_NAME[g.parent])}</span>}
           <div className={'vol-bar-row' + (g.parent ? ' sub' : '') + (peek === g.key ? ' peek' : '')}>
             <div className="vol-name">
               <span className="nm" title={t(g.name)} {...bindPeek(g.key, !!g.short && t(g.short) !== t(g.name))}>{t(peek === g.key ? g.name : (g.short || g.name))}</span>
+              {/* The share of the group's volume already executed, right beside its name: of its plan,
+                  or of its minimum when the microcycle plans nothing for it (groupExecution). */}
+              {ex.pct != null && <span className="vol-pct" title={t(EXEC_OF[ex.of])}>{ex.pct}%</span>}
               {/* The group's muscle artwork, at the right end of its name. */}
               {groupGlyph(g) && <Icon name={groupGlyph(g)} className="vol-glyph" />}
             </div>
             <span className="v">
-              {/* Left: effective sets done / planned · optimal maximum · share executed. */}
-              {plan
-                ? <span className="fig">
-                  <b style={{ color }}>{fmtNum(v)}</b>
-                  <span className="of" style={p.over ? { color: 'var(--red)' } : undefined}>{' / ' + fmtNum(p.planned)}</span>
-                  <span className="sep">{' · '}</span>
-                  <span className="mx">{t('max {0}', band.max)}</span>
-                  <span className="sep">{' · '}</span>
-                  <span className="pct">{p.pct == null ? '—' : p.pct + '%'}</span>
-                </span>
-                : <>
-                  <b style={{ color }}>{t('{0} sts', fmtNum(v))}</b>
-                  {g.target && <span className="rng">{band.min}–{band.max}</span>}
-                </>}
-              {gaps && (gaps[g.key].excess
-                ? <span className="need over">−{t('{0} sets', gaps[g.key].excess)}</span>
-                : gaps[g.key].min > 0 && (gaps[g.key].remaining
-                  ? <span className="need">+{t('{0} sets', gaps[g.key].remaining)}</span>
-                  : <span className="need met"><Icon name="check" />{t((isPlan ? v === band.min : v >= band.min) ? 'At minimum' : 'Plan covers it')}</span>))}
+              <span className="say" style={{ color: sayColor }}>{say(verdict.n)}</span>
+              {/* Right: effective sets done (/ planned) · the group's band. */}
+              <span className="fig">
+                <b style={{ color }}>{fmtNum(v)}</b>
+                {plan && <span className="of" style={p.over ? { color: 'var(--red)' } : undefined}>{' / ' + fmtNum(p.planned)}</span>}
+                <span className="sep">{' · '}</span>
+                <span className="rng">{band.min}–{band.max}</span>
+              </span>
             </span>
-            <span className="bar">
-              {/* Planned first, under the done fill: only the part not yet trained shows. */}
-              {plan && p.planned > 0 && <i className={'plan' + (p.over ? ' over' : '')} style={{ width: pctOf(p.planned / scale) }} />}
-              <i style={{ width: pctOf(v / scale), background: color }} />
-            </span>
+            <ZoneBar done={v} planned={plan ? p.planned : 0} band={band} color={color} over={p.over} />
           </div>
         </Fragment>
       })}

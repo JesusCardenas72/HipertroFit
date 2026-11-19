@@ -1254,12 +1254,12 @@ h4.sec{
 .vol-bars .nm{font-size:calc(14px * var(--fs));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .vol-name{display:flex;align-items:center;gap:8px;min-width:0}
-.vol-name .nm{flex:1 1 auto;min-width:0}
-.vol-glyph{flex-shrink:0;width:26px;height:26px;margin-right:2px}
-.vol-bars .bar{grid-column:1/-1;position:relative;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
-.vol-bars .bar i{position:absolute;left:0;top:0;display:block;height:100%;border-radius:4px}
-.vol-bars .bar i.plan,.vol-legend i.plan{background:repeating-linear-gradient(-45deg,var(--label-3) 0 2px,transparent 2px 5px);opacity:.75}
-.vol-bars .bar i.plan.over{background:repeating-linear-gradient(-45deg,var(--red) 0 2px,transparent 2px 5px);opacity:.9}
+.vol-name .nm{flex:0 1 auto;min-width:0}
+.vol-glyph{flex-shrink:0;width:26px;height:26px;margin-right:2px;margin-left:auto}
+/* the share of the group's planned volume already executed, right beside its name */
+.vol-pct{flex:none;font-size:calc(11.5px * var(--fs));font-weight:600;font-variant-numeric:tabular-nums;
+  color:var(--label-2);background:var(--surface-2);border-radius:99px;padding:1px 7px}
+.vol-legend i.plan{background:repeating-linear-gradient(-45deg,var(--label-3) 0 2px,transparent 2px 5px);opacity:.75}
 .vol-legend i.gap{background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--sep)}
 .vol-bars .v{display:flex;align-items:baseline;font-size:calc(12px * var(--fs));text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--label-2);
   overflow:hidden;max-height:20px;transform-origin:left center;
@@ -1270,16 +1270,32 @@ h4.sec{
 @keyframes vol-peek{from{clip-path:inset(0 30% 0 0)}to{clip-path:inset(0 0 0 0)}}
 @media (prefers-reduced-motion:reduce){.vol-bars .v{transition:none}.vol-bar-row.peek .nm{animation:none}}
 .vol-bars .v b{font-weight:600}
-/* with a plan: "done / planned · max N · pct%" as one line of text, cut at its end on a narrow phone */
+/* the verdict on the left, cut at its end on a narrow phone; the figures at the right, always whole */
+.vol-bars .v .say{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .vol-bars .v .fig{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.vol-bars .v .say + .fig{flex:none;margin-left:auto;padding-left:10px;overflow:visible}
+/* the bar (VolumeGroupBars' ZoneBar): the band's zones as one continuous tinted track, and the
+   sets as blocks laid over it — each zone holds its own sets, so it runs exactly under them */
+.zbar{display:flex;height:14px;border-radius:4px;overflow:hidden}
+.zbar .zone{flex-basis:0;min-width:0;display:flex;gap:2px;padding:3px 2px}
+.zbar .zone:first-child{padding-left:3px}
+.zbar .zone:last-child{padding-right:3px}
+.zbar .zone.low,.vol-legend i.zone.low{background:color-mix(in srgb,var(--orange) 22%,var(--surface-2))}
+.zbar .zone.ok,.vol-legend i.zone.ok{background:color-mix(in srgb,var(--green) 28%,var(--surface-2))}
+.zbar .zone.high,.vol-legend i.zone.high{background:color-mix(in srgb,var(--red) 24%,var(--surface-2))}
+.zbar .zb{position:relative;flex:1 1 0;min-width:0;border-radius:2px;overflow:hidden;
+  background:color-mix(in srgb,var(--bg, #000) 45%,transparent)}
+.zbar .zb i{position:absolute;left:0;top:0;bottom:0;display:block}
+.zbar .zb i.add,.vol-legend i.add{background:var(--blue)}
+.vol-bars .v .added{color:var(--blue);font-weight:600}
+.vol-legend i.add{width:14px;height:9px;border-radius:2px}
+.anytime-gaps .vol-bar-row.dim{opacity:.55}
+.zbar .zb i.plan{background:repeating-linear-gradient(-45deg,var(--label-2) 0 2px,transparent 2px 4px);opacity:.8}
+.zbar .zb i.plan.over{background:repeating-linear-gradient(-45deg,var(--red) 0 2px,transparent 2px 4px);opacity:.9}
+.vol-legend i.zone{width:14px;height:9px;border-radius:2px}
 .vol-bars .v .fig .sep,.vol-bars .v .fig .mx{color:var(--label-3)}
 .vol-bars .v .pct{color:var(--label);font-weight:600}
-.vol-bars .v .rng{margin-left:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:calc(11px * var(--fs));color:var(--label-3)}
-/* the sets a group still needs to reach its minimum, at the right of its figures: always shown
-   whole, on a narrow phone it is the plan's figure beside it that gets cut */
-.vol-bars .v .need{flex-shrink:0;margin-left:auto;padding-left:10px;display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--orange)}
-.vol-bars .v .need.met{color:var(--green)}
-.vol-bars .v .need.over{color:var(--red)}
+.vol-bars .v .rng{color:var(--label-3)}
 .vol-exec{margin-bottom:6px;color:var(--label-2)}
 .vol-exec b{color:var(--label);font-variant-numeric:tabular-nums}
 /* A split Back / Legs: the parts sit under the whole group's name, indented behind a rail. */
@@ -2286,17 +2302,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .today-row.free .lrow-i{--tint:var(--blue)}
 .today-row.free .ttl{color:var(--blue);text-transform:none}
 .today-row.free .tag{background:color-mix(in srgb,var(--blue) 22%,transparent);color:var(--blue)}
-/* Freestyle planner (components/FreePlanVolume.jsx): this session's sets in blue behind the
-   striped plan, with ticks at the range's minimum and maximum. */
-.free-vol .vol-bars .bar{overflow:visible}
-.free-vol .vol-bars .bar i.add{background:var(--blue)}
-.free-vol .vol-bars .bar .tick{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--label-3);border-radius:1px}
-.free-vol .vol-bars .bar .tick.max{background:var(--label-2)}
-.free-vol .vol-bars .v .need.add{color:var(--blue)}
-.free-vol .vol-bars .v .need.st{margin-left:0;padding-left:8px}
-.free-vol .vol-bars .v .need.add + .need.st{margin-left:0}
-.free-vol .vol-bars .v .fig + .need.st{margin-left:auto}
-.free-vol .vol-legend i.plan{width:18px;height:8px;border-radius:4px}
+/* Freestyle planner: its exercise rows (the volume panel is components/FreePlanVolume.jsx). */
 .free-plan-ex{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:var(--hair) solid var(--sep)}
 .free-plan-ex .grow{min-width:0}
 .free-plan-ex .tt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
