@@ -15,6 +15,16 @@ describe('completed workout boundary', () => {
     })
   })
 
+  it('keeps the superset an exercise was done in, and adds nothing without one', () => {
+    const active = {
+      id: 'a', d: '2026-08-08', start: 1000, routineId: null,
+      entries: [{ id: 'x', sg: 's1', sets: [{ done: true }] }, { id: 'y', sets: [{ done: true }] }],
+    }
+    const [x, y] = buildCompletedWorkout(active, { end: 2000 }).entries
+    expect(x.sg).toBe('s1')
+    expect(y).not.toHaveProperty('sg')
+  })
+
   it('persists progression exclusion only for a marked session', () => {
     const active = {
       id: 'active-1', d: '2026-08-08', start: 1000, routineId: 'routine-1', name: 'Deload', bw: 80,

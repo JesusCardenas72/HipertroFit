@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { freePlanItem, stepFreeSets, freePlanVolume, freePlanProjection, freePlanEntries, FREE_MAX_SETS, toggleFreeLink, linkedToNext, removeFreeItem, freePlanDraft } from './free-plan.js'
+import { freePlanItem, stepFreeSets, freePlanVolume, freePlanProjection, freePlanEntries, FREE_MAX_SETS, toggleFreeLink, linkedToNext, removeFreeItem, freePlanDraft, lastFreePlan } from './free-plan.js'
 import { isWarmupRow } from './workout-model.js'
 
 // Single-muscle exercises with inline metadata (ids not in the catalogue), as in volume.test.js.
@@ -74,6 +74,31 @@ describe('freePlanDraft', () => {
   it('reads a broken draft safely', () => {
     expect(freePlanDraft(null)).toEqual([])
     expect(freePlanDraft([null, { sets: 3 }, { id: 'curl', sets: 99, sg: 'x' }])).toEqual([{ id: 'curl', sets: FREE_MAX_SETS }])
+  })
+})
+
+describe('lastFreePlan', () => {
+  const warm = { done: true, w: 10, r: 10, warmup: true }
+  const free = (d, start, entries) => ({ d, start, routineId: null, entries })
+  it('reads back the latest freestyle session: done work sets and supersets, routines ignored', () => {
+    const st = S([
+      free('2026-09-01', 1, [{ id: 'squat', sets: [{ ...done }] }]),
+      free('2026-09-03', 2, [
+        { id: 'curl', sg: 'a', sets: [warm, { ...done }, { ...done }, { done: false }] },
+        { id: 'squat', sg: 'a', sets: [{ ...done }, { ...done }, { ...done }] },
+        { id: 'row', sets: [{ done: false }] },
+      ]),
+      logged('2026-09-05', 'push', curl, 5),
+    ])
+    const last = lastFreePlan(st)
+    expect(last.d).toBe('2026-09-03')
+    expect(last.items).toEqual([{ id: 'curl', sets: 2, sg: 'a' }, { id: 'squat', sets: 3, sg: 'a' }])
+  })
+  it('breaks a same-day tie by start time and is null without freestyle sessions', () => {
+    const st = S([free('2026-09-03', 9, [{ id: 'curl', sets: [{ ...done }] }]), free('2026-09-03', 2, [{ id: 'squat', sets: [{ ...done }] }])])
+    expect(lastFreePlan(st).items).toEqual([{ id: 'curl', sets: 1 }])
+    expect(lastFreePlan(S([logged('2026-09-05', 'push', curl, 5)]))).toBe(null)
+    expect(lastFreePlan({})).toBe(null)
   })
 })
 

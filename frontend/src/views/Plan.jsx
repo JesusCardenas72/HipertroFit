@@ -137,7 +137,7 @@ function usePlanReorder(rows, onDrop, cfg = ROUTINE_DRAG) {
           const engine = engineRef.current
           engine?.relayout()
           const row = engine?.base?.rows.find(r => r.node === node)
-          if (row) scrollBy(gesture.scrollHost, list.getBoundingClientRect().top + row.top - (gesture.lastY - gesture.grabInRow))
+          if (row) scrollBy(gesture.scrollHost, list.getBoundingClientRect().top + row.top * (engine.base.zoom || 1) - (gesture.lastY - gesture.grabInRow))
         })
       }
     }
@@ -153,7 +153,8 @@ function usePlanReorder(rows, onDrop, cfg = ROUTINE_DRAG) {
       gesture.lastX = x; gesture.lastY = y
       // Positions are the ones measured at lift, relative to the list: a scroll moves the list,
       // not them, so only the finger is brought into that frame.
-      const raw = (y - listRect.top) - gesture.grabInRow - src.top
+      // The finger is in screen pixels, the rows in the list's own (UI zoom, see routineMagnets).
+      const raw = (y - listRect.top - gesture.grabInRow) / (b.zoom || 1) - src.top
       const overhang = src.h / 2
       gesture.dy = clamp(raw, -src.top - overhang, Math.max(-src.top - overhang, b.height - src.bottom + overhang))
       const others = b.rows.filter(row => row !== src)

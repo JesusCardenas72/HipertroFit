@@ -76,6 +76,25 @@ export function freePlanDraft(items) {
   return cleanSg(out)
 }
 
+/**
+ * The last freestyle session that was finished, as a plan to start the next one from: each
+ * exercise with the work sets it actually did (warm-ups and undone rows left out) and its
+ * superset, in the session's order. `{ d, items }`, or null when no freestyle session has any.
+ */
+export function lastFreePlan(S) {
+  let last = null
+  for (const w of S?.workouts || []) {
+    if (!w || w.routineId || !(w.entries || []).length) continue
+    if (!last || (w.d || '') > (last.d || '') || ((w.d || '') === (last.d || '') && (w.start || 0) > (last.start || 0))) last = w
+  }
+  if (!last) return null
+  const items = freePlanDraft(last.entries.map(e => {
+    const work = (e.sets || []).filter(s => s && s.done && !isWarmupRow(s)).length
+    return work ? { id: e.id, sets: work, sg: e.sg } : null
+  }))
+  return items.length ? { d: last.d, items } : null
+}
+
 /** The effective sets the plan credits each group: { groupKey: sets }. */
 export function freePlanVolume(items) {
   const groups = {}

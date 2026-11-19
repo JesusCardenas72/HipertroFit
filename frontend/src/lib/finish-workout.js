@@ -8,6 +8,8 @@ export function buildCompletedWorkout(active, { end = Date.now(), prs = [], snap
       topW: entry.topW || null,
       target: entry.target || null,
     }
+    // The superset it was done in, so the session can be planned again as it was (lastFreePlan).
+    if (entry.sg) completed.sg = entry.sg
     // The rep aim double progression set for this session: a fatigued session repeats it
     // rather than guessing it back from the logged reps.
     if (entry.plan && entry.plan.policy === 'double' && entry.plan.reps > 0) completed.aim = entry.plan.reps

@@ -171,7 +171,7 @@ export function useRoutineReorder(routineIdentity, exercises, onDrop) {
       const moving = gesture.mode === 'unit' ? b.rows.filter(row => row.unit === src.unit) : [src]
       const top = Math.min(...moving.map(row => row.top))
       const bottom = Math.max(...moving.map(row => row.bottom))
-      const raw = (y - listRect.top) - (gesture.grabY - gesture.grabListTop)
+      const raw = ((y - listRect.top) - (gesture.grabY - gesture.grabListTop)) / (b.zoom || 1)
       // It may hang half out of the list, or the first and last places could only ever be
       // reached by landing on the exercise already there.
       const overhang = src.h / 2

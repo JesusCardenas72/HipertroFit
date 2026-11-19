@@ -1579,5 +1579,6 @@ export default {
   'Add exercises to see how this session changes the volume of your microcycle.': 'Añade ejercicios para ver cómo cambia esta sesión el volumen de tu microciclo.',
   'Make a superset': 'Hacer superserie',
   'Clear the plan': 'Vaciar la programación',
+  'Start from your last freestyle workout': 'Partir del último entrenamiento libre',
   'This session takes some groups past their optimal maximum.':'Esta sesión lleva algunos grupos por encima de su máximo óptimo.',
 }

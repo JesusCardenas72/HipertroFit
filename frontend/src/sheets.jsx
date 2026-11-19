@@ -11,7 +11,7 @@ import { resumableOf, pausedFor, pauseActive, resumePaused, discardPaused } from
 import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
 import FreePlanVolume from './components/FreePlanVolume.jsx'
-import { freePlanItem, stepFreeSets, freePlanProjection, freePlanEntries, freePlanDraft, toggleFreeLink, linkedToNext, removeFreeItem } from './lib/free-plan.js'
+import { freePlanItem, stepFreeSets, freePlanProjection, freePlanEntries, freePlanDraft, toggleFreeLink, linkedToNext, removeFreeItem, lastFreePlan } from './lib/free-plan.js'
 import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber, carriedBase } from './lib/mesocycle.js'
 import { DeloadBadge } from './components/Deload.jsx'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, upcomingDays, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, stepEffort, capEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
@@ -31,7 +31,9 @@ import { parseImport, mergeImport } from './lib/import-csv.js'
 import { importHevyData, HevyApiError, HEVY_DEV_SETTINGS, mergeHevyRoutines } from './lib/import-hevy.js'
 import { addFolder, renameFolder, moveFolder, deleteFolder, groupRoutines, toggleFolderInSequence, FOLDER_NAME_MAX } from './lib/folders.js'
 import { dropActiveWorkoutEntry } from './lib/active-workout-order.js'
-import { useRoutineReorder } from './views/RoutineEdit.jsx'
+import { useRoutineReorder, dropRoutineEntry } from './views/RoutineEdit.jsx'
+import { rowHsl } from './components/routineMagnets.js'
+import { dockItems } from './lib/workout-dock.js'
 import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-share.js'
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
@@ -1987,9 +1989,9 @@ export function ProgramSheet({ close = () => {}, layout }) {
     const list = reorder.listRef.current
     if (!engine || !list) return
     if (!chipDrag) { engine.release(); return }
-    const pointerY = chipDrag.y - list.getBoundingClientRect().top
     // Measure the rows as they are drawn now: the list may have re-rendered since the last measure.
     engine.relayout()
+    const pointerY = (chipDrag.y - list.getBoundingClientRect().top) / (engine.base?.zoom || 1)
     engine.drive((base, restOf) => new Map(base.rows.map(row => {
       const target = restOf(row)
       if (row.index !== chipDrag.over) return [row.key, target]
@@ -2330,38 +2332,92 @@ function FreePlanSheet({ onStart, close }) {
   const setItems = fn => update(s => { s.freePlan = freePlanDraft(fn(freePlanDraft(s.freePlan))) })
   const rows = useMemo(() => freePlanProjection(st, items.map(it => ({ ...it, ex: exOr(it.id) }))), [st, items])
   const total = items.reduce((n, it) => n + it.sets, 0)
+  // The last freestyle session done, offered as the base of this one while the plan is empty.
+  const last = useMemo(() => items.length ? null : lastFreePlan(st), [st, items.length])
   const add = () => {
     const p = exercisePicker(ex => { p.close(); setItems(xs => [...xs, freePlanItem(S(), ex)]) })
   }
+  // The same magnets as the routine editor: hold a line to lift it, let go on another to make a
+  // superset, move it inside its capsule to only reorder, pull it clear to leave the superset.
+  const reorder = useRoutineReorder('free-plan', items, (index, intent) => setItems(xs => {
+    const copy = xs.map(x => ({ ...x }))
+    return dropRoutineEntry(copy, index, intent) ? copy : xs
+  }))
+  // Each superset in the colour its capsule has on the dock.
+  const hueOf = new Map(dockItems(items).flatMap(item => item.hue == null ? [] : item.indices.map(i => [i, item.hue])))
+  const linkedPrev = i => i > 0 && linkedToNext(items, i - 1)
+  // A capsule's first and last lines stand further off their neighbours (.ss-start / .ss-end).
+  const startsSs = i => i > 0 && linkedToNext(items, i) && !linkedPrev(i)
+  const endsSs = i => i < items.length - 1 && linkedPrev(i) && !linkedToNext(items, i)
+  // The gap under line `i` (.list's 8px plus those margins): its link chip sits in the middle.
+  const gapBelow = i => 8 + (endsSs(i) ? 12 : 0) + (startsSs(i + 1) ? 12 : 0)
   return <>
     <h3 style={{ marginBottom: 4 }}>{t('Plan your freestyle workout')}</h3>
     <div className="muted small" style={{ marginBottom: 10 }}>{t('Pick the exercises and their sets: you will see how they change this microcycle’s volume before you start.')}</div>
-    {items.map((it, i) => {
-      const inSs = linkedToNext(items, i) || linkedToNext(items, i - 1)
-      return <div key={i}>
-        <div className={'free-plan-ex' + (inSs ? ' ss' : '')}>
-          <Thumb ex={exOr(it.id)} muscle />
-          <div className="grow">
-            <div className="tt capitalize">{exerciseNameFor(exOr(it.id))}</div>
-            <div className="ss small muted capitalize">{t(muscleLabel(exOr(it.id).tg || exOr(it.id).bp))}</div>
+    {items.length ? <div ref={reorder.listRef} onClickCapture={reorder.onClickCapture}
+      className={'list routine-list free-plan-list' + (reorder.drag ? ' is-reordering' : '')}>
+      {/* The superset capsules, drawn as liquid behind the lines (as in the routine editor). */}
+      <svg className="routine-goo" ref={reorder.svgRef} aria-hidden="true">
+        <defs>
+          <filter id="routine-goo" filterUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11" result="drop" />
+            <feMorphology in="drop" operator="erode" radius="1.5" result="inner" />
+            <feComposite in="drop" in2="inner" operator="out" result="ring" />
+            <feComponentTransfer in="drop" result="fill"><feFuncA type="linear" slope="0.16" /></feComponentTransfer>
+            <feComponentTransfer in="ring" result="edge"><feFuncA type="linear" slope="0.6" /></feComponentTransfer>
+            <feMerge><feMergeNode in="fill" /><feMergeNode in="edge" /></feMerge>
+          </filter>
+        </defs>
+        <g ref={reorder.gooRef} />
+      </svg>
+      {items.map((it, i) => {
+        const ex = exOr(it.id)
+        const isDragging = reorder.drag && i >= reorder.drag.first && i <= reorder.drag.last
+        const hue = hueOf.get(i)
+        const linked = linkedToNext(items, i)
+        return <div key={i} data-routine-row data-ex-index={i}
+          className={'routine-drag-row' + (isDragging ? ' is-dragging' : '') + (reorder.drag?.join === i ? ' magnet' : '')
+            + (startsSs(i) ? ' ss-start' : '') + (endsSs(i) ? ' ss-end' : '')}
+          style={hue == null ? undefined : { '--ss': rowHsl(hue) }}>
+          <div className="free-plan-ex">
+            <Thumb ex={ex} muscle />
+            <div className="grow">
+              <div className="tt capitalize">{exerciseNameFor(ex)}</div>
+              <div className="ss small muted capitalize">{t(muscleLabel(ex.tg || ex.bp))}</div>
+            </div>
+            <div className="sets">
+              <button className="iconbtn" aria-label={t('Remove set')} onClick={() => setItems(xs => stepFreeSets(xs, i, -1))}><Icon name="minus" /></button>
+              <b>{it.sets}</b>
+              <button className="iconbtn" aria-label={t('Add set')} onClick={() => setItems(xs => stepFreeSets(xs, i, 1))}><Icon name="plus" /></button>
+              <button className="iconbtn" aria-label={t('Remove')} onClick={() => setItems(xs => removeFreeItem(xs, i))}><Icon name="trash" /></button>
+            </div>
           </div>
-          <div className="sets">
-            <button className="iconbtn" aria-label={t('Remove set')} onClick={() => setItems(xs => stepFreeSets(xs, i, -1))}><Icon name="minus" /></button>
-            <b>{it.sets}</b>
-            <button className="iconbtn" aria-label={t('Add set')} onClick={() => setItems(xs => stepFreeSets(xs, i, 1))}><Icon name="plus" /></button>
-            <button className="iconbtn" aria-label={t('Remove')} onClick={() => setItems(xs => removeFreeItem(xs, i))}><Icon name="trash" /></button>
-          </div>
+          {/* Between this line and the next: join them in a superset, or split it there. Pinned
+              to the line rather than laid out between them, so the magnets measure only lines. */}
+          {i < items.length - 1 && <div className="free-plan-link" style={{ bottom: `${-gapBelow(i) / 2}px` }}>
+            <button className={'chip nocap' + (linked ? ' on' : '')} aria-pressed={linked}
+              onClick={ev => { ev.stopPropagation(); setItems(xs => toggleFreeLink(xs, i)) }}>
+              <Icon name={linked ? 'link' : 'linkSlash'} />
+              {linked ? t('Superset') : t('Make a superset')}
+            </button>
+          </div>}
         </div>
-        {/* Between two exercises: join them in a superset, or split it there. */}
-        {i < items.length - 1 && <div className="free-plan-link">
-          <button className={'chip nocap' + (linkedToNext(items, i) ? ' on' : '')} aria-pressed={linkedToNext(items, i)}
-            onClick={() => setItems(xs => toggleFreeLink(xs, i))}>
-            <Icon name={linkedToNext(items, i) ? 'link' : 'linkSlash'} />
-            {linkedToNext(items, i) ? t('Superset') : t('Make a superset')}
-          </button>
-        </div>}
-      </div>
-    })}
+      })}
+      {reorder.drag && <div className={'routine-drop-indicator' + (reorder.drag.join != null ? ' join' : '')} aria-hidden="true"
+        style={{ top: `${reorder.drag.indicatorTop}px` }} />}
+    </div> : null}
+    {items.length > 1 && <div className="muted small" style={{ marginTop: 8 }}>
+      {t('Hold a slot and drag it to change the order; let go on another one to make a superset. Hold longer to carry a whole superset.')}
+    </div>}
+    {last && <button className="free-plan-last" onClick={() => setItems(() => last.items)}>
+      <Icon name="history" />
+      <span className="grow">
+        <span className="tt">{t('Start from your last freestyle workout')}</span>
+        <span className="small muted">{fmtDate(last.d, true)} · {t('{0} work sets in {1}', last.items.reduce((n, it) => n + it.sets, 0), exCount(last.items.length))}</span>
+        <span className="small muted capitalize free-plan-last-names">{last.items.map(it => exerciseNameFor(exOr(it.id))).join(' · ')}</span>
+      </span>
+    </button>}
     <div style={{ height: 8 }} />
     <Button icon="plus" onClick={add}>{t('Add exercise')}</Button>
     {items.length > 0 && <div className="muted small" style={{ marginTop: 8 }}>{t('{0} work sets in {1}', total, exCount(items.length))}</div>}

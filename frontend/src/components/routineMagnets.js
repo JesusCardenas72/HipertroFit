@@ -74,6 +74,10 @@ export function createListEngine({ list, svg, goo, getEntries, rowSelector = '[d
     const unitOf = new Map(items.flatMap(item => item.indices.map(index => [index, item])))
     const keys = dockKeys(entries)
     const listRect = list.getBoundingClientRect()
+    // getBoundingClientRect reports what is on screen, after the UI zoom (Settings ▸ Appearance,
+    // `zoom` on <html>) and any scale above the list; the springs and the SVG work in the list's
+    // own CSS pixels. Without this the capsules were drawn zoomed twice, off their rows.
+    const zoom = listRect && listRect.width > 0 && list.offsetWidth > 0 ? listRect.width / list.offsetWidth : 1
     const rows = []
     let valid = !!listRect
     list.querySelectorAll(rowSelector).forEach(node => {
@@ -82,13 +86,13 @@ export function createListEngine({ list, svg, goo, getEntries, rowSelector = '[d
       if (!rect || !listRect) { valid = false; return }
       const ap = applied.get(node) || { y: 0, s: 1 }
       const item = unitOf.get(index)
-      const h = rect.height / ap.s
-      const w = rect.width / ap.s
-      const cy = rect.top + rect.height / 2 - listRect.top - ap.y
+      const h = rect.height / zoom / ap.s
+      const w = rect.width / zoom / ap.s
+      const cy = (rect.top + rect.height / 2 - listRect.top) / zoom - ap.y
       rows.push({
         node, index, key: keys[index], unit: item?.position ?? index,
         size: item?.indices.length || 1, hue: item?.hue ?? null, sg: entries[index]?.sg ?? null,
-        cx: rect.left + rect.width / 2 - listRect.left, cy, w, h, top: cy - h / 2, bottom: cy + h / 2,
+        cx: (rect.left + rect.width / 2 - listRect.left) / zoom, cy, w, h, top: cy - h / 2, bottom: cy + h / 2,
       })
     })
     rows.sort((a, b) => a.index - b.index)
@@ -115,7 +119,9 @@ export function createListEngine({ list, svg, goo, getEntries, rowSelector = '[d
     }
     return {
       rows, valid: valid && rows.length === entries.length,
-      height: listRect ? listRect.height : 0,
+      height: listRect ? listRect.height / zoom : 0,
+      // Screen pixels per list pixel: a pointer's clientY divided by it lands in the rows' frame.
+      zoom,
       spacing: spacing ?? 8,
       byIndex: new Map(rows.map(row => [row.index, row])),
       byKey: new Map(rows.map(row => [row.key, row])),

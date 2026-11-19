@@ -57,6 +57,9 @@ function createDockEngine({ strip, svg, goo, getEntries }) {
     const items = dockItems(list)
     const keys = dockKeys(list)
     const stripRect = strip.getBoundingClientRect()
+    // getBoundingClientRect is in screen pixels, after the UI zoom (`zoom` on <html>); scrollLeft,
+    // the transforms and the SVG are in the strip's own. Bring everything into the strip's frame.
+    const zoom = stripRect.width > 0 && strip.offsetWidth > 0 ? stripRect.width / strip.offsetWidth : 1
     const thumbs = []
     strip.querySelectorAll('[data-dock-index]').forEach(node => {
       const index = Number(node.dataset.dockIndex)
@@ -64,12 +67,12 @@ function createDockEngine({ strip, svg, goo, getEntries }) {
       const item = items[unit]
       const rect = node.getBoundingClientRect()
       const ap = applied.get(node) || { x: 0, s: 1 }
-      const w = rect.width / ap.s
-      const cx = rect.left + rect.width / 2 - stripRect.left + strip.scrollLeft - ap.x
+      const w = rect.width / zoom / ap.s
+      const cx = (rect.left + rect.width / 2 - stripRect.left) / zoom + strip.scrollLeft - ap.x
       thumbs.push({
         node, index, unit, key: keys[index],
         size: item?.indices.length || 1, hue: item?.hue ?? null, sg: list[index]?.sg ?? null,
-        cx, cy: rect.top + rect.height / 2 - stripRect.top, w, left: cx - w / 2, right: cx + w / 2,
+        cx, cy: (rect.top + rect.height / 2 - stripRect.top) / zoom, w, left: cx - w / 2, right: cx + w / 2,
       })
     })
     let rest = null
@@ -81,6 +84,7 @@ function createDockEngine({ strip, svg, goo, getEntries }) {
     return {
       thumbs, valid: thumbs.length === list.length,
       rest: rest ?? (thumbs[0]?.w || 54) + 8,
+      zoom,
       byIndex: new Map(thumbs.map(th => [th.index, th])),
       byKey: new Map(thumbs.map(th => [th.key, th])),
     }
@@ -327,7 +331,7 @@ export default function WorkoutDock({ entries, cur, onSelect, onReorder, onAdd, 
       if (!b?.valid || !src || gesture.entries !== entriesRef.current) { finish(gesture, false); return }
       const stripRect = strip.getBoundingClientRect()
       gesture.lastX = clientX
-      gesture.cx = clientX - stripRect.left + strip.scrollLeft
+      gesture.cx = (clientX - stripRect.left) / (b.zoom || 1) + strip.scrollLeft
       let marker
       let join = null
       if (gesture.mode === 'unit') {
@@ -380,7 +384,7 @@ export default function WorkoutDock({ entries, cur, onSelect, onReorder, onAdd, 
       gesture.mode = 'entry'
       gesture.grabX = gesture.lastX
       const stripRect = strip.getBoundingClientRect()
-      gesture.grabCx = gesture.lastX - stripRect.left + strip.scrollLeft
+      gesture.grabCx = (gesture.lastX - stripRect.left) / (b.zoom || 1) + strip.scrollLeft
       gesture.captureTarget = gesture.downTarget
       try { gesture.captureTarget.setPointerCapture?.(gesture.pointerId) } catch { /* unsupported */ }
       suppressClick.current = true

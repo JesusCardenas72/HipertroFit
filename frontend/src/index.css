@@ -2296,12 +2296,24 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .free-plan-ex .tt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .free-plan-ex .sets{display:flex;align-items:center;gap:6px;flex:none;font-variant-numeric:tabular-nums}
 .free-plan-ex .sets b{min-width:22px;text-align:center}
-.free-plan-ex.ss{border-left:3px solid var(--acc);padding-left:8px}
-.free-plan-link{display:flex;justify-content:center;margin:-10px 0 -6px;position:relative;z-index:1}
-.free-plan-link .chip{font-size:calc(11.5px * var(--fs));padding:3px 10px;gap:5px;display:inline-flex;align-items:center;background:var(--surface)}
+/* The free plan's lines ride the routine editor's magnets (routine-list / routine-drag-row). */
+.free-plan-list .free-plan-ex{border-bottom:0;padding:8px 0 8px 4px}
+.free-plan-list .routine-drag-row.magnet .free-plan-ex{box-shadow:0 0 0 2.5px var(--acc),0 0 14px var(--acc);border-radius:10px}
+.free-plan-list .routine-drag-row.is-dragging .free-plan-ex{box-shadow:0 10px 28px rgba(0,0,0,.22);background:var(--surface-2);border-radius:10px}
+/* The join/split chip between two lines: pinned to the upper line, centred on the gap below it
+   (`bottom` comes from the sheet), above both lines. Out of the way while a line is carried. */
+.free-plan-link{position:absolute;left:0;right:0;transform:translateY(50%);display:flex;justify-content:center;z-index:2;pointer-events:none}
+.free-plan-link .chip{pointer-events:auto;font-size:calc(11.5px * var(--fs));padding:3px 10px;gap:5px;display:inline-flex;align-items:center;background:var(--surface)}
 .free-plan-link .chip:not(.on){color:var(--label-3)}
 .free-plan-link .chip.on{color:var(--acc);background:color-mix(in srgb,var(--acc) 18%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 45%,transparent)}
+.free-plan-list.is-reordering .free-plan-link{opacity:0;pointer-events:none}
+.free-plan-list.is-reordering .free-plan-link .chip{pointer-events:none}
 .free-plan-clear{display:inline-flex;align-items:center;gap:5px}
+.free-plan-last{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;margin-bottom:4px;border-radius:14px;border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);background:color-mix(in srgb,var(--acc) 10%,var(--surface));color:var(--label);font:inherit;cursor:pointer}
+.free-plan-last>.icon,.free-plan-last>svg{color:var(--acc);flex:none}
+.free-plan-last .grow{display:flex;flex-direction:column;gap:2px;min-width:0}
+.free-plan-last .tt{font-weight:600}
+.free-plan-last-names{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn.free{color:var(--blue);background:color-mix(in srgb,var(--blue) 16%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue) 35%,transparent)}
 /* DateField (components/ui.jsx): a typed date with a calendar button at its end, and the hidden
    native date input the button opens, sat under the button so the picker appears there. */
