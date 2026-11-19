@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { DEFAULT_SECONDARY, setSecondaryWeight } from './muscles.js'
 import {
   EFFECTIVE_RIR, VOLUME_TARGET, VOLUME_GROUPS, ALL_GROUP_KEYS, volumeGroups, setVolumeSplit, setVolumeMethod, volumeMethod, targetOf, PRIORITY_TARGET, priorityOf,
-  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, plannedAhead, anytimeRoutineGaps, isAnytimeRoutine, volumeStatus, volumeColor, groupProgress, cycleExecution, minimumGaps,
+  isEffectiveSet, groupVolume, cycleVolume, plannedVolume, plannedAhead, anytimeRoutineGaps, isAnytimeRoutine, volumeStatus, volumeColor, groupProgress, cycleExecution, minimumGaps, volumeBlocks, volumeVerdict, groupExecution,
 } from './volume.js'
 
 // A work set with an optional RIR. Inline exercise metadata (tg/mg/sm) resolves through
@@ -558,5 +558,66 @@ describe('anytimeRoutineGaps', () => {
     const legs = anytimeRoutineGaps(S(), anytime(4), TODAY).find(g => g.key === 'legs')
     expect(legs.remaining).toBe(legs.before)
     expect(legs.adds).toBe(0)
+  })
+})
+
+describe('volumeBlocks', () => {
+  it('draws one block per set, a quarter past the maximum, zoned by the band', () => {
+    const b = volumeBlocks(0, 0, { min: 12, max: 20 })
+    expect(b).toHaveLength(25)
+    expect(b.filter(x => x.zone === 'low')).toHaveLength(12)
+    expect(b.filter(x => x.zone === 'ok')).toHaveLength(8)
+    expect(b.filter(x => x.zone === 'high')).toHaveLength(5)
+    expect(b.map((x, i) => x.edge ? i : -1).filter(i => i >= 0)).toEqual([12, 20])
+  })
+  it('fills whole and partial sets done, and the plan beneath them', () => {
+    const b = volumeBlocks(3.4, 9, { min: 12, max: 20 })
+    expect(b.slice(0, 5).map(x => x.fill)).toEqual([1, 1, 1, expect.closeTo(0.4, 5), 0])
+    expect(b[8].plan).toBe(1)
+    expect(b[9].plan).toBe(0)
+  })
+  it('grows past the usual end when the sets go further, up to the cap', () => {
+    expect(volumeBlocks(30, 0, { min: 10, max: 20 })).toHaveLength(30)
+    expect(volumeBlocks(99, 0, { min: 10, max: 20 })).toHaveLength(40)
+    expect(volumeBlocks(0, 0, { min: 10, max: 20 }, { after: 32 })).toHaveLength(32)
+  })
+  it('has no low zone for a band that starts at 0', () => {
+    expect(volumeBlocks(0, 0, { min: 0, max: 8 }).some(x => x.zone === 'low')).toBe(false)
+  })
+})
+
+describe('volumeBlocks with a session on top', () => {
+  it('carries the share the session adds past the plan', () => {
+    const b = volumeBlocks(2, 5, { min: 10, max: 20 }, { after: 7.5 })
+    expect(b[4].add).toBe(1)
+    expect(b[7].add).toBe(0.5)
+    expect(b[8].add).toBe(0)
+    expect(b[0].add).toBe(1)
+  })
+})
+
+describe('volumeVerdict', () => {
+  it('tells a gap the plan closes from one it does not', () => {
+    expect(volumeVerdict({ min: 12, remaining: 9, excess: 0 }, { done: 3, left: 0 })).toEqual({ kind: 'short', n: 9 })
+    expect(volumeVerdict({ min: 12, remaining: 3, excess: 0 }, { done: 3, left: 6 })).toEqual({ kind: 'shortWithPlan', n: 3 })
+    expect(volumeVerdict({ min: 12, remaining: 0, excess: 0 }, { done: 3, left: 9 }).kind).toBe('planCovers')
+    expect(volumeVerdict({ min: 12, remaining: 0, excess: 0 }, { done: 14 }).kind).toBe('ok')
+  })
+  it('tells an overshoot already done from one the plan will cause', () => {
+    expect(volumeVerdict({ min: 10, remaining: 0, excess: 2 }, { done: 22, max: 20 })).toEqual({ kind: 'over', n: 2 })
+    expect(volumeVerdict({ min: 10, remaining: 0, excess: 2 }, { done: 15, left: 7, max: 20 })).toEqual({ kind: 'planOver', n: 2 })
+  })
+  it('on the Programming sheet, says when the plan lands exactly on the minimum', () => {
+    expect(volumeVerdict({ min: 10, remaining: 0, excess: 0 }, { done: 10, isPlan: true }).kind).toBe('atMin')
+  })
+})
+
+describe('groupExecution', () => {
+  it('reads the sets done against the plan when the group plans any', () => {
+    expect(groupExecution({ done: 3, planned: 12, min: 12, max: 20 })).toEqual({ pct: 25, of: 'plan' })
+  })
+  it('falls back to the band minimum without a plan, and to the maximum for a band from 0', () => {
+    expect(groupExecution({ done: 3, planned: 0, min: 12, max: 20 })).toEqual({ pct: 25, of: 'min' })
+    expect(groupExecution({ done: 4, planned: 0, min: 0, max: 8 })).toEqual({ pct: 50, of: 'max' })
   })
 })

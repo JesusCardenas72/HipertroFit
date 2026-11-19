@@ -357,6 +357,57 @@ export function groupProgress(group, vol, planned) {
   }
 }
 
+/**
+ * The blocks of one group's volume bar, one per set: which zone of the band each set falls in
+ * ('low' under the minimum, 'ok' inside the band, 'high' past the optimal maximum), the share of it
+ * already done (`fill`, 0–1, so a group at 3.4 sets fills three blocks and two fifths of the fourth)
+ * and the share planned (`plan`, 0–1, drawn under the fill — only the part not yet trained shows).
+ * `edge` marks the first block of a new zone, where the bar leaves a wider gap. The bar runs a
+ * quarter past the maximum so an overshoot has somewhere to show, and further when the sets done or
+ * planned go past that, up to `cap` blocks. With `after` (the volume once a session being planned
+ * is added on top, the free workout and a routine outside the sequence) each block also carries the
+ * share that session adds (`add`, 0–1, drawn under the plan).
+ */
+export function volumeBlocks(done, planned, band, { after = 0, cap = 40 } = {}) {
+  const max = Math.max(1, band.max || 0)
+  const n = Math.min(cap, Math.max(Math.ceil(max * 1.25), Math.ceil(done || 0), Math.ceil(planned || 0), Math.ceil(after || 0)))
+  const clamp = x => Math.min(1, Math.max(0, x))
+  const out = []
+  for (let k = 0; k < n; k++) {
+    const zone = k + 1 <= (band.min || 0) ? 'low' : k + 1 <= max ? 'ok' : 'high'
+    out.push({ zone, fill: clamp((done || 0) - k), plan: clamp((planned || 0) - k), add: clamp((after || 0) - k), edge: k > 0 && zone !== out[k - 1].zone })
+  }
+  return out
+}
+
+/**
+ * The one line that says where a group stands, read from its minimumGaps entry: the sets it is
+ * still short of its minimum (`short`, or `shortWithPlan` when even the sets still planned leave it
+ * short), the sets it will end up past its optimal maximum (`over` once it is there, `planOver` when
+ * it is the plan that will take it there), the plan reaching the minimum (`planCovers`), sitting
+ * exactly on it (`atMin`, the Programming sheet only) or in range (`ok`). `n` is the count to show.
+ */
+export function volumeVerdict(gap, { done = 0, left = 0, max = Infinity, isPlan = false } = {}) {
+  if (gap.excess) return { kind: done > max || isPlan ? 'over' : 'planOver', n: gap.excess }
+  if (gap.remaining) return { kind: left > 0 ? 'shortWithPlan' : 'short', n: gap.remaining }
+  if (gap.min > 0 && done < gap.min) return { kind: 'planCovers', n: 0 }
+  if (isPlan && gap.min > 0 && done === gap.min) return { kind: 'atMin', n: 0 }
+  return { kind: 'ok', n: 0 }
+}
+
+/**
+ * The share of a group's volume already executed, shown beside its name: against the sets the
+ * microcycle plans for it (`of: 'plan'`) when it plans any, else against the band's minimum
+ * (`of: 'min'`), the volume the group has to reach; a band without a minimum is read against its
+ * optimal maximum (`of: 'max'`). `p` is a groupProgress row.
+ */
+export function groupExecution(p) {
+  if (p.planned > 0) return { pct: Math.round(p.done / p.planned * 100), of: 'plan' }
+  if (p.min > 0) return { pct: Math.round(p.done / p.min * 100), of: 'min' }
+  if (p.max > 0) return { pct: Math.round(p.done / p.max * 100), of: 'max' }
+  return { pct: null, of: null }
+}
+
 /** Work sets done in the block against the sets it plans: { done, planned, pct }. */
 export function cycleExecution(vol, planned) {
   const done = (vol && vol.total) || 0
@@ -415,6 +466,6 @@ export function anytimeRoutineGaps(S, routine, today = todayISO()) {
   const withIt = { groups: Object.fromEntries(VOLUME_GROUPS.map(g => [g.key, (ahead.groups[g.key] || 0) + adds[g.key]])) }
   const before = Object.fromEntries(minimumGaps(vol, ahead).map(g => [g.key, g]))
   return minimumGaps(vol, withIt)
-    .map(g => ({ ...g, before: before[g.key].remaining, adds: round1(adds[g.key]) }))
+    .map(g => ({ ...g, before: before[g.key].remaining, adds: round1(adds[g.key]), ahead: round1(ahead.groups[g.key]) }))
     .filter(g => g.min > 0 || g.adds > 0 || g.excess > 0)
 }

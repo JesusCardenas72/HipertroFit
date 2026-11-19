@@ -1,23 +1,29 @@
 import { useState } from 'react'
 import { t } from '../lib/i18n.js'
 import { fmtNum } from '../lib/format.js'
-import { volumeColor, volumeStatus } from '../lib/volume.js'
+import { volumeColor, volumeStatus, groupExecution } from '../lib/volume.js'
 import { glyphOfMuscle } from '../lib/glyphs.js'
 import Icon from './Icon.jsx'
+import ZoneBar from './ZoneBar.jsx'
+import { VERDICT } from './volume-verdict.js'
 
 // How a planned freestyle session moves the running microcycle's volume, group by group
-// (lib/free-plan.js, freePlanProjection). Each row reads "before → after", where `before` is
-// where the block lands without this session (sets done plus what its own sessions still plan)
-// and `after` where it lands with it, against the group's optimal range. The bar shows, from the
-// left, the sets done, the sets still planned (striped) and this session's sets (blue), with
-// ticks at the range's minimum and maximum.
+// (lib/free-plan.js, freePlanProjection), drawn like every other volume panel (VolumeGroupBars):
+// the name with the share of the group's volume already executed beside it, a line that says where
+// the group lands with this session, the figures "before → after · band" at its right, and the
+// zoned bar (ZoneBar) — the sets done, the sets still planned (striped) and this session's sets
+// (blue). `before` is where the block lands without this session (sets done plus what its own
+// sessions still plan) and `after` where it lands with it.
 //
 // Only the groups the session touches are listed; the toggle opens the rest.
 const groupGlyph = g => {
   for (const m of g.muscles || []) { const k = glyphOfMuscle(m); if (k) return k }
   return null
 }
-const pct = (n, scale) => Math.min(100, Math.max(0, n / scale * 100)) + '%'
+
+// Where the group lands with this session, in the words every volume panel uses.
+const verdictOf = r => r.after > r.max ? VERDICT.over[0](Math.ceil(r.after - r.max))
+  : r.after < r.min ? VERDICT.short[0](Math.ceil(r.min - r.after)) : VERDICT.ok[0]()
 
 export default function FreePlanVolume({ rows }) {
   const [all, setAll] = useState(false)
@@ -31,41 +37,36 @@ export default function FreePlanVolume({ rows }) {
       </button>}
     </div>
     <div className="vol-legend small" style={{ marginTop: 0, marginBottom: 8 }}>
-      <span><i style={{ background: 'var(--label-2)' }} />{t('done')}</span>
+      <span><i className="zone low" />{t('under the minimum')}</span>
+      <span><i className="zone ok" />{t('in range')}</span>
+      <span><i className="zone high" />{t('over the maximum')}</span>
       <span><i className="plan" />{t('still planned')}</span>
-      <span><i style={{ background: 'var(--blue)' }} />{t('this session')}</span>
+      <span><i className="add" />{t('this session')}</span>
     </div>
     {!shown.length && <div className="muted small">{t('Add exercises to see how this session changes the volume of your microcycle.')}</div>}
     <div className="vol-bars">
       {shown.map(r => {
-        const scale = Math.max(r.max * 1.15, r.after) || 1
-        const color = volumeColor(r.status)
+        const band = { min: r.min, max: r.max }
+        // Of the plan while the block still plans sets for the group, else of its minimum.
+        const ex = groupExecution({ done: r.done, planned: r.ahead > 0 ? r.before : 0, min: r.min, max: r.max })
         return <div key={r.key} className={'vol-bar-row' + (r.parent ? ' sub' : '')}>
           <div className="vol-name">
             <span className="nm">{t(r.short || r.name)}</span>
+            {ex.pct != null && <span className="vol-pct">{ex.pct}%</span>}
             {groupGlyph(r) && <Icon name={groupGlyph(r)} className="vol-glyph" />}
           </div>
           <span className="v">
+            <span className="say" style={{ color: volumeColor(r.status) }}>{verdictOf(r)}</span>
             <span className="fig">
               <span style={{ color: volumeColor(r.statusBefore) }}>{fmtNum(r.before)}</span>
-              {r.added > 0 && <> → <b style={{ color }}>{fmtNum(r.after)}</b></>}
+              {r.added > 0 && <> → <b style={{ color: volumeColor(r.status) }}>{fmtNum(r.after)}</b>
+                <span className="added">{' +' + fmtNum(r.added)}</span></>}
               <span className="sep">{' · '}</span>
-              <span className="mx">{r.min}–{r.max}</span>
-            </span>
-            {r.added > 0 && <span className="need add">+{fmtNum(r.added)}</span>}
-            <span className={'need st ' +(r.status === 'ok' ? 'met' : r.status === 'high' ? 'over' : '')}>
-              {r.status === 'ok' ? <><Icon name="check" />{t('in range')}</>
-                : r.status === 'high' ? t('{0} over the max', Math.ceil(r.after - r.max))
-                  : t('{0} to the min', Math.ceil(r.min - r.after))}
+              <span className="rng">{r.min}–{r.max}</span>
             </span>
           </span>
-          <span className="bar">
-            <i className="add" style={{ width: pct(r.after, scale) }} />
-            <i className="plan" style={{ width: pct(r.before, scale) }} />
-            <i style={{ width: pct(r.done, scale), background: volumeColor(volumeStatus(r.done, r)) }} />
-            {r.min > 0 && <b className="tick" style={{ left: pct(r.min, scale) }} />}
-            <b className="tick max" style={{ left: pct(r.max, scale) }} />
-          </span>
+          <ZoneBar done={r.done} planned={r.before} after={r.after} band={band}
+            color={volumeColor(volumeStatus(r.done, band))} />
         </div>
       })}
     </div>

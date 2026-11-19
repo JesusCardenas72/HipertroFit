@@ -257,7 +257,7 @@ describe('Stats muscle recovery view runtime', () => {
     expect(container.textContent).not.toContain(help)
     await click(container.querySelector('.vol-info'))
     expect(container.textContent).toContain(help)
-    expect(container.textContent).toContain('Chest7 sts12–20')   // classic chest band
+    expect(container.textContent).toContain('Chest58%5 sets short of the minimum7 · 12–20')   // classic chest band
 
     // The band is per microcycle only — the day windows go back to the relative balance map.
     await click(balanceRangeButton('30d'))
