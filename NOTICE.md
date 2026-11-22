@@ -127,7 +127,7 @@ the source files.
 ## Supplementary exercise sources
 
 The import sheet (Library → Import exercises, `frontend/src/lib/supplement-catalogue.js`) reads
-exercises from three public repositories when the user opens it. Nothing from them is bundled in
+exercises from four public sources when the user opens it. Nothing from them is bundled in
 this repository or in the app. Each imported exercise keeps its source's credit line.
 
 - **RepDB** — [RepDB/exercise-dataset](https://github.com/RepDB/exercise-dataset), RepDB Free Tier
@@ -140,3 +140,9 @@ this repository or in the app. Each imported exercise keeps its source's credit 
 - **LibreFit** — [LibreFitOrg/LibreFit](https://github.com/LibreFitOrg/LibreFit), GPL-3.0 with
   additional terms (author attribution must stay visible; the project logo and name are not
   granted). Credit: *Exercise data from LibreFit (GPL-3.0)*.
+- **Exercise API** — [marcmayol/exercise-api](https://github.com/marcmayol/exercise-api) by
+  Marc Mayol, read from `https://marcmayol.com/exercise-api/v1/dataset.json`. MIT-style licence
+  with mandatory attribution: credit to "Marc Mayol" and a link to the repository must be visible
+  to end users. Credit: *Exercise data and illustrations by Marc Mayol
+  (github.com/marcmayol/exercise-api)*, shown in the import sheet and kept on every imported
+  exercise. Its muscle maps (not used by openGym) derive from react-native-body-highlighter (MIT).

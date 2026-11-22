@@ -1,4 +1,4 @@
-// Supplementary exercise sources: three public repositories whose exercises can be imported
+// Supplementary exercise sources: four public datasets whose exercises can be imported
 // into a user's own custom list. Nothing here is bundled with the app. Each source is read
 // at the moment the user opens the import sheet, from its raw GitHub URL, and every record is
 // turned into a candidate in the catalogue's vocabulary (body part, equipment, muscles, steps).
@@ -7,6 +7,7 @@
 //   RepDB     RepDB Free Tier: use inside applications with attribution, no republishing as a dataset.
 //   GymBells  CC BY-NC 4.0: non-commercial use, with attribution.
 //   LibreFit  GPL-3.0 with additional terms: keep the author attribution visible.
+//   Exercise API (Marc Mayol)  MIT-style, credit "Marc Mayol" + repository link visible to users.
 
 export const SUPPLEMENT_SOURCES = [
   {
@@ -30,6 +31,14 @@ export const SUPPLEMENT_SOURCES = [
     base: 'https://raw.githubusercontent.com/LibreFitOrg/LibreFit/main/',
     index: 'app/src/main/res/raw/exercises.json',
     credit: 'Exercise data from LibreFit (GPL-3.0)',
+  },
+  {
+    // Served with Access-Control-Allow-Origin: *; names and steps in Spanish and English.
+    id: 'exerciseapi',
+    name: 'Exercise API',
+    base: 'https://marcmayol.com/exercise-api/',
+    index: 'v1/dataset.json',
+    credit: 'Exercise data and illustrations by Marc Mayol (github.com/marcmayol/exercise-api)',
   },
 ]
 
@@ -56,6 +65,7 @@ const MUSCLE = {
   traps: 'traps', trapezius: 'traps', neck: 'traps',
   'levator scapulae': 'levator scapulae',
   lats: 'lats', 'latissimus dorsi': 'lats',
+  forearm: 'forearms', gluteal: 'glutes', hamstring: 'hamstrings',
   'upper back': 'upper back', 'middle back': 'upper back', rhomboids: 'upper back', back: 'upper back',
   'lower back': 'lower back', 'erector spinae': 'spine', spine: 'spine',
   glutes: 'glutes', 'gluteus maximus': 'glutes',
@@ -197,6 +207,33 @@ export function fromLibreFit(list, source = sourceById('librefit')) {
   }).filter(Boolean)
 }
 
+// Exercise API groups that name a body part directly; arms and legs come from the target muscle.
+const EXAPI_BODY_PART = { chest: 'chest', back: 'back', shoulders: 'shoulders', core: 'waist', cardio: 'cardio' }
+
+/**
+ * Exercise API (Marc Mayol) v1/dataset.json → candidates. Every field is bilingual
+ * ({ es, en }); `lang` picks names and steps, English filling any gap. Muscle and equipment
+ * ids are kebab-case ("upper-back", "bodyweight").
+ */
+export function fromExerciseApi(data, source = sourceById('exerciseapi'), lang = 'es') {
+  const ids = list => (Array.isArray(list) ? list : []).map(m => String(m?.id || '').replace(/-/g, ' '))
+  return (data?.exercises || []).map(e => {
+    const n = e?.name?.[lang] || e?.name?.en
+    if (!n || !e.slug) return null
+    const group = e.group?.id
+    const eqId = e.equipment?.id
+    return candidate(source, e.slug, {
+      n, nEn: e.name.en, bodyPart: EXAPI_BODY_PART[group],
+      eq: eqId === 'cardio' ? '' : equipmentName(eqId),
+      primaries: musclesOf(ids(e.primaryMuscles)),
+      secondaries: musclesOf(ids(e.secondaryMuscles)),
+      steps: e.instructions?.[lang]?.length ? e.instructions[lang] : e.instructions?.en,
+      category: group === 'cardio' ? 'cardio' : '',
+      imageUrl: e.images?.male || e.images?.female || '',
+    })
+  }).filter(Boolean)
+}
+
 /** Candidates whose name (in any language offered) is not already taken, and not repeated. */
 export function freshOnly(candidates, takenNames) {
   const taken = new Set((takenNames || []).map(normName))
@@ -228,6 +265,7 @@ export async function loadSource(id, fetchJson = defaultFetchJson) {
   let list
   if (id === 'repdb') list = fromRepDB(index, source)
   else if (id === 'gymbells') list = fromGymBells(index, await fetchJson(source.base + source.text), source)
+  else if (id === 'exerciseapi') list = fromExerciseApi(index, source)
   else list = fromLibreFit(index, source)
   cache.set(id, list)
   return list

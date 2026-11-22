@@ -1,8 +1,66 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
   SUPPLEMENT_SOURCES, normName, muscleName, musclesOf, equipmentName,
-  fromRepDB, fromGymBells, fromLibreFit, freshOnly, importSeed, loadSource, clearSupplementCache,
+  fromRepDB, fromGymBells, fromLibreFit, fromExerciseApi, freshOnly, importSeed, loadSource, clearSupplementCache,
 } from './supplement-catalogue.js'
+
+const apiSource = SUPPLEMENT_SOURCES.find(s => s.id === 'exerciseapi')
+const apiRow = (over = {}) => ({
+  slug: 'barbell-bench-press',
+  name: { es: 'Press de banca', en: 'Barbell bench press' },
+  group: { id: 'chest' },
+  equipment: { id: 'barbell' },
+  primaryMuscles: [{ id: 'chest' }],
+  secondaryMuscles: [{ id: 'deltoids' }, { id: 'triceps' }],
+  instructions: { es: ['Acuéstate en el banco.'], en: ['Lie on the bench.'] },
+  images: { male: 'https://marcmayol.com/exercise-api/images/barbell-bench-press-m.jpg' },
+  ...over,
+})
+
+describe('fromExerciseApi', () => {
+  it('maps a bilingual record into a candidate in the catalogue vocabulary', () => {
+    const [c] = fromExerciseApi({ exercises: [apiRow()] }, apiSource)
+    expect(c).toMatchObject({
+      key: 'exerciseapi:barbell-bench-press', n: 'Press de banca',
+      names: ['Press de banca', 'Barbell bench press'],
+      bp: 'chest', eq: 'barbell', primaries: ['pectorals'], secondaries: ['delts', 'triceps'],
+      steps: ['Acuéstate en el banco.'],
+      imageUrl: 'https://marcmayol.com/exercise-api/images/barbell-bench-press-m.jpg',
+    })
+    expect(c.credit).toMatch(/Marc Mayol/)
+    expect(c.credit).toMatch(/github\.com\/marcmayol\/exercise-api/)
+  })
+
+  it('reads kebab-case muscle ids and derives arm and leg body parts from the target', () => {
+    const [curl, ham] = fromExerciseApi({ exercises: [
+      apiRow({ slug: 'wrist-curl', group: { id: 'arms' }, equipment: { id: 'dumbbell' }, primaryMuscles: [{ id: 'forearm' }], secondaryMuscles: [] }),
+      apiRow({ slug: 'leg-curl', group: { id: 'legs' }, equipment: { id: 'machine' }, primaryMuscles: [{ id: 'hamstring' }], secondaryMuscles: [{ id: 'gluteal' }, { id: 'lower-back' }] }),
+    ] }, apiSource)
+    expect(curl).toMatchObject({ bp: 'lower arms', eq: 'dumbbell', primaries: ['forearms'] })
+    expect(ham).toMatchObject({ bp: 'upper legs', eq: 'leverage machine', primaries: ['hamstrings'], secondaries: ['glutes', 'lower back'] })
+  })
+
+  it('treats the cardio group as cardio, with no muscles, and falls back to English', () => {
+    const [c] = fromExerciseApi({ exercises: [apiRow({
+      slug: 'jump-rope', name: { en: 'Jump rope' }, group: { id: 'cardio' }, equipment: { id: 'cardio' },
+      primaryMuscles: [{ id: 'calves' }], instructions: { es: [], en: ['Jump.'] },
+    })] }, apiSource)
+    expect(c).toMatchObject({ n: 'Jump rope', bp: 'cardio', eq: '', primaries: [], secondaries: [], steps: ['Jump.'] })
+  })
+
+  it('skips records without a name or slug', () => {
+    expect(fromExerciseApi({ exercises: [apiRow({ name: {} }), apiRow({ slug: '' })] }, apiSource)).toEqual([])
+    expect(fromExerciseApi(null, apiSource)).toEqual([])
+  })
+
+  it('is read by loadSource from the dataset file', async () => {
+    clearSupplementCache()
+    const urls = []
+    const list = await loadSource('exerciseapi', async url => { urls.push(url); return { exercises: [apiRow()] } })
+    expect(urls).toEqual(['https://marcmayol.com/exercise-api/v1/dataset.json'])
+    expect(list).toHaveLength(1)
+  })
+})
 
 const repSource = SUPPLEMENT_SOURCES.find(s => s.id === 'repdb')
 const gymSource = SUPPLEMENT_SOURCES.find(s => s.id === 'gymbells')
