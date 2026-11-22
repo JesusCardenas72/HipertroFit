@@ -77,6 +77,9 @@ export function buildCustomExercise(f) {
     ...(gif && Number.isInteger(f.frame) && f.frame > 0 ? { frame: f.frame } : {}),
     // The source credit of an imported exercise (lib/supplement-catalogue.js); kept as written.
     ...(String(f.credit || '').trim() ? { credit: String(f.credit).trim().slice(0, 200) } : {}),
+    // Which source record it came from ("exerciseapi:barbell-bench-press"), so picking that
+    // record again reuses this exercise instead of importing a second copy.
+    ...(/^[a-z]+:[^\s]{1,120}$/.test(String(f.src || '')) ? { src: f.src } : {}),
     custom: true,
   }
 }

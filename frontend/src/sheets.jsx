@@ -42,7 +42,7 @@ import { ladderOf, snapLoad, topOf, withAdjustable } from './lib/load-scale.js'
 import { routineExerciseConfig, classifyExercise, CLASS_NAME, CLASS_REP_RANGE, EXERCISE_CLASSES } from './lib/exercise-class.js'
 import { buildCustomExercise, stepsText, copyName, NAME_MAX, DESC_MAX, MAX_IMAGE_BYTES } from './lib/custom-exercise.js'
 import { pictureFromFile, pictureFromUrl, pictureFromClipboard, imageFromTransfer, gifFromDataUrl, frameCanvas, frameToJpeg } from './lib/image-file.js'
-import { SUPPLEMENT_SOURCES, loadSource, freshOnly, importSeed, normName } from './lib/supplement-catalogue.js'
+import { SUPPLEMENT_SOURCES, loadSource, freshOnly, importSeed, normName, importedFrom, importedExercise } from './lib/supplement-catalogue.js'
 import { previousRoutineConfig, seedConfig, changedGlobals, applyGlobals, isGlobalField, GLOBAL_LABEL } from './lib/exercise-defaults.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
@@ -703,7 +703,7 @@ function CustomExForm({ existing, copyOf, prefill, importOf, onDone, close }) {
     if (!q) { toast(t('Give it a name')); return }
     window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(q), '_blank', 'noopener')
   }
-  const draft = id => buildCustomExercise({ id, n, bp, eq, cls, pattern, primaries: muscles.primary, secondaries: muscles.secondary, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame, credit: importOf ? importOf.row.credit : (existing || {}).credit })
+  const draft = id => buildCustomExercise({ id, n, bp, eq, cls, pattern, primaries: muscles.primary, secondaries: muscles.secondary, desc, steps, img: pic.img, gif: pic.gif, frame: pic.frame, credit: importOf ? importOf.row.credit : (existing || {}).credit, src: importOf ? importOf.row.src : (existing || {}).src })
   const autoCls = classifyExercise({ ...draft((existing || {}).id), cls: undefined })
   const save = () => {
     const name = n.trim()
@@ -1012,6 +1012,7 @@ function ExercisePicker({ onPick, close }) {
   const [eq, setEq] = useState('')          // '' = any equipment
   const [showAll, setShowAll] = useState(false)
   const [shown, setShown] = useState(50)
+  const [db, setDb] = useState('')          // '' = the app's own catalogue, else a SUPPLEMENT_SOURCES id
   const searchRef = useRef(null)
   const bpStrip = useRef(null), eqStrip = useRef(null)
   const onSearchFocus = useSheetKeyboard(searchRef)
@@ -1034,8 +1035,14 @@ function ExercisePicker({ onPick, close }) {
   const star = { fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }
   useRevealActiveChip(bpStrip, bp)
   useRevealActiveChip(eqStrip, eqOn)
+  if (db) return <>
+    <h3>{t('Add exercise')}</h3>
+    <DatabaseChips db={db} setDb={setDb} />
+    <OtherDatabaseList db={db} onPick={onPick} />
+  </>
   return <>
     <h3>{t('Add exercise')}</h3>
+    <DatabaseChips db={db} setDb={setDb} />
     {/* .picker-search is what index.css keys the keyboard-aware sheet layout on: the sheet
         lifts above the keys and the search stays put while the list scrolls under it. */}
     <div className="picker-search"><div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
@@ -1074,6 +1081,73 @@ function ExercisePicker({ onPick, close }) {
   </>
 }
 export const exercisePicker = onPick => ui().openSheet(close => <ExercisePicker onPick={onPick} close={close} />)
+
+// Which database the picker lists: the app's own catalogue (with your custom exercises) or one
+// of the supplementary sources (lib/supplement-catalogue.js).
+function DatabaseChips({ db, setDb }) {
+  const strip = useRef(null)
+  useRevealActiveChip(strip, db || 'app')
+  return <div className="chips" ref={strip} style={{ margin: '0 0 10px' }}>
+    <button className={'chip nocap' + (!db ? ' on' : '')} aria-pressed={!db} onClick={() => setDb('')}>HipertroFit</button>
+    {SUPPLEMENT_SOURCES.map(s => <button key={s.id} className={'chip nocap' + (db === s.id ? ' on' : '')} aria-pressed={db === s.id} onClick={() => setDb(s.id)}>{s.name}</button>)}
+  </div>
+}
+
+// The exercises of another database. Picking one imports it as a custom exercise in one step
+// (its picture downloaded, its credit kept) and hands that to the picker's caller, so adding
+// and swapping work exactly as with a built-in; picking it again reuses the same import.
+function OtherDatabaseList({ db, onPick }) {
+  const [list, setList] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const [q, setQ] = useState('')
+  const [bp, setBp] = useState('')
+  const [busy, setBusy] = useState('')
+  const [shown, setShown] = useState(50)
+  useEffect(() => {
+    let live = true
+    setList(null); setFailed(false); setShown(50)
+    loadSource(db).then(l => { if (live) setList(l) }, () => { if (live) setFailed(true) })
+    return () => { live = false }
+  }, [db])
+  const source = SUPPLEMENT_SOURCES.find(s => s.id === db)
+  const needle = normName(q)
+  const f = (list || []).filter(c => (!bp || c.bp === bp) && (!needle || normName(c.names.join(' ')).includes(needle)))
+  const parts = BODYPARTS.filter(b => (list || []).some(c => c.bp === b))
+  const pick = async c => {
+    if (busy) return
+    const prev = importedFrom(S().customEx, c)
+    if (prev) { onPick(EXIDX[prev.id] || prev); return }
+    setBusy(c.key)
+    let picture = {}
+    if (c.imageUrl) try { picture = await pictureFromUrl(c.imageUrl) } catch { /* imported without a picture */ }
+    const id = 'c' + uid()
+    const record = importedExercise(c, { id, picture, taken: allExercises(S()).flatMap(e => [e.n, exerciseNameFor(e)]) })
+    update(s => { s.customEx = [...(s.customEx || []), record] })
+    setBusy('')
+    toast(t('“{0}” imported from {1}', record.n, source.name))
+    onPick(EXIDX[id] || record)
+  }
+  return <>
+    <div className="picker-search"><div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      <input className="input" placeholder={list ? t('Search {0} exercises…', list.length) : t('Search…')} value={q} onChange={e => { setQ(e.target.value); setShown(50) }} /></div></div>
+    {parts.length > 1 && <div className="chips" style={{ margin: '10px 0' }}>
+      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setShown(50) }}>{t('All')}</button>
+      {parts.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setShown(50) }}>{t(b)}</button>)}
+    </div>}
+    {failed ? <div className="small dim">{t('Could not reach {0}. Try again later.', source.name)}</div>
+      : !list ? <div className="small dim">{t('Loading…')}</div>
+      : <div className="list">
+        {f.slice(0, shown).map(c => <div key={c.key} className="item" {...tappable(() => pick(c))}>
+          <Thumb ex={{ id: c.key, n: c.n, img: c.imageUrl, tg: c.primaries[0], bp: c.bp }} muscle />
+          <div className="grow"><div className="tt capitalize">{c.n}</div><div className="ss capitalize">{[c.primaries[0] ? t(muscleLabel(c.primaries[0])) : c.bp && t(c.bp), c.eq && t(c.eq)].filter(Boolean).join(' · ')}</div></div>
+          {busy === c.key ? <span className="small dim">{t('Loading…')}</span> : <Icon name="plus" className="chev" />}
+        </div>)}
+        {!f.length && <div className="empty">{t('No match')}</div>}
+      </div>}
+    {f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
+    <div className="small dim" style={{ marginTop: 10 }}>{source.credit}</div>
+  </>
+}
 
 /** Start a safe swap for one exact active-workout occurrence. */
 export function swapActiveWorkoutExercise(index) {

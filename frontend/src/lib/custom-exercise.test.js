@@ -96,6 +96,14 @@ describe('copyName', () => {
   })
 })
 
+describe('buildCustomExercise source key', () => {
+  it('keeps a well-formed source key and drops anything else', () => {
+    expect(buildCustomExercise({ id: 'c1', n: 'Plank', bp: 'waist', src: 'exerciseapi:plank' }).src).toBe('exerciseapi:plank')
+    expect('src' in buildCustomExercise({ id: 'c1', n: 'Plank', bp: 'waist' })).toBe(false)
+    expect('src' in buildCustomExercise({ id: 'c1', n: 'Plank', bp: 'waist', src: 'not a key' })).toBe(false)
+  })
+})
+
 describe('buildCustomExercise credit', () => {
   it('keeps the source credit of an imported exercise, and leaves it out when there is none', () => {
     expect(buildCustomExercise({ id: 'c1', n: 'Plank', bp: 'waist', credit: 'Exercise data by RepDB (repdb.co)' }).credit).toBe('Exercise data by RepDB (repdb.co)')

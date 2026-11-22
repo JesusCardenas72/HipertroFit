@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   SUPPLEMENT_SOURCES, normName, muscleName, musclesOf, equipmentName,
   fromRepDB, fromGymBells, fromLibreFit, fromExerciseApi, freshOnly, importSeed, loadSource, clearSupplementCache,
+  importedExercise, importedFrom,
 } from './supplement-catalogue.js'
 
 const apiSource = SUPPLEMENT_SOURCES.find(s => s.id === 'exerciseapi')
@@ -51,6 +52,29 @@ describe('fromExerciseApi', () => {
   it('skips records without a name or slug', () => {
     expect(fromExerciseApi({ exercises: [apiRow({ name: {} }), apiRow({ slug: '' })] }, apiSource)).toEqual([])
     expect(fromExerciseApi(null, apiSource)).toEqual([])
+  })
+
+  it('imports a candidate in one step, renaming it when the name is taken', () => {
+    const [c] = fromExerciseApi({ exercises: [apiRow()] }, apiSource)
+    const pic = { img: 'data:image/jpeg;base64,AAAA' }
+    const rec = importedExercise(c, { id: 'c1', taken: ['barbell bench press'], picture: pic })
+    expect(rec).toMatchObject({
+      id: 'c1', n: 'Press de banca', bp: 'chest', eq: 'barbell', tg: 'pectorals',
+      secondaries: ['delts', 'triceps'], st: ['Acuéstate en el banco.'], img: pic.img,
+      src: 'exerciseapi:barbell-bench-press', custom: true,
+    })
+    expect(rec.credit).toMatch(/Marc Mayol/)
+    expect(importedExercise(c, { id: 'c2', taken: ['press de banca'] }).n).toBe('Press de banca (Exercise API)')
+    expect(importedExercise(c, { id: 'c3', taken: ['Press de banca', 'Press de banca (Exercise API)'] }).n).toBe('Press de banca (Exercise API 2)')
+    expect(importedExercise(c, { id: 'c4' }).img).toBeUndefined()
+  })
+
+  it('finds the exercise already imported from a candidate', () => {
+    const [c] = fromExerciseApi({ exercises: [apiRow()] }, apiSource)
+    const mine = { id: 'c9', n: 'Press de banca', src: 'exerciseapi:barbell-bench-press' }
+    expect(importedFrom([{ id: 'c8', n: 'Press de banca' }, mine], c)).toBe(mine)
+    expect(importedFrom([], c)).toBeNull()
+    expect(importedFrom(undefined, c)).toBeNull()
   })
 
   it('is read by loadSource from the dataset file', async () => {

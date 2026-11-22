@@ -1355,6 +1355,7 @@ export default {
   'from open exercise sources, with their picture and credit': 'de fuentes abiertas, con su imagen y su crédito',
   'Loading…': 'Cargando…',
   'Could not reach {0}. Try again later.': 'No se pudo contactar con {0}. Inténtalo más tarde.',
+  '“{0}” imported from {1}': '«{0}» importado de {1}',
   'Search the web': 'Buscar en internet',
   'Paste image': 'Pegar imagen',
   'Couldn’t copy its picture — add one below': 'No se pudo copiar su imagen — añade una abajo',

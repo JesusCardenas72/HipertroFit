@@ -9,6 +9,8 @@
 //   LibreFit  GPL-3.0 with additional terms: keep the author attribution visible.
 //   Exercise API (Marc Mayol)  MIT-style, credit "Marc Mayol" + repository link visible to users.
 
+import { buildCustomExercise, copyName } from './custom-exercise.js'
+
 export const SUPPLEMENT_SOURCES = [
   {
     id: 'repdb',
@@ -292,6 +294,28 @@ export function importSeed(c) {
     desc: c.desc,
     custom: false,
     credit: c.credit,
+    src: c.key,
     imageUrl: c.imageUrl,
   }
+}
+
+/** The custom exercise already imported from candidate `c`, if any. */
+export const importedFrom = (customEx, c) => (customEx || []).find(x => x?.src && x.src === c?.key) || null
+
+/**
+ * The custom exercise record for candidate `c`, imported in one step (no form): the picker uses
+ * it to add or swap in an exercise from another database. A name already used by any exercise
+ * (`taken`, every language shown) gets the source's name after it: "Press de banca (Exercise API)".
+ * `picture` is what lib/image-file.js returned for the candidate's image, or nothing.
+ */
+export function importedExercise(c, { id, taken = [], picture = {} } = {}) {
+  const source = sourceById(c.source)
+  const used = new Set(taken.map(x => String(x || '').trim().toLowerCase()))
+  const n = used.has(c.n.trim().toLowerCase()) ? copyName(c.n, taken, source?.name || c.source) : c.n
+  const seed = importSeed(c)
+  return buildCustomExercise({
+    id, n, bp: seed.bp, eq: seed.eq, primaries: seed.primaries, secondaries: seed.secondaries,
+    desc: seed.desc, steps: seed.st, credit: seed.credit, src: seed.src,
+    img: picture.img, gif: picture.gif, frame: picture.frame,
+  })
 }
