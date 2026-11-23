@@ -1518,4 +1518,6 @@ export default {
   'no planned exercise trains it directly': 'aucun exercice prévu ne le travaille directement',
   'change it by hand': 'à changer à la main',
   'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Sans programmation par microcycle (Plan ▸ Programmation), les séries ne peuvent pas être changées pour toi. Voici ce que demandent tes sensations :',
+  'Log RIR on each set so only the sets close to failure count.': 'Note le RIR à chaque série pour que seules les séries proches de l’échec comptent.',
+  'Log RIR': 'Noter le RIR',
 }

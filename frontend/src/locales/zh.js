@@ -1518,4 +1518,6 @@ export default {
   'no planned exercise trains it directly': '没有计划中的动作直接训练它',
   'change it by hand': '请手动调整',
   'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': '没有微周期编排（计划 ▸ 编排）时无法为你自动修改组数。你的反馈建议如下：',
+  'Log RIR on each set so only the sets close to failure count.': '每组记录 RIR，只有接近力竭的组才会计入。',
+  'Log RIR': '记录 RIR',
 }

@@ -1518,4 +1518,6 @@ export default {
   'no planned exercise trains it directly': 'ни одно запланированное упражнение не нагружает её напрямую',
   'change it by hand': 'измените вручную',
   'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Без программирования микроцикла (План ▸ Программирование) подходы нельзя изменить автоматически. Вот что просят ваши ощущения:',
+  'Log RIR on each set so only the sets close to failure count.': 'Записывайте RIR в каждом подходе, чтобы учитывались только подходы близко к отказу.',
+  'Log RIR': 'Записывать RIR',
 }

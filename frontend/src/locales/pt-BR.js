@@ -1024,6 +1024,8 @@ export const PT_BR_OVERRIDES = {
   'no planned exercise trains it directly': 'nenhum exercício planejado o treina diretamente',
   'change it by hand': 'altere manualmente',
   'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Sem uma programação por microciclo (Plano ▸ Programação) as séries não podem ser alteradas para você. Isto é o que o seu feedback pede:',
+  'Log RIR on each set so only the sets close to failure count.': 'Registre o RIR em cada série para que só contem as próximas da falha.',
+  'Log RIR': 'Registrar RIR',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

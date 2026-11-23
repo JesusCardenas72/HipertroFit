@@ -1518,4 +1518,6 @@ export default {
   'no planned exercise trains it directly': 'planlı hiçbir egzersiz bunu doğrudan çalıştırmıyor',
   'change it by hand': 'elle değiştir',
   'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Mikro döngü programlaması olmadan (Plan ▸ Programlama) setler senin yerine değiştirilemez. Geri bildiriminin istediği şu:',
+  'Log RIR on each set so only the sets close to failure count.': 'Yalnızca tükenişe yakın setlerin sayılması için her sette RIR kaydet.',
+  'Log RIR': 'RIR kaydet',
 }

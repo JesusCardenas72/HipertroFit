@@ -1523,4 +1523,6 @@ export default {
   'no planned exercise trains it directly': 'egyetlen tervezett gyakorlat sem edzi közvetlenül',
   'change it by hand': 'módosítsd kézzel',
   'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Mikrociklus-programozás nélkül (Terv ▸ Programozás) a sorozatokat nem lehet helyetted módosítani. A visszajelzésed ezt kéri:',
+  'Log RIR on each set so only the sets close to failure count.': 'Rögzítsd a RIR-t minden sorozatnál, hogy csak a bukáshoz közeliek számítsanak.',
+  'Log RIR': 'RIR rögzítése',
 }

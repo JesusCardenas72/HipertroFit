@@ -1518,4 +1518,6 @@ export default {
   'no planned exercise trains it directly': '계획된 운동 중 이 부위를 직접 훈련하는 것이 없음',
   'change it by hand': '직접 변경하세요',
   'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': '마이크로사이클 프로그래밍(플랜 ▸ 프로그래밍)이 없으면 세트를 자동으로 바꿀 수 없습니다. 피드백이 요청하는 내용은 다음과 같습니다:',
+  'Log RIR on each set so only the sets close to failure count.': '세트마다 RIR을 기록하면 실패에 가까운 세트만 계산됩니다.',
+  'Log RIR': 'RIR 기록',
 }
