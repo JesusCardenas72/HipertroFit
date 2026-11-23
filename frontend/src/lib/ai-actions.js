@@ -168,6 +168,22 @@ export function nudgeProposal(S, groupKey, delta) {
 }
 
 /**
+ * Why nudgeProposal has nothing to offer for a group: 'noplan' (no calendar programming, so no
+ * planned microcycle to change), 'noexercise' (no planned exercise trains it as a primary), 'max'
+ * (adding would pass its MRV) or 'min' (every exercise is down to its last set). Null when it can.
+ */
+export function nudgeBlocker(S, groupKey, delta) {
+  if (nudgeProposal(S, groupKey, delta)) return null
+  const group = VOLUME_GROUPS.find(g => g.key === groupKey)
+  const steps = trainingSteps(S && S.program)
+  if (!group || !steps.length) return 'noplan'
+  const planned = (S.routines || []).filter(r => steps.includes(r.id))
+  const movers = planned.flatMap(r => (r.ex || []).filter(cfg => cfg && weightFor(S, cfg, group) >= 1))
+  if (!movers.length) return 'noexercise'
+  return delta > 0 ? 'max' : 'min'
+}
+
+/**
  * The proposal a finding (ai-digest.js findingsOf) or a model suggestion (ai-report.js) leads to,
  * or null when it does not map to a change the app can make.
  */

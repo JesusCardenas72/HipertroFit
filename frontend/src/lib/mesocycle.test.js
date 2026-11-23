@@ -345,10 +345,13 @@ describe('the target RIR of each microcycle', () => {
     expect(rirGoalOf(state(0, { base: 2 }))).toBe(1)
   })
 
-  it('is off when switched off or without programming', () => {
+  it('is off when switched off', () => {
     expect(rirGoalOf({ ...state(0), rirPlan: false })).toBeNull()
-    expect(rirGoalOf({ ...state(0), program: null })).toBeNull()
     expect(rirGoalOf(null)).toBeNull()
+  })
+
+  it('works without calendar programming: the microcycles count from the first workout', () => {
+    expect(rirGoalOf({ ...state(4), program: null, microcycleSessions: 3 })).toBe(2)
   })
 })
 

@@ -1020,6 +1020,10 @@ export const PT_BR_OVERRIDES = {
   'still sore': 'ainda dolorido',
   'already at its maximum': 'já está no máximo',
   'no set left to remove': 'não há séries para tirar',
+  'Not sore': 'Sem dor muscular',
+  'no planned exercise trains it directly': 'nenhum exercício planejado o treina diretamente',
+  'change it by hand': 'altere manualmente',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Sem uma programação por microciclo (Plano ▸ Programação) as séries não podem ser alteradas para você. Isto é o que o seu feedback pede:',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

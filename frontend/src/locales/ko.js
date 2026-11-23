@@ -1514,4 +1514,8 @@ export default {
   'still sore': '아직 근육통',
   'already at its maximum': '이미 최대치',
   'no set left to remove': '뺄 세트 없음',
+  'Not sore': '근육통 없음',
+  'no planned exercise trains it directly': '계획된 운동 중 이 부위를 직접 훈련하는 것이 없음',
+  'change it by hand': '직접 변경하세요',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': '마이크로사이클 프로그래밍(플랜 ▸ 프로그래밍)이 없으면 세트를 자동으로 바꿀 수 없습니다. 피드백이 요청하는 내용은 다음과 같습니다:',
 }

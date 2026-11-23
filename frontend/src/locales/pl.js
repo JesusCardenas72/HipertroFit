@@ -1514,4 +1514,8 @@ export default {
   'still sore': 'wciąż zakwasy',
   'already at its maximum': 'już na maksimum',
   'no set left to remove': 'brak serii do usunięcia',
+  'Not sore': 'Bez zakwasów',
+  'no planned exercise trains it directly': 'żadne zaplanowane ćwiczenie nie trenuje jej bezpośrednio',
+  'change it by hand': 'zmień ręcznie',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Bez programowania mikrocyklu (Plan ▸ Programowanie) serie nie mogą być zmienione za ciebie. Oto czego wymagają twoje odczucia:',
 }

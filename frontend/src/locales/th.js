@@ -1527,4 +1527,8 @@ export default {
   'still sore': 'ยังปวดอยู่',
   'already at its maximum': 'อยู่ที่ค่าสูงสุดแล้ว',
   'no set left to remove': 'ไม่มีเซ็ตให้ลด',
+  'Not sore': 'ไม่ปวด',
+  'no planned exercise trains it directly': 'ไม่มีท่าที่วางแผนไว้ฝึกส่วนนี้โดยตรง',
+  'change it by hand': 'ปรับด้วยตนเอง',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'หากไม่มีการวางโปรแกรมไมโครไซเคิล (แผน ▸ การวางโปรแกรม) จะไม่สามารถเปลี่ยนเซ็ตให้คุณได้ นี่คือสิ่งที่ความคิดเห็นของคุณต้องการ:',
 }

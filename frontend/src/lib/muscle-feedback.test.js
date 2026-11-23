@@ -163,10 +163,22 @@ describe('feedbackPlan', () => {
     expect(plan.groups.find(g => g.key === 'biceps')).toMatchObject({ skipped: true, after: 9 })
   })
 
-  it('reports a group whose step no exercise can take as capped', () => {
-    const S = fullBody([bench(7)], [session('2026-09-02', { chest: EASY })])
+  it('reports a group whose step no exercise can take as capped, saying why', () => {
+    const plan = feedbackPlan(fullBody([bench(7)], [session('2026-09-02', { chest: EASY })]))
+    expect(plan.groups).toEqual([expect.objectContaining({ key: 'chest', capped: 'max', changes: [] })])
+    expect(plan.changes).toEqual([])
+    const down = feedbackPlan(fullBody([bench(1)], [session('2026-09-02', { chest: WRECKED })]))
+    expect(down.groups[0].capped).toBe('min')
+    const none = feedbackPlan(fullBody([curl(3)], [session('2026-09-02', { chest: EASY })]))
+    expect(none.groups[0].capped).toBe('noexercise')
+  })
+
+  it('without calendar programming, still says what each group asks for', () => {
+    const S = { ...fullBody(ex, [session('2026-09-02', { chest: EASY })]), program: null, microcycleSessions: 3 }
     const plan = feedbackPlan(S)
-    expect(plan.groups).toEqual([expect.objectContaining({ key: 'chest', capped: true, changes: [] })])
+    expect(plan.blocked).toBe('noplan')
+    expect(plan.groups).toEqual([expect.objectContaining({ key: 'chest', capped: 'noplan', changes: [] })])
+    expect(plan.groups[0].signal.step).toBe(2)
     expect(plan.changes).toEqual([])
   })
 

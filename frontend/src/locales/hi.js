@@ -1514,4 +1514,8 @@ export default {
   'still sore': 'अब भी दर्द',
   'already at its maximum': 'पहले से अधिकतम पर',
   'no set left to remove': 'हटाने के लिए कोई सेट नहीं',
+  'Not sore': 'कोई दर्द नहीं',
+  'no planned exercise trains it directly': 'कोई नियोजित व्यायाम इसे सीधे नहीं प्रशिक्षित करता',
+  'change it by hand': 'इसे हाथ से बदलें',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'माइक्रोसाइकिल प्रोग्रामिंग (प्लान ▸ प्रोग्रामिंग) के बिना सेट आपके लिए नहीं बदले जा सकते। आपका फ़ीडबैक यह माँगता है:',
 }

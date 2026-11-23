@@ -1635,4 +1635,8 @@ export default {
   'still sore': 'aún con agujetas',
   'already at its maximum': 'ya está en su máximo',
   'no set left to remove': 'no quedan series que quitar',
+  'Not sore': 'Sin agujetas',
+  'no planned exercise trains it directly': 'ningún ejercicio programado lo trabaja directamente',
+  'change it by hand': 'cámbialo a mano',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Sin una programación por microciclo (Plan ▸ Programación) las series no se pueden cambiar por ti. Esto es lo que piden tus sensaciones:',
 }

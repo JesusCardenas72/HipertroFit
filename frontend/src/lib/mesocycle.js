@@ -133,10 +133,11 @@ export const DELOAD_RIR = 4
 
 /**
  * The RIR the work sets of the running microcycle aim at, or null when the target is switched
- * off (Settings, `S.rirPlan === false`) or there is no programming to have a mesocycle.
+ * off (Settings, `S.rirPlan === false`). Any profile has a mesocycle — the microcycles count
+ * from the first workout even without calendar programming — so any profile has a target.
  */
 export function rirGoalOf(S) {
-  if (!S || S.rirPlan === false || !S.program) return null
+  if (!S || S.rirPlan === false) return null
   const m = mesoState(S)
   if (m.deload) return DELOAD_RIR
   return RIR_SCHEDULE[Math.min(RIR_SCHEDULE.length - 1, Math.max(0, m.number - 1))]

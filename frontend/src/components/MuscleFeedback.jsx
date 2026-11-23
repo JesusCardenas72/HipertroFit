@@ -18,7 +18,7 @@ export const feedbackOn = S => !!S && S.muscleFeedback !== false
 const FIELD = {
   pump: { q: 'Pump', a: ['Low', 'Good', 'Great'] },
   work: { q: 'Workload', a: ['Easy', 'About right', 'Too much'] },
-  sore: { q: 'Soreness coming in', a: ['None', 'Healed in time', 'Still sore'] },
+  sore: { q: 'Soreness coming in', a: ['Not sore', 'Healed in time', 'Still sore'] },
 }
 // The "why" behind a proposed step, one short phrase per answer that pushed it.
 const REASON = {
@@ -88,6 +88,13 @@ export function maybeMuscleFeedback(S, w, openSheet, then) {
 /* ---------- read back when the microcycle closes ---------- */
 
 const signed = n => (n > 0 ? '+' : '') + fmtNum(n)
+// Why a group's step could not be turned into set changes (nudgeBlocker).
+const CAPPED = {
+  max: 'already at its maximum',
+  min: 'no set left to remove',
+  noexercise: 'no planned exercise trains it directly',
+  noplan: 'change it by hand',
+}
 const exName = id => (EXIDX[id] ? exerciseNameFor(EXIDX[id]) : id)
 
 /**
@@ -101,6 +108,9 @@ export function FeedbackAdjustments({ S, skip, setSkip }) {
   const toggle = key => setSkip(skip.includes(key) ? skip.filter(k => k !== key) : [...skip, key])
   return <>
     <h4 className="sec">{t('Adjust sets by how you felt')}</h4>
+    {plan.blocked === 'noplan' && plan.groups.length > 0 && <div className="small dim" style={{ marginBottom: 8 }}>
+      {t('Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:')}
+    </div>}
     {plan.blocked === 'none'
       ? <div className="small dim" style={{ marginBottom: 14 }}>{t('No session of this microcycle has feedback, so its sets stay as they are.')}</div>
       : !plan.groups.length
@@ -113,9 +123,9 @@ export function FeedbackAdjustments({ S, skip, setSkip }) {
               onClick={() => !g.capped && toggle(g.key)} style={{ alignItems: 'flex-start', opacity: g.capped ? 0.6 : 1 }}>
               <div className="grow">
                 <div className="tt">{t(g.name)} · {t('{0} sets', signed(g.signal.step))}</div>
-                <div className="ss">{why}{why ? ' — ' : ''}{g.capped
-                  ? t(g.signal.step > 0 ? 'already at its maximum' : 'no set left to remove')
-                  : t('planned {0} → {1}', fmtNum(g.before), fmtNum(on ? g.after : g.before))}</div>
+                <div className="ss">{why}{why && !g.skipped ? ' — ' : ''}{g.capped
+                  ? t(CAPPED[g.capped] || CAPPED.max)
+                  : g.skipped ? null : t('planned {0} → {1}', fmtNum(g.before), fmtNum(g.after))}</div>
                 {on && g.changes.map((c, i) => <div key={i} className="ss capitalize">• {c.routineName || t('Routine')} · {exName(c.exId)}: {t('{0} → {1} sets', c.from, c.to)}</div>)}
               </div>
               {!g.capped && (on

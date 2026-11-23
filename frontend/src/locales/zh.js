@@ -1514,4 +1514,8 @@ export default {
   'still sore': '仍然酸痛',
   'already at its maximum': '已达上限',
   'no set left to remove': '没有可减的组',
+  'Not sore': '不酸痛',
+  'no planned exercise trains it directly': '没有计划中的动作直接训练它',
+  'change it by hand': '请手动调整',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': '没有微周期编排（计划 ▸ 编排）时无法为你自动修改组数。你的反馈建议如下：',
 }

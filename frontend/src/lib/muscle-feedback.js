@@ -19,9 +19,9 @@
 // the one that costs growth.
 
 import { VOLUME_GROUPS, groupVolume, plannedVolume } from './volume.js'
-import { cycleWorkouts, isExtra } from './microcycle.js'
+import { cycleWorkouts, isExtra, trainingSteps } from './microcycle.js'
 import { mesoState } from './mesocycle.js'
-import { nudgeProposal, applyProposal } from './ai-actions.js'
+import { nudgeProposal, nudgeBlocker, applyProposal } from './ai-actions.js'
 
 export const FEEDBACK_FIELDS = ['pump', 'work', 'sore']
 
@@ -112,10 +112,12 @@ export function groupSignal(workouts, key) {
  *
  * `blocked` says why nothing is proposed at all: 'deload' when this microcycle or the next is a
  * deload (the deload already decides the next block's volume, and a deload's answers say nothing
- * about the loading dose), 'none' when no session answered. Otherwise `groups` lists every group
- * that asked for a step — with what it moves the plan from and to, or `capped` when no exercise
- * could take it (at the MRV, one set left, or no routine trains it as a primary) — and `changes`
- * the merged set changes of the groups not in `skip`, ready for applyProposal.
+ * about the loading dose), 'none' when no session answered, 'noplan' when there is no calendar
+ * programming to hold a planned microcycle — then `groups` still lists what each group asks for,
+ * to act on by hand. Otherwise `groups` lists every group that asked for a step — with what it
+ * moves the plan from and to, or `capped` with the reason no exercise could take it
+ * (nudgeBlocker: 'max', 'min', 'noexercise') — and `changes` the merged set changes of the groups
+ * not in `skip`, ready for applyProposal.
  *
  * Groups are walked in panel order on a trial copy, so a later group sees the sets an earlier one
  * already added; only primary movers are touched (nudgeProposal), so they rarely meet.
@@ -127,6 +129,10 @@ export function feedbackPlan(S, { skip = [] } = {}) {
   const ws = cycleWorkouts(S).filter(w => !isExtra(w))
   const asked = VOLUME_GROUPS.map(g => ({ g, sig: groupSignal(ws, g.key) })).filter(x => x.sig.sessions > 0)
   if (!asked.length) return { ...empty, blocked: 'none' }
+  if (!trainingSteps(S && S.program).length) {
+    const groups = asked.filter(x => x.sig.step).map(({ g, sig }) => ({ key: g.key, name: g.name, signal: sig, skipped: false, capped: 'noplan', changes: [] }))
+    return { ...empty, blocked: 'noplan', groups, asked: asked.length }
+  }
 
   const trial = { ...S, routines: (S.routines || []).map(r => ({ ...r, ex: (r.ex || []).map(c => ({ ...c })) })) }
   const before = plannedVolume(S).groups
@@ -136,7 +142,8 @@ export function feedbackPlan(S, { skip = [] } = {}) {
     const off = skip.includes(g.key)
     const p = off ? null : nudgeProposal(trial, g.key, sig.step)
     if (p) applyProposal(trial, p)
-    groups.push({ key: g.key, name: g.name, signal: sig, skipped: off, capped: !off && !p, changes: p ? p.changes : [] })
+    const capped = !off && !p ? nudgeBlocker(trial, g.key, sig.step) : false
+    groups.push({ key: g.key, name: g.name, signal: sig, skipped: off, capped, changes: p ? p.changes : [] })
   }
   const after = plannedVolume(trial).groups
   for (const x of groups) {

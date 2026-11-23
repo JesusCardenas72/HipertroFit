@@ -1531,4 +1531,8 @@ export default {
   'still sore': 'noch Muskelkater',
   'already at its maximum': 'bereits am Maximum',
   'no set left to remove': 'kein Satz mehr zu entfernen',
+  'Not sore': 'Kein Muskelkater',
+  'no planned exercise trains it directly': 'keine geplante Übung trainiert sie direkt',
+  'change it by hand': 'von Hand ändern',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Ohne Mikrozyklus-Programmierung (Plan ▸ Programmierung) können die Sätze nicht für dich geändert werden. Das verlangt dein Feedback:',
 }

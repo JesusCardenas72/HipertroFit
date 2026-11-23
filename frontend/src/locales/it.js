@@ -1514,4 +1514,8 @@ export default {
   'still sore': 'ancora indolenzito',
   'already at its maximum': 'già al massimo',
   'no set left to remove': 'nessuna serie da togliere',
+  'Not sore': 'Nessun indolenzimento',
+  'no planned exercise trains it directly': 'nessun esercizio pianificato lo allena direttamente',
+  'change it by hand': 'da cambiare a mano',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Senza una programmazione per microciclo (Piano ▸ Programmazione) le serie non possono essere cambiate per te. Ecco cosa chiedono le tue sensazioni:',
 }

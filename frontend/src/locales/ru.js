@@ -1514,4 +1514,8 @@ export default {
   'still sore': 'ещё болит',
   'already at its maximum': 'уже на максимуме',
   'no set left to remove': 'нечего убирать',
+  'Not sore': 'Без крепатуры',
+  'no planned exercise trains it directly': 'ни одно запланированное упражнение не нагружает её напрямую',
+  'change it by hand': 'измените вручную',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Без программирования микроцикла (План ▸ Программирование) подходы нельзя изменить автоматически. Вот что просят ваши ощущения:',
 }

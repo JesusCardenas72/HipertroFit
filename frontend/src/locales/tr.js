@@ -1514,4 +1514,8 @@ export default {
   'still sore': 'hâlâ ağrılı',
   'already at its maximum': 'zaten maksimumda',
   'no set left to remove': 'çıkarılacak set kalmadı',
+  'Not sore': 'Ağrı yok',
+  'no planned exercise trains it directly': 'planlı hiçbir egzersiz bunu doğrudan çalıştırmıyor',
+  'change it by hand': 'elle değiştir',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Mikro döngü programlaması olmadan (Plan ▸ Programlama) setler senin yerine değiştirilemez. Geri bildiriminin istediği şu:',
 }

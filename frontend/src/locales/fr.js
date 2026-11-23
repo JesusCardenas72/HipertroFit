@@ -1514,4 +1514,8 @@ export default {
   'still sore': 'encore courbaturé',
   'already at its maximum': 'déjà à son maximum',
   'no set left to remove': 'plus de série à retirer',
+  'Not sore': 'Pas de courbatures',
+  'no planned exercise trains it directly': 'aucun exercice prévu ne le travaille directement',
+  'change it by hand': 'à changer à la main',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Sans programmation par microcycle (Plan ▸ Programmation), les séries ne peuvent pas être changées pour toi. Voici ce que demandent tes sensations :',
 }

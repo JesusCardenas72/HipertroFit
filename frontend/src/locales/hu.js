@@ -1519,4 +1519,8 @@ export default {
   'still sore': 'még izomláz',
   'already at its maximum': 'már a maximumon',
   'no set left to remove': 'nincs elvehető sorozat',
+  'Not sore': 'Nincs izomláz',
+  'no planned exercise trains it directly': 'egyetlen tervezett gyakorlat sem edzi közvetlenül',
+  'change it by hand': 'módosítsd kézzel',
+  'Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:': 'Mikrociklus-programozás nélkül (Terv ▸ Programozás) a sorozatokat nem lehet helyetted módosítani. A visszajelzésed ezt kéri:',
 }
