@@ -111,9 +111,14 @@ let workFocusOff = null
    much earlier again — it is the bell, not the pause, that has to land on zero.
 
    Scheduled with its own timeout rather than off the once-a-second tick, because a tick can
-   only place the start to the nearest second and the whole point here is that it lands. */
-const scheduleRestAlert = endsAt => {
+   only place the start to the nearest second and the whole point here is that it lands.
+
+   Only the rest between two sets of an exercise rings it. The rest between exercises already
+   opened with the exercise-end sound, and a second, different sound at its end was the bell
+   going off where nobody expected it. */
+const scheduleRestAlert = (endsAt, kind) => {
   cancelRestAlert()
+  if (kind !== 'sets') return
   // Resolved once per rest, so the clip measured is the clip played even if Settings swaps it.
   const clips = restAlertClips()
   clipsDuration(clips).then(total => {
@@ -125,6 +130,11 @@ const scheduleRestAlert = endsAt => {
     const focusGap = total > 0 ? REST_ALERT_FOCUS_GAP_MS : 0
     const fire = () => {
       clipTm = null
+      // Last check before it sounds. A backgrounded page runs its timeouts late — a phone can
+      // hold this one past the end of the rest, or until the app is opened again — and a bell
+      // that has missed its rest is no longer a countdown ending, it is noise.
+      const now = useUI.getState().timer
+      if (!now || now.endsAt !== endsAt || now.kind !== 'sets' || Date.now() >= endsAt) return
       ringingFor = endsAt
       // The setting is read now, not when the rest started, so muting mid-rest is respected.
       playClips(useStore.getState().S.sound, clips, { focusGap })
@@ -231,7 +241,7 @@ export const useUI = create((set, get) => ({
     if (timerTick) document.removeEventListener('visibilitychange', timerTick)
     set({ timer: tm })
     saveRest(tm)
-    scheduleRestAlert(tm.endsAt)
+    scheduleRestAlert(tm.endsAt, tm.kind)
     timerTick = () => {
       const tm = get().timer
       if (!tm) return
@@ -265,7 +275,7 @@ export const useUI = create((set, get) => ({
     // Only the rest's own bell: the exercise-end sound this rest may have started with plays on.
     if (ringingFor === tm.endsAt) stopClips()
     ringingFor = null
-    scheduleRestAlert(endsAt)
+    scheduleRestAlert(endsAt, tm.kind)
   },
   // The active list changed shape (an exercise removed or inserted at `at`): keep the rest
   // pointing at the same exercise. Returns nothing; the caller decides whether to stop instead.

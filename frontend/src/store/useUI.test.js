@@ -213,6 +213,39 @@ describe('rest alert lands on the end of the rest', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect(playClips).toHaveBeenCalledTimes(1)
   })
+
+  // Only the countdown between two sets ends on the bell.
+  it('does not ring at the end of the rest between exercises', async () => {
+    useUI.getState().startRest(90, 0, 'exercise')
+    await vi.advanceTimersByTimeAsync(90_000)
+    expect(useUI.getState().timer).toBe(null)
+    expect(playClips).not.toHaveBeenCalled()
+  })
+
+  it('does not ring for a rest between exercises picked up after a reload', async () => {
+    useStore.setState({ S: { ...useStore.getState().S, active: { id: 'w1', entries: [] } } })
+    localStorage.setItem('gym_rest_v1', JSON.stringify({ endsAt: Date.now() + 5000, total: 90, forIdx: 1, kind: 'exercise', wid: 'w1' }))
+    useUI.getState().resumeRest()
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(playClips).not.toHaveBeenCalled()
+  })
+
+  it('does not ring when extending a rest between exercises', async () => {
+    useUI.getState().startRest(30, 0, 'exercise')
+    useUI.getState().addRest(15)
+    await vi.advanceTimersByTimeAsync(45_000)
+    expect(playClips).not.toHaveBeenCalled()
+  })
+
+  // A backgrounded page runs timeouts late: one that lands after the rest is over stays quiet.
+  it('stays quiet when its timeout fires after the rest has already ended', async () => {
+    useUI.getState().startRest(90)
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(74_000)    // last tick before the alert is due (74.5 s)
+    vi.setSystemTime(Date.now() + 20_000)        // the clock ran on while the page slept
+    await vi.advanceTimersByTimeAsync(500)       // the alert's timeout fires before the next tick
+    expect(playClips).not.toHaveBeenCalled()
+  })
 })
 
 // The last set of an exercise rings the exercise-end sound with the same pause around it as the
