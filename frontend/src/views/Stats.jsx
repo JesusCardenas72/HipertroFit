@@ -32,6 +32,7 @@ import { doubleProgressExercises, doubleProgressStatus } from '../lib/double-pro
 import { DoubleProgressMeter } from '../components/DoubleProgress.jsx'
 import { aiAnalysisSheet } from '../components/AiAnalysis.jsx'
 import StalledCard from '../components/StalledCard.jsx'
+import MeasuresCard from '../components/MeasuresCard.jsx'
 
 // Which muscles the training in a window actually hit — and, the point of the card,
 // which ones it keeps missing. Shading is relative within the window (lib/muscles.js).
@@ -518,6 +519,8 @@ export default function Stats() {
           options={[{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]} />
         <div className="chart"><LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} /></div>
       </div>
+
+      <MeasuresCard S={S} />
 
       <DoubleProgressCard S={S} />
 
