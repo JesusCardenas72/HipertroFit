@@ -21,7 +21,7 @@ export default function StalledCard({ S, onPick }) {
         <div className="grow">
           <div className="tt capitalize">{nameOf(x.id)}</div>
           <div className="ss">
-            {t('{0} microcycles without beating {1}', x.micros, fmtNum(x.best) + (x.metric === 'e1rm' ? ' ' + S.unit + ' ' + t('est. 1RM') : ' ' + t('weight × reps')))}
+            {t('{0} microcycles without beating {1}', x.micros, fmtNum(x.best) + ' ' + (x.metric === 'e1rm' ? S.unit + ' ' + t('est. 1RM') : x.metric === 'reps' ? t('reps') : t('weight × reps')))}
           </div>
         </div>
         <Icon name="chevronRight" style={{ color: 'var(--label-3)', flex: 'none' }} />

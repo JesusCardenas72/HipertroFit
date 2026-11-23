@@ -50,9 +50,11 @@ export function bestsByMicro(S) {
         const est = bestSetOf(e)
         const work = bestWork(e)
         if (work == null) continue
-        const p = per[e.id] || (per[e.id] = { micro, e1rm: null, work: null })
+        const loaded = (e.sets || []).some(s => s.done && !isWarmupRow(s) && Number(s.w) > 0)
+        const p = per[e.id] || (per[e.id] = { micro, e1rm: null, work: null, loaded: false })
         if (est && (p.e1rm == null || est.est > p.e1rm)) p.e1rm = est.est
         if (p.work == null || work > p.work) p.work = work
+        if (loaded) p.loaded = true
       }
     }
     for (const id in per) (out[id] = out[id] || []).push(per[id])
@@ -62,8 +64,9 @@ export function bestsByMicro(S) {
 
 /**
  * The exercises that have not beaten their earlier best for `STALL_MICROS` loading microcycles in
- * which they were trained, most stalled first: { id, metric: 'e1rm' | 'work', best, recent,
- * micros }. `best` is the best before the stall, `recent` the best of the stalled stretch.
+ * which they were trained, most stalled first: { id, metric: 'e1rm' | 'work' | 'reps', best,
+ * recent, micros } — 'reps' for bodyweight work, where the best set is its reps. `best` is the
+ * best before the stall, `recent` the best of the stalled stretch.
  */
 export function stalledExercises(S, { micros: window = STALL_MICROS, minGain = STALL_MIN_GAIN } = {}) {
   const { byEx, count } = bestsByMicro(S)
@@ -72,8 +75,8 @@ export function stalledExercises(S, { micros: window = STALL_MICROS, minGain = S
     const pts = byEx[id]
     if (pts.length < window + 1) continue
     if (pts[pts.length - 1].micro < count - RECENT_MICROS) continue
-    const metric = pts.every(p => p.e1rm != null) ? 'e1rm' : 'work'
-    const val = p => p[metric]
+    const metric = pts.every(p => p.e1rm != null) ? 'e1rm' : pts.some(p => p.loaded) ? 'work' : 'reps'
+    const val = p => p[metric === 'reps' ? 'work' : metric]
     const before = Math.max(...pts.slice(0, -window).map(val))
     const recent = Math.max(...pts.slice(-window).map(val))
     if (recent > before * (1 + minGain)) continue

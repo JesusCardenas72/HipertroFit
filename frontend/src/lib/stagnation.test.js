@@ -45,6 +45,11 @@ describe('stalledExercises', () => {
     expect(stalledExercises(S).find(x => x.id === 'curl')).toEqual({ id: 'curl', metric: 'work', best: 300, recent: 300, micros: 3 })
   })
 
+  it('reads reps on bodyweight work', () => {
+    const S = state([[100, 5], [100, 5], [100, 5], [100, 5]], { extra: { dip: [[0, 10], [0, 10], [0, 9], [0, 10]] } })
+    expect(stalledExercises(S).find(x => x.id === 'dip')).toEqual({ id: 'dip', metric: 'reps', best: 10, recent: 10, micros: 3 })
+  })
+
   it('leaves deload microcycles out', () => {
     // The lighter fourth microcycle is a deload: without it bench is still climbing.
     const S = state([[100, 5], [102.5, 5], [105, 5], [70, 5], [107.5, 5]], { deloads: [3] })

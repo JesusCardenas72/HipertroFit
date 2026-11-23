@@ -7,7 +7,7 @@
 // RIR is the internal unit because it has a real zero — a set taken to failure — where RPE's
 // floor of 6 is only a convention about which sets are worth rating. RPE 8 == RIR 2.
 import { EFFORT, effortOf } from './history.js'
-import { weekKey } from './format.js'
+import { weekKey, fmtNum } from './format.js'
 import { isWarmupRow } from './workout-model.js'
 
 // At or below this a set is close enough to failure to be the kind that drives adaptation.
@@ -27,7 +27,7 @@ export const rirOf = s =>
  * RPE (10 − RIR), "RIR 2" otherwise — without an effort column it is still the unit the target
  * is set in.
  */
-export const goalLabel = (S, rir) => (effortOf(S) === 'rpe' ? 'RPE ' + (10 - rir) : 'RIR ' + rir)
+export const goalLabel = (S, rir) => (effortOf(S) === 'rpe' ? 'RPE ' + fmtNum(10 - rir) : 'RIR ' + fmtNum(rir))
 
 /** RIR → the scale being displayed. The reverse of rirOf, for one number. */
 export const toScale = (kind, rir) =>

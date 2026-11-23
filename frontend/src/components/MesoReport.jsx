@@ -24,9 +24,15 @@ function Section({ title, children }) {
     <div className="sect-b" style={{ marginBottom: 12 }}>{children}</div>
   </>
 }
-const Line = ({ label, value, color }) => <div className="lrow">
-  <span className="lrow-m"><span className="lrow-t capitalize">{label}</span></span>
+const Line = ({ label, value, color, cap = false }) => <div className="lrow">
+  <span className="lrow-m"><span className={'lrow-t' + (cap ? ' capitalize' : '')}>{label}</span></span>
   <span className="lrow-v" style={color ? { color } : undefined}>{value}</span>
+</div>
+
+// "82,3 → 78,3 kg (−4)": the value column of .lrow is capped for long names, which this never is.
+const BodyLine = ({ label, v, unit }) => <div className="lrow">
+  <span className="lrow-m"><span className="lrow-t">{label}</span></span>
+  <span style={{ whiteSpace: 'nowrap' }}>{fmtNum(v.from)} → {fmtNum(v.to)} {unit} <span className="dim">({signed(v.delta)})</span></span>
 </div>
 
 function MesoReportSheet() {
@@ -44,22 +50,31 @@ function MesoReportSheet() {
         color={r.adherence >= 90 ? 'var(--green)' : r.adherence >= 70 ? 'var(--orange)' : 'var(--red)'} />
     </Section>
     {r.groups.length > 0 && <Section title={t('Effective sets per microcycle')}>
-      {r.groups.map(g => <Line key={g.key} label={t(g.name)}
-        value={<>{g.sets.map((v, i) => <span key={i} style={{ color: volumeColor(volumeStatus(v, g.band)) }}>{i ? ' · ' : ''}{fmtNum(v)}</span>)}
-          <span className="dim"> ({g.band.min}–{g.band.max})</span></>} />)}
+      {/* One line per group: its name and band, then a value per microcycle — six of them do not
+          fit beside the name on a phone. */}
+      {r.groups.map(g => <div key={g.key} className="lrow" style={{ display: 'block' }}>
+        <div className="row between"><span className="lrow-t">{t(g.name)}</span><span className="small dim">{g.band.min}–{g.band.max}</span></div>
+        <div className="small" style={{ marginTop: 2 }}>
+          {g.sets.map((v, i) => <span key={i} style={{ color: volumeColor(volumeStatus(v, g.band)) }}>{i ? ' · ' : ''}{fmtNum(v)}</span>)}
+        </div>
+      </div>)}
     </Section>}
     {r.effort.some(e => e.avg != null) && <Section title={t('Effort')}>
       {r.effort.map((e, i) => <Line key={i} label={t('Microcycle') + ' #' + (i + 1)}
         value={e.avg == null ? '—' : <>{goalLabel(S, e.avg)}{e.goal != null && <span className="dim"> · {t('target')} {goalLabel(S, e.goal)}</span>}</>} />)}
     </Section>}
     {r.strength.length > 0 && <Section title={t('Estimated 1RM, first to last microcycle')}>
-      {r.strength.slice(0, 8).map(x => <Line key={x.id} label={nameOf(x.id)}
-        value={`${fmtNum(x.from)} → ${fmtNum(x.to)} ${u} · ${signed(x.pct)} %`}
-        color={x.pct > 0 ? 'var(--green)' : x.pct < 0 ? 'var(--red)' : undefined} />)}
+      {/* Exercise names run long: the figures go on a line of their own. */}
+      {r.strength.slice(0, 8).map(x => <div key={x.id} className="lrow" style={{ display: 'block' }}>
+        <div className="lrow-t capitalize">{nameOf(x.id)}</div>
+        <div className="small" style={{ marginTop: 2, color: x.pct > 0 ? 'var(--green)' : x.pct < 0 ? 'var(--red)' : undefined }}>
+          {fmtNum(x.from)} → {fmtNum(x.to)} {u} · {signed(x.pct)} %
+        </div>
+      </div>)}
     </Section>}
     {(r.bodyweight || r.measures.length > 0) && <Section title={t('Body')}>
-      {r.bodyweight && <Line label={t('Body weight')} value={`${fmtNum(r.bodyweight.from)} → ${fmtNum(r.bodyweight.to)} ${u} · ${signed(r.bodyweight.delta)}`} />}
-      {r.measures.map(m => <Line key={m.key} label={t(MEASURE_NAME[m.key])} value={`${fmtNum(m.from)} → ${fmtNum(m.to)} ${lu} · ${signed(m.delta)}`} />)}
+      {r.bodyweight && <BodyLine label={t('Body weight')} v={r.bodyweight} unit={u} />}
+      {r.measures.map(m => <BodyLine key={m.key} label={t(MEASURE_NAME[m.key])} v={m} unit={lu} />)}
     </Section>}
   </>
 }
@@ -76,8 +91,9 @@ export default function MesoReportCard({ S }) {
       <Button size="sm" icon="clipboard" onClick={mesoReportSheet}>{t('Report')}</Button>
     </div>
     <div className="small muted">{span(r)} · {t('{0} loading microcycles', r.micros)} · {r.sessions}/{r.planned} {t('sessions')}</div>
-    {best && <div className="small" style={{ marginTop: 6 }}>
-      <Icon name="chartLine" style={{ color: best.pct >= 0 ? 'var(--green)' : 'var(--red)' }} /> <span className="capitalize">{nameOf(best.id)}</span> · {signed(best.pct)} % {t('est. 1RM')}
+    {best && <div className="small row" style={{ marginTop: 6, gap: 6, flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+      <span style={{ flex: 'none', display: 'inline-flex', color: best.pct >= 0 ? 'var(--green)' : 'var(--red)' }}><Icon name="chartLine" /></span>
+      <span><span className="capitalize">{nameOf(best.id)}</span> · {signed(best.pct)} % {t('est. 1RM')}</span>
     </div>}
   </div>
 }

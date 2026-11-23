@@ -39,7 +39,7 @@ function MeasureSheet({ close }) {
       {MEASURES.map(k => <div key={k} className="lrow">
         <span className="lrow-m"><span className="lrow-t">{t(MEASURE_NAME[k])}</span></span>
         <span className="row" style={{ gap: 6, alignItems: 'center' }}>
-          <NumField nullable value={vals[k] ?? null} placeholder={last(k)} style={{ width: 70, textAlign: 'right' }}
+          <NumField nullable className="timef" value={vals[k] ?? null} placeholder={last(k)} style={{ width: 70, textAlign: 'right' }}
             onChange={v => setVals(x => ({ ...x, [k]: v }))} />
           <span className="dim small">{u}</span>
         </span>

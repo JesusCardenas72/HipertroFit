@@ -1,5 +1,5 @@
 import { t } from '../lib/i18n.js'
-import { fmtNum } from '../lib/format.js'
+import { dateLocale } from '../lib/i18n-core.js'
 import { exOr } from '../lib/exercises.js'
 import { platesFor, sideLabel, PLATE_CHOICES, platesOf, barFor } from '../lib/plates.js'
 import { Row, Section } from './ui.jsx'
@@ -8,6 +8,9 @@ import Icon from './Icon.jsx'
 
 // The plate calculator (lib/plates.js): one line under a barbell set saying what goes on each
 // side, and the Settings rows that say which bar and plates the gym has.
+
+// Two decimals: a 1,25 kg plate is not a 1,3 (fmtNum rounds to one).
+const fmtNum = n => Number(n).toLocaleString(dateLocale(), { maximumFractionDigits: 2 })
 
 /** "Per side: 25 + 15 · bar 20 kg" for a plate-loaded exercise; nothing for anything else. */
 export function PlatesLine({ S, exId, w, className = '' }) {
@@ -38,7 +41,7 @@ export function PlatesSettings({ S, update }) {
   return <Section title={t('Bar and plates')} footer={t('Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.')}>
     <Row icon="dumbbell" iconTint="var(--acc)" title={t('Barbell weight')}>
       <span className="row" style={{ gap: 6, alignItems: 'center' }}>
-        <NumField className="num-inline" style={{ width: 64, textAlign: 'right' }} value={barFor(S, { eq: 'barbell' })}
+        <NumField className="timef" style={{ width: 64, textAlign: 'right' }} value={barFor(S, { eq: 'barbell' })}
           onChange={v => update(s => { s.barWeight = v > 0 ? v : null })} />
         <span className="dim">{u}</span>
       </span>
