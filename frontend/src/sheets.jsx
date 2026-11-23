@@ -43,6 +43,7 @@ import { routineExerciseConfig, classifyExercise, CLASS_NAME, CLASS_REP_RANGE, E
 import { buildCustomExercise, stepsText, copyName, NAME_MAX, DESC_MAX, MAX_IMAGE_BYTES } from './lib/custom-exercise.js'
 import { pictureFromFile, pictureFromUrl, pictureFromClipboard, imageFromTransfer, gifFromDataUrl, frameCanvas, frameToJpeg } from './lib/image-file.js'
 import { SUPPLEMENT_SOURCES, loadSource, freshOnly, importSeed, normName, importedFrom, importedExercise } from './lib/supplement-catalogue.js'
+import { facetSearch, ALL_DB, APP_DB } from './lib/exercise-search.js'
 import { previousRoutineConfig, seedConfig, changedGlobals, applyGlobals, isGlobalField, GLOBAL_LABEL } from './lib/exercise-defaults.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { buildCompletedWorkout } from './lib/finish-workout.js'
@@ -1002,51 +1003,98 @@ export function FavoriteStar({ st, id }) {
     }}><Icon name={fav ? 'starFill' : 'star'} /></button>
 }
 
-// Three independent filters: favourite or not (lib/favorites.js), body part and equipment.
+// One list over every exercise database, with filters that narrow each other
+// (lib/exercise-search.js): database (one, or all of them), muscle group and equipment — plus
+// favourites and the equipment profile. Picking an exercise from another database imports it
+// as a custom exercise in one step (picture downloaded, credit kept) and hands that to the
+// caller, so adding and swapping work exactly as with a built-in; picking it again reuses it.
 function ExercisePicker({ onPick, close }) {
   const st = useStore(s => s.S)
   const favs = favoriteMap(st)
   const [q, setQ] = useState('')
   const [scope, setScope] = useState('')    // '' = all, 'in' = favourites, 'out' = the rest
+  const [db, setDb] = useState(APP_DB)      // APP_DB, ALL_DB or a SUPPLEMENT_SOURCES id
   const [bp, setBp] = useState('')          // '' = all body parts
   const [eq, setEq] = useState('')          // '' = any equipment
   const [showAll, setShowAll] = useState(false)
   const [shown, setShown] = useState(50)
-  const [db, setDb] = useState('')          // '' = the app's own catalogue, else a SUPPLEMENT_SOURCES id
+  const [sources, setSources] = useState({}) // source id → candidates, 'loading' or 'failed'
+  const [busy, setBusy] = useState('')
   const searchRef = useRef(null)
-  const bpStrip = useRef(null), eqStrip = useRef(null)
+  const dbStrip = useRef(null), bpStrip = useRef(null), eqStrip = useRef(null)
   const onSearchFocus = useSheetKeyboard(searchRef)
+  const wanted = db === ALL_DB ? SUPPLEMENT_SOURCES.map(s => s.id) : db === APP_DB ? [] : [db]
+  // A source is read over the network the first time it is shown (a failed one is retried).
+  useEffect(() => {
+    wanted.filter(id => !Array.isArray(sources[id]) && sources[id] !== 'loading').forEach(id => {
+      setSources(m => ({ ...m, [id]: 'loading' }))
+      loadSource(id).then(l => setSources(m => ({ ...m, [id]: l })), () => setSources(m => ({ ...m, [id]: 'failed' })))
+    })
+  }, [db]) // eslint-disable-line react-hooks/exhaustive-deps
   const all = allExercises(st)
   const profile = activeProfile(st)
-  let base = all.filter(e =>
+  const owned = e => !profile || showAll || exAvailable(st, e)
+  let appEx = all.filter(e =>
     (scope === 'in' ? favs[e.id] : scope === 'out' ? !favs[e.id] : true) &&
-    (!bp || e.bp === bp) &&
-    matchExercise(e, q))
-  if (scope === 'in') base = [...base].sort((a, b) => (favs[b.id] - favs[a.id]) || exerciseNameFor(a).localeCompare(exerciseNameFor(b)))
-  base = favoritesFirst(st, base)
-  const eqFiltered = (profile && !showAll) ? base.filter(e => exAvailable(st, e)) : base
-  const eqOpts = equipmentOf(eqFiltered)
-  // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
-  // The choice is kept, though: it comes back once another filter brings that equipment back.
-  const eqOn = eqOpts.includes(eq) ? eq : ''
-  const f = eqOn ? eqFiltered.filter(e => e.eq === eqOn) : eqFiltered
+    matchExercise(e, q) && owned(e))
+  if (scope === 'in') appEx = [...appEx].sort((a, b) => (favs[b.id] - favs[a.id]) || exerciseNameFor(a).localeCompare(exerciseNameFor(b)))
+  appEx = favoritesFirst(st, appEx)
+  const entries = appEx.map(e => ({ db: APP_DB, bp: e.bp, eq: e.eq, key: e.id, ex: e }))
+  // Another database's exercises are never favourites; one already imported shows as yours.
+  const imported = new Set((st.customEx || []).map(x => x && x.src).filter(Boolean))
+  const needle = normName(q)
+  if (scope !== 'in') SUPPLEMENT_SOURCES.forEach(s => {
+    const l = sources[s.id]
+    if (Array.isArray(l)) l.forEach(c => {
+      if (!imported.has(c.key) && (!needle || normName(c.names.join(' ')).includes(needle)) && owned(c))
+        entries.push({ db: s.id, bp: c.bp, eq: c.eq, key: c.key, c })
+    })
+  })
+  // The database's choice is kept; a muscle group or equipment it lacks is set aside, not cleared.
+  const { list: f, bpOn, eqOn, bpOpts, eqOpts, dbCounts } = facetSearch(entries, { db, bp, eq }, BODYPARTS)
+  const total = (db === APP_DB || db === ALL_DB ? all.length : 0) +
+    wanted.reduce((a, id) => a + (Array.isArray(sources[id]) ? sources[id].length : 0), 0)
+  const loading = SUPPLEMENT_SOURCES.filter(s => wanted.includes(s.id) && sources[s.id] === 'loading')
+  const failed = SUPPLEMENT_SOURCES.filter(s => wanted.includes(s.id) && sources[s.id] === 'failed')
+  const shownSources = SUPPLEMENT_SOURCES.filter(s => wanted.includes(s.id) && Array.isArray(sources[s.id]))
   const favCount = Object.keys(favs).length
   const pickScope = v => { setScope(s => s === v ? '' : v); setShown(50) }
+  const pickDb = v => { setDb(v); setShown(50) }
   const star = { fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }
-  useRevealActiveChip(bpStrip, bp)
+  const count = id => {
+    const l = id === APP_DB || id === ALL_DB ? null : sources[id]
+    if (l === 'loading') return '…'
+    if (l === 'failed' || (id !== APP_DB && id !== ALL_DB && !l)) return ''
+    if (id === ALL_DB && SUPPLEMENT_SOURCES.some(s => !Array.isArray(sources[s.id]))) return ''
+    return String(dbCounts[id] || 0)
+  }
+  const dbChip = (id, name) => <button key={id} className={'chip nocap' + (db === id ? ' on' : '')} aria-pressed={db === id} onClick={() => pickDb(id)}>
+    {name}{count(id) && <span className="dim" style={{ marginLeft: 5 }}>{count(id)}</span>}
+  </button>
+  const sourceName = id => (SUPPLEMENT_SOURCES.find(s => s.id === id) || {}).name || id
+  const pickOther = async c => {
+    if (busy) return
+    const prev = importedFrom(S().customEx, c)
+    if (prev) { onPick(EXIDX[prev.id] || prev); return }
+    setBusy(c.key)
+    let picture = {}
+    if (c.imageUrl) try { picture = await pictureFromUrl(c.imageUrl) } catch { /* imported without a picture */ }
+    const id = 'c' + uid()
+    const record = importedExercise(c, { id, picture, taken: allExercises(S()).flatMap(e => [e.n, exerciseNameFor(e)]) })
+    update(s => { s.customEx = [...(s.customEx || []), record] })
+    setBusy('')
+    toast(t('“{0}” imported from {1}', record.n, sourceName(c.source)))
+    onPick(EXIDX[id] || record)
+  }
+  useRevealActiveChip(dbStrip, db)
+  useRevealActiveChip(bpStrip, bpOn)
   useRevealActiveChip(eqStrip, eqOn)
-  if (db) return <>
-    <h3>{t('Add exercise')}</h3>
-    <DatabaseChips db={db} setDb={setDb} />
-    <OtherDatabaseList db={db} onPick={onPick} />
-  </>
   return <>
     <h3>{t('Add exercise')}</h3>
-    <DatabaseChips db={db} setDb={setDb} />
     {/* .picker-search is what index.css keys the keyboard-aware sheet layout on: the sheet
         lifts above the keys and the search stays put while the list scrolls under it. */}
     <div className="picker-search"><div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input ref={searchRef} className="input" placeholder={t('Search {0} exercises…', all.length)} value={q} onFocus={onSearchFocus} onChange={e => { setQ(e.target.value); setShown(50) }} /></div></div>
+      <input ref={searchRef} className="input" placeholder={total ? t('Search {0} exercises…', total) : t('Search…')} value={q} onFocus={onSearchFocus} onChange={e => { setQ(e.target.value); setShown(50) }} /></div></div>
     {profile && <div className="small dim row" style={{ margin: '8px 0 2px', gap: 6, alignItems: 'center' }}>
       <Icon name="dumbbell" style={{ fontSize: 13 }} />
       {showAll ? t('Showing all equipment') : t('Showing what you have in "{0}"', profile.name)}
@@ -1058,96 +1106,50 @@ function ExercisePicker({ onPick, close }) {
       <button className={'chip' + (scope === 'in' ? ' on' : '')} aria-pressed={scope === 'in'} onClick={() => pickScope('in')}><Icon name="starFill" style={star} />{t('Favourites')} ({favCount})</button>
       <button className={'chip nocap' + (scope === 'out' ? ' on' : '')} aria-pressed={scope === 'out'} onClick={() => pickScope('out')}><Icon name="star" style={star} />{t('Not favourites')}</button>
     </div>}
-    <div className="chips" ref={bpStrip} style={{ margin: eqOpts.length > 1 ? '10px 0 6px' : '10px 0' }}>
-      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setShown(50) }}>{t('All')}</button>
-      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setShown(50) }}>{t(b)}</button>)}
+    <div className="small dim" style={{ margin: '10px 2px 4px' }}>{t('Exercise database')}</div>
+    <div className="chips" ref={dbStrip} style={{ marginBottom: 6 }}>
+      {dbChip(ALL_DB, t('All databases'))}
+      {dbChip(APP_DB, 'HipertroFit')}
+      {SUPPLEMENT_SOURCES.map(s => dbChip(s.id, s.name))}
     </div>
-    {eqOpts.length > 1 && <div className="chips" ref={eqStrip} style={{ marginBottom: 10 }}>
-      <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(50) }}>{t('Any equipment')}</button>
-      {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
-    </div>}
+    <div className="small dim" style={{ margin: '4px 2px 4px' }}>{t('Muscle group')}</div>
+    <div className="chips" ref={bpStrip} style={{ marginBottom: 6 }}>
+      <button className={'chip nocap' + (!bpOn ? ' on' : '')} onClick={() => { setBp(''); setShown(50) }}>{t('All')}</button>
+      {bpOpts.map(b => <button key={b} className={'chip' + (bpOn === b ? ' on' : '')} onClick={() => { setBp(b); setShown(50) }}>{t(b)}</button>)}
+    </div>
+    {eqOpts.length > 0 && <>
+      <div className="small dim" style={{ margin: '4px 2px 4px' }}>{t('Equipment')}</div>
+      <div className="chips" ref={eqStrip} style={{ marginBottom: 10 }}>
+        <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(50) }}>{t('Any equipment')}</button>
+        {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
+      </div>
+    </>}
+    {loading.length > 0 && <div className="small dim" style={{ margin: '0 2px 8px' }}>{t('Loading…')} {loading.map(s => s.name).join(', ')}</div>}
+    {failed.length > 0 && <div className="small dim" style={{ margin: '0 2px 8px' }}>{t('Could not reach {0}. Try again later.', failed.map(s => s.name).join(', '))}</div>}
     <div className="list">
-      {scope !== 'in' && <div className="item" {...tappable(() => customExSheet(null, ex => onPick(ex), q.trim()))}>
+      {scope !== 'in' && (db === APP_DB || db === ALL_DB) && <div className="item" {...tappable(() => customExSheet(null, ex => onPick(ex), q.trim()))}>
         <div className="thumb thumb-x"><Icon name="sparkles" /></div>
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name, muscles, equipment, instructions and image')}</div></div><Icon name="plus" className="chev" />
       </div>}
-      {f.slice(0, shown).map(e => <div key={e.id} className="item" {...tappable(() => onPick(e))}>
-        <Thumb ex={e} muscle /><div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(muscleLabel(e.tg || e.bp))} · {t(e.eq)}</div></div>
-        <FavoriteStar st={st} id={e.id} /><Icon name="plus" className="chev" />
-      </div>)}
+      {f.slice(0, shown).map(({ key, ex: e, c }) => e
+        ? <div key={key} className="item" {...tappable(() => onPick(e))}>
+          <Thumb ex={e} muscle /><div className="grow"><div className="tt capitalize">{exerciseNameFor(e)}</div><div className="ss capitalize">{t(muscleLabel(e.tg || e.bp))} · {t(e.eq)}</div></div>
+          <FavoriteStar st={st} id={e.id} /><Icon name="plus" className="chev" />
+        </div>
+        : <div key={key} className="item" {...tappable(() => pickOther(c))}>
+          <Thumb ex={{ id: c.key, n: c.n, img: c.imageUrl, tg: c.primaries[0], bp: c.bp }} muscle />
+          <div className="grow"><div className="tt capitalize">{c.n}</div><div className="ss capitalize">{[c.primaries[0] ? t(muscleLabel(c.primaries[0])) : c.bp && t(c.bp), c.eq && t(c.eq)].filter(Boolean).join(' · ')}</div></div>
+          {db === ALL_DB && <span className="tag">{sourceName(c.source)}</span>}
+          {busy === c.key ? <span className="small dim">{t('Loading…')}</span> : <Icon name="plus" className="chev" />}
+        </div>)}
       {f.length === 0 && scope === 'in' && <div className="empty">{t('No favourites yet — exercises you add to a routine or a workout show up here.')}</div>}
+      {f.length === 0 && scope !== 'in' && !loading.length && <div className="empty">{t('No match')}</div>}
     </div>
     {f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
+    {shownSources.length > 0 && <div className="small dim" style={{ marginTop: 10 }}>{shownSources.map(s => <div key={s.id}>{s.credit}</div>)}</div>}
   </>
 }
 export const exercisePicker = onPick => ui().openSheet(close => <ExercisePicker onPick={onPick} close={close} />)
-
-// Which database the picker lists: the app's own catalogue (with your custom exercises) or one
-// of the supplementary sources (lib/supplement-catalogue.js).
-function DatabaseChips({ db, setDb }) {
-  const strip = useRef(null)
-  useRevealActiveChip(strip, db || 'app')
-  return <div className="chips" ref={strip} style={{ margin: '0 0 10px' }}>
-    <button className={'chip nocap' + (!db ? ' on' : '')} aria-pressed={!db} onClick={() => setDb('')}>HipertroFit</button>
-    {SUPPLEMENT_SOURCES.map(s => <button key={s.id} className={'chip nocap' + (db === s.id ? ' on' : '')} aria-pressed={db === s.id} onClick={() => setDb(s.id)}>{s.name}</button>)}
-  </div>
-}
-
-// The exercises of another database. Picking one imports it as a custom exercise in one step
-// (its picture downloaded, its credit kept) and hands that to the picker's caller, so adding
-// and swapping work exactly as with a built-in; picking it again reuses the same import.
-function OtherDatabaseList({ db, onPick }) {
-  const [list, setList] = useState(null)
-  const [failed, setFailed] = useState(false)
-  const [q, setQ] = useState('')
-  const [bp, setBp] = useState('')
-  const [busy, setBusy] = useState('')
-  const [shown, setShown] = useState(50)
-  useEffect(() => {
-    let live = true
-    setList(null); setFailed(false); setShown(50)
-    loadSource(db).then(l => { if (live) setList(l) }, () => { if (live) setFailed(true) })
-    return () => { live = false }
-  }, [db])
-  const source = SUPPLEMENT_SOURCES.find(s => s.id === db)
-  const needle = normName(q)
-  const f = (list || []).filter(c => (!bp || c.bp === bp) && (!needle || normName(c.names.join(' ')).includes(needle)))
-  const parts = BODYPARTS.filter(b => (list || []).some(c => c.bp === b))
-  const pick = async c => {
-    if (busy) return
-    const prev = importedFrom(S().customEx, c)
-    if (prev) { onPick(EXIDX[prev.id] || prev); return }
-    setBusy(c.key)
-    let picture = {}
-    if (c.imageUrl) try { picture = await pictureFromUrl(c.imageUrl) } catch { /* imported without a picture */ }
-    const id = 'c' + uid()
-    const record = importedExercise(c, { id, picture, taken: allExercises(S()).flatMap(e => [e.n, exerciseNameFor(e)]) })
-    update(s => { s.customEx = [...(s.customEx || []), record] })
-    setBusy('')
-    toast(t('“{0}” imported from {1}', record.n, source.name))
-    onPick(EXIDX[id] || record)
-  }
-  return <>
-    <div className="picker-search"><div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input className="input" placeholder={list ? t('Search {0} exercises…', list.length) : t('Search…')} value={q} onChange={e => { setQ(e.target.value); setShown(50) }} /></div></div>
-    {parts.length > 1 && <div className="chips" style={{ margin: '10px 0' }}>
-      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setShown(50) }}>{t('All')}</button>
-      {parts.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setShown(50) }}>{t(b)}</button>)}
-    </div>}
-    {failed ? <div className="small dim">{t('Could not reach {0}. Try again later.', source.name)}</div>
-      : !list ? <div className="small dim">{t('Loading…')}</div>
-      : <div className="list">
-        {f.slice(0, shown).map(c => <div key={c.key} className="item" {...tappable(() => pick(c))}>
-          <Thumb ex={{ id: c.key, n: c.n, img: c.imageUrl, tg: c.primaries[0], bp: c.bp }} muscle />
-          <div className="grow"><div className="tt capitalize">{c.n}</div><div className="ss capitalize">{[c.primaries[0] ? t(muscleLabel(c.primaries[0])) : c.bp && t(c.bp), c.eq && t(c.eq)].filter(Boolean).join(' · ')}</div></div>
-          {busy === c.key ? <span className="small dim">{t('Loading…')}</span> : <Icon name="plus" className="chev" />}
-        </div>)}
-        {!f.length && <div className="empty">{t('No match')}</div>}
-      </div>}
-    {f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
-    <div className="small dim" style={{ marginTop: 10 }}>{source.credit}</div>
-  </>
-}
 
 /** Start a safe swap for one exact active-workout occurrence. */
 export function swapActiveWorkoutExercise(index) {
@@ -2235,15 +2237,18 @@ function WorkoutDetail({ w, close }) {
 export const workoutDetailSheet = w => ui().openSheet(close => <WorkoutDetail w={w} close={close} />)
 
 /* ============================ calendar ============================ */
-function Calendar({ start, close }) {
+// Also embedded in Home (MicrocycleCard), where there is no sheet to close: `close` defaults to a no-op.
+export function Calendar({ start, close = () => {} }) {
   const st = useStore(s => s.S)
   const [cur, setCur] = useState(() => { const d = start ? new Date(start) : new Date(); d.setDate(1); return d })
   const y = cur.getFullYear(), mo = cur.getMonth()
   const byDay = {}
-  st.workouts.forEach(w => (byDay[w.d] = byDay[w.d] || []).push(w))
+  // A workout without its date (a damaged record) belongs to no day: it is left off the grid, not a crash.
+  const dated = st.workouts.filter(w => typeof w.d === 'string')
+  dated.forEach(w => (byDay[w.d] = byDay[w.d] || []).push(w))
   const startOffset = (new Date(y, mo, 1).getDay() + 6) % 7
   const daysIn = new Date(y, mo + 1, 0).getDate()
-  const monthWs = st.workouts.filter(w => w.d.startsWith(y + '-' + String(mo + 1).padStart(2, '0')))
+  const monthWs = dated.filter(w => w.d.startsWith(y + '-' + String(mo + 1).padStart(2, '0')))
   const monthVol = monthWs.reduce((a, w) => a + (w.vol || 0), 0)
   const monthMs = monthWs.reduce((a, w) => a + Math.max(0, (w.end || w.start) - w.start), 0)
   const cells = []
@@ -2254,8 +2259,7 @@ function Calendar({ start, close }) {
     const dotCls = ws ? 'done' : ovr && effId ? 'ovr' : effId ? 'plan' : ''
     cells.push(<button key={d} className={'cal-d' + (ws ? ' has' : '') + (iso === todayISO() ? ' today' : '')} onClick={() => {
       if (!ws) { close(); dayOverrideSheet(iso); return }
-      if (ws.length === 1) { close(); workoutDetailSheet(ws[0]); return }
-      close(); ui().openSheet(c2 => <><h3>{fmtDate(iso, true)}</h3><div className="list">{ws.map(w => <WorkoutRow key={w.id} w={w} onClick={() => { c2(); workoutDetailSheet(w) }} />)}</div></>)
+      close(); dayDetailSheet(iso)
     }}><span>{d}</span><i className={dotCls} /></button>)
   }
   return <>
@@ -2275,6 +2279,35 @@ function Calendar({ start, close }) {
   </>
 }
 export const calendarSheet = start => ui().openSheet(close => <Calendar start={start} close={close} />)
+
+// Everything trained on one day, set by set: each exercise with its weights, reps and the RIR the
+// set was logged with. Opened from the calendar; a workout's name opens its own sheet, where the
+// session note is edited and the workout deleted.
+export const dayDetailSheet = iso => ui().openSheet(close => <DayDetail iso={iso} close={close} />)
+function DayDetail({ iso, close }) {
+  const st = useStore(s => s.S)
+  const ws = st.workouts.filter(w => w.d === iso)
+  return <>
+    <h3>{fmtDate(iso, true)}</h3>
+    {!ws.length && <div className="muted small">{t('Rest day')}</div>}
+    {ws.map(w => <div key={w.id} style={{ marginBottom: 18 }}>
+      <button className="btn plain" style={{ padding: 0, marginBottom: 2, fontWeight: 600 }} onClick={() => { close(); workoutDetailSheet(w) }}>{w.name || t('Workout done')}</button>
+      <div className="muted small" style={{ marginBottom: 10 }}>{[...durPart(w.end - w.start), fmtVol(w.vol, st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
+      {w.entries.map((e, i) => {
+        const ex = EXIDX[e.id]
+        const done = e.sets.filter(s => s.done)
+        return <div key={i} className="row" style={{ marginBottom: 10, alignItems: 'flex-start' }}>
+          {ex && <Thumb ex={ex} muscle />}
+          <div className="grow">
+            <div className="tt capitalize" style={{ fontWeight: 600 }}>{ex ? exerciseNameFor(ex) : (e.n || e.id)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
+            {done.length ? done.map((s, k) => <div key={k} className="small">{k + 1}. {setLabel(e.id, s, e.target)}</div>) : <div className="small dim">{t('no sets')}</div>}
+            {e.note && <div className="small dim" style={{ marginTop: 3 }}>{e.note}</div>}
+          </div>
+        </div>
+      })}
+    </div>)}
+  </>
+}
 
 /* shared small workout row (used in lists) */
 export function WorkoutRow({ w, onClick }) {

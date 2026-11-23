@@ -9,7 +9,7 @@ import { openNextCycle, closeMicrocycleSheet } from './MicrocycleActions.jsx'
 import { DeloadBadge, DeloadStatus } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { dayOverrideSheet, startFlow, loadStarterPlan, resumePausedWorkout } from '../sheets.jsx'
+import { dayOverrideSheet, startFlow, loadStarterPlan, resumePausedWorkout, Calendar } from '../sheets.jsx'
 import { resumableOf, pausedFor, pausedOn } from '../lib/paused-workout.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
@@ -154,6 +154,11 @@ export default function MicrocycleCard() {
       </div>
       <span className="tag">{t('Start')}</span>
     </div>}
+
+    {/* Under today's rows: the month with its trained and planned days. */}
+    <div style={{ marginTop: 14 }}>
+      <Calendar />
+    </div>
 
     {over && <CycleOverBanner S={S} number={meso.number} />}
     {meso.suggest && <DeloadBanner meso={meso} />}
