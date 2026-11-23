@@ -1482,4 +1482,10 @@ export default {
   'Sets missing this microcycle': 'Hiányzó sorozatok ebben a mikrociklusban',
   'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Ez a rutin a sorrenden kívül van: mennyi hiányzik még az egyes csoportoknak a minimumhoz, ha a terv mellett ezt is elvégzed.',
   '{0} here': '{0} itt',
+  'Microcycle programming': 'A mikrociklus programja',
+  'This microcycle': 'Ez a mikrociklus',
+  'Every group is in its optimal range': 'Minden csoport az optimális tartományban van',
+  'Under the optimum · sets missing': 'Az optimum alatt · hiányzó sorozatok',
+  'Over the optimum · sets too many': 'Az optimum felett · többlet sorozatok',
+  'Filters': 'Szűrők',
 }

@@ -983,6 +983,12 @@ export const PT_BR_OVERRIDES = {
   'Sets missing this microcycle': 'Séries faltando neste microciclo',
   'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Esta rotina está fora da sequência: o que falta para cada grupo atingir o mínimo se você fizer ela além do plano.',
   '{0} here': '{0} aqui',
+  'Microcycle programming': 'Programação do microciclo',
+  'This microcycle': 'Este microciclo',
+  'Every group is in its optimal range': 'Todos os grupos estão na faixa ideal',
+  'Under the optimum · sets missing': 'Abaixo do ideal · séries faltando',
+  'Over the optimum · sets too many': 'Acima do ideal · séries a mais',
+  'Filters': 'Filtros',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

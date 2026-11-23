@@ -1477,4 +1477,10 @@ export default {
   'Sets missing this microcycle': 'Bu mikrodöngüde eksik setler',
   'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Bu rutin sıranın dışında: plana ek olarak yaparsan her grubun minimumuna ulaşması için kalan setler.',
   '{0} here': 'burada {0}',
+  'Microcycle programming': 'Mikrodöngü programı',
+  'This microcycle': 'Bu mikrodöngü',
+  'Every group is in its optimal range': 'Tüm gruplar optimal aralıkta',
+  'Under the optimum · sets missing': 'Optimumun altında · eksik setler',
+  'Over the optimum · sets too many': 'Optimumun üstünde · fazla setler',
+  'Filters': 'Filtreler',
 }

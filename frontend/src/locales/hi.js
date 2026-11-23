@@ -1477,4 +1477,10 @@ export default {
   'Sets missing this microcycle': 'इस माइक्रोसाइकिल में बाकी सेट',
   'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'यह रूटीन क्रम से बाहर है: योजना के साथ इसे करने पर हर समूह को अपने न्यूनतम के लिए अभी कितने सेट चाहिए।',
   '{0} here': '{0} यहाँ',
+  'Microcycle programming': 'माइक्रोसाइकिल प्रोग्रामिंग',
+  'This microcycle': 'यह माइक्रोसाइकिल',
+  'Every group is in its optimal range': 'सभी समूह अपनी इष्टतम सीमा में हैं',
+  'Under the optimum · sets missing': 'इष्टतम से कम · बाकी सेट',
+  'Over the optimum · sets too many': 'इष्टतम से ज़्यादा · अतिरिक्त सेट',
+  'Filters': 'फ़िल्टर',
 }

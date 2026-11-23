@@ -1477,4 +1477,10 @@ export default {
   'Sets missing this microcycle': 'Недостающие подходы в этом микроцикле',
   'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Эта программа вне последовательности: сколько каждой группе не хватает до минимума, если выполнить её сверх плана.',
   '{0} here': '{0} здесь',
+  'Microcycle programming': 'План микроцикла',
+  'This microcycle': 'Этот микроцикл',
+  'Every group is in its optimal range': 'Все группы в оптимальном диапазоне',
+  'Under the optimum · sets missing': 'Ниже оптимума · не хватает подходов',
+  'Over the optimum · sets too many': 'Выше оптимума · лишние подходы',
+  'Filters': 'Фильтры',
 }

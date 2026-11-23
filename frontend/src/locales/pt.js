@@ -1477,4 +1477,10 @@ export default {
   'Sets missing this microcycle': 'Séries em falta neste microciclo',
   'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'Esta rotina está fora da sequência: o que falta a cada grupo para o seu mínimo se a fizeres além do plano.',
   '{0} here': '{0} aqui',
+  'Microcycle programming': 'Programação do microciclo',
+  'This microcycle': 'Este microciclo',
+  'Every group is in its optimal range': 'Todos os grupos estão no seu intervalo ótimo',
+  'Under the optimum · sets missing': 'Abaixo do ótimo · séries em falta',
+  'Over the optimum · sets too many': 'Acima do ótimo · séries a mais',
+  'Filters': 'Filtros',
 }

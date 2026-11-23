@@ -2430,3 +2430,16 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .sf-rm .g{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 8px;font-size:calc(13px * var(--fs));font-variant-numeric:tabular-nums}
 .sf-rm .g b{color:var(--acc)}
 .sf-rm .g .rough{opacity:.5}
+
+/* ------------------------------------------------- exercise picker volume gaps -- */
+.picker-head{top:-8px;max-height:calc(68 * var(--vh));overflow-y:auto;overscroll-behavior:contain;margin:0 -2px;padding:8px 2px 6px}
+.picker-gaps{margin:0 0 10px;padding:6px 10px 8px;border-radius:10px;background:var(--surface-2)}
+.pg-fold{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:2px 0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.pg-fold .pg-chev{margin-left:auto;flex:none;color:var(--label-2);font-size:14px}
+.pg-fold .pg-count{display:flex;gap:8px;font-weight:600}
+.pf-fold{margin:8px 0 2px}
+.pf-fold .pf-sum{color:var(--acc);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.picker-gaps .pg-lbl{color:var(--label-2);margin:4px 0 4px}
+.picker-gaps .pg-tags{display:flex;flex-wrap:wrap;gap:5px}
+.picker-gaps .pg-tag{text-transform:none;gap:5px}
+.picker-gaps .pg-tag b{font-weight:700;font-variant-numeric:tabular-nums}
