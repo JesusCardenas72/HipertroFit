@@ -122,11 +122,6 @@ export default function MicrocycleCard() {
       {meso.deload ? <b style={{ color: 'var(--deload)' }}> · {t('Deload')}</b> : ''}
     </div>
 
-    {/* The calendar, in place of the block's session order: the month with its trained and planned days. */}
-    <div style={{ marginTop: 12 }}>
-      <Calendar />
-    </div>
-
     {/* Once today's session is logged the row stops asking for it — the strip already knows. */}
     <div className="today-row" {...tappable(onToday)}>
       <div className="row" style={{ gap: 9, minWidth: 0 }}>
@@ -159,6 +154,11 @@ export default function MicrocycleCard() {
       </div>
       <span className="tag">{t('Start')}</span>
     </div>}
+
+    {/* Under today's rows: the month with its trained and planned days. */}
+    <div style={{ marginTop: 14 }}>
+      <Calendar />
+    </div>
 
     {over && <CycleOverBanner S={S} number={meso.number} />}
     {meso.suggest && <DeloadBanner meso={meso} />}
