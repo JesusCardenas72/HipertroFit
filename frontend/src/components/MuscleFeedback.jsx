@@ -7,6 +7,7 @@ import { fmtNum } from '../lib/format.js'
 import { EXIDX } from '../lib/exercises.js'
 import { VOLUME_GROUPS } from '../lib/volume.js'
 import { glyphOfMuscle } from '../lib/glyphs.js'
+import { mesoReportSheet } from './MesoReport.jsx'
 import { feedbackGroups, normalizeFeedback, feedbackPlan, rampOn, FEEDBACK_FIELDS } from '../lib/muscle-feedback.js'
 
 // The two ends of the per-group feedback (lib/muscle-feedback.js): the questions asked when a
@@ -119,6 +120,9 @@ export function FeedbackAdjustments({ S, skip, setSkip }) {
   const toggle = key => setSkip(skip.includes(key) ? skip.filter(k => k !== key) : [...skip, key])
   return <>
     <h4 className="sec">{t(plan.kind === 'start' ? 'Volume of the new mesocycle' : 'Adjust sets by how you felt')}</h4>
+    {/* Closing the deload closes the mesocycle: its report is one tap away. */}
+    {plan.kind === 'start' && <button type="button" className="chip nocap on" style={{ marginBottom: 10 }} onClick={mesoReportSheet}>
+      {t('See the mesocycle report')}</button>}
     {plan.blocked === 'noplan' && <div className="small dim" style={{ marginBottom: 8 }}>
       {t('Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:')}
     </div>}

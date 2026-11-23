@@ -1066,6 +1066,18 @@ export const PT_BR_OVERRIDES = {
   'Calf': 'Panturrilha',
   'Neck': 'Pescoço',
   'Forearm': 'Antebraço',
+  'Body': 'Corpo',
+  'Done of planned': 'Feitas das previstas',
+  'Effective sets per microcycle': 'Séries efetivas por microciclo',
+  'Estimated 1RM, first to last microcycle': '1RM estimado, do primeiro ao último microciclo',
+  'Report': 'Relatório',
+  'See the mesocycle report': 'Ver o relatório do mesociclo',
+  'deload': 'deload',
+  'sessions': 'sessões',
+  'target': 'alvo',
+  '{0} loading microcycles': '{0} microciclos de carga',
+  'Mesocycle in progress': 'Mesociclo em andamento',
+  'Last mesocycle': 'Último mesociclo',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,
