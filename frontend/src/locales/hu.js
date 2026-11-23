@@ -1542,4 +1542,8 @@ export default {
   'Per side:': 'Oldalanként:',
   'bar {0}': 'rúd {0}',
   '{0} per side has no plate': 'oldalanként {0}-hoz nincs tárcsa',
+  'Every set is done — finish the workout.': 'Minden sorozat kész — fejezd be az edzést.',
+  'Resting until {0}': 'Pihenő eddig: {0}',
+  'Workout': 'Edzés',
+  'Workout in the notification bar': 'Edzés az értesítési sávban',
 }

@@ -1554,4 +1554,8 @@ export default {
   'Per side:': 'Pro Seite:',
   'bar {0}': 'Stange {0}',
   '{0} per side has no plate': '{0} pro Seite ohne Scheibe',
+  'Every set is done — finish the workout.': 'Alle Sätze erledigt – beende das Training.',
+  'Resting until {0}': 'Pause bis {0}',
+  'Workout': 'Training',
+  'Workout in the notification bar': 'Training in der Benachrichtigungsleiste',
 }

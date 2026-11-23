@@ -1537,4 +1537,8 @@ export default {
   'Per side:': 'Na stronę:',
   'bar {0}': 'gryf {0}',
   '{0} per side has no plate': '{0} na stronę bez talerza',
+  'Every set is done — finish the workout.': 'Wszystkie serie zrobione — zakończ trening.',
+  'Resting until {0}': 'Odpoczynek do {0}',
+  'Workout': 'Trening',
+  'Workout in the notification bar': 'Trening na pasku powiadomień',
 }

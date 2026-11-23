@@ -369,3 +369,36 @@ export async function notifyNow({ id, title, body }) {
     return true
   } catch (e) { return false }
 }
+
+// The running session as an ongoing notification (lib/session-notice.js), Android app only. It
+// goes on a channel of its own at low importance, so rewriting it after every set makes no sound
+// and no vibration; the rest alert keeps its own. Best effort, never throws: without permission
+// there is simply no notification.
+const SESSION_CHANNEL = 'session'
+let sessionChannelReady = false
+export async function showSessionNotice(id, notice) {
+  if (!MOBILE || !notice) return false
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    // Asked once, the first time a session starts with it on — the moment it is wanted.
+    let perm = await LocalNotifications.checkPermissions()
+    if (perm.display === 'prompt' || perm.display === 'prompt-with-rationale') perm = await LocalNotifications.requestPermissions()
+    if (perm.display !== 'granted') return false
+    if (!sessionChannelReady) {
+      await LocalNotifications.createChannel({ id: SESSION_CHANNEL, name: 'Workout in progress', importance: 2, visibility: 1, vibration: false, lights: false })
+      sessionChannelReady = true
+    }
+    await LocalNotifications.schedule({ notifications: [{
+      id, title: notice.title, body: notice.body, largeBody: notice.body,
+      channelId: SESSION_CHANNEL, ongoing: true, autoCancel: false,
+    }] })
+    return true
+  } catch (e) { return false }
+}
+export async function clearSessionNotice(id) {
+  if (!MOBILE) return
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    await LocalNotifications.cancel({ notifications: [{ id }] })
+  } catch (e) { /* nothing to clear */ }
+}

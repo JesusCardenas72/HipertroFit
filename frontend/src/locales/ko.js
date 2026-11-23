@@ -1537,4 +1537,8 @@ export default {
   'Per side:': '한쪽:',
   'bar {0}': '바 {0}',
   '{0} per side has no plate': '한쪽 {0}은 맞는 원판 없음',
+  'Every set is done — finish the workout.': '모든 세트 완료 — 운동을 마치세요.',
+  'Resting until {0}': '{0}까지 휴식',
+  'Workout': '운동',
+  'Workout in the notification bar': '알림 바에 운동 표시',
 }

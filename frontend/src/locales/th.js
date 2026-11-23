@@ -1550,4 +1550,8 @@ export default {
   'Per side:': 'ต่อข้าง:',
   'bar {0}': 'บาร์ {0}',
   '{0} per side has no plate': '{0} ต่อข้างไม่มีแผ่นที่ตรง',
+  'Every set is done — finish the workout.': 'ทำครบทุกเซ็ตแล้ว — จบการฝึกได้เลย',
+  'Resting until {0}': 'พักถึง {0}',
+  'Workout': 'การฝึก',
+  'Workout in the notification bar': 'แสดงการฝึกในแถบการแจ้งเตือน',
 }

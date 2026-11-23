@@ -1537,4 +1537,8 @@ export default {
   'Per side:': 'Par côté :',
   'bar {0}': 'barre {0}',
   '{0} per side has no plate': '{0} par côté sans disque',
+  'Every set is done — finish the workout.': 'Toutes les séries sont faites — termine la séance.',
+  'Resting until {0}': 'Repos jusqu’à {0}',
+  'Workout': 'Séance',
+  'Workout in the notification bar': 'Séance dans la barre de notifications',
 }

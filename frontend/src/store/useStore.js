@@ -43,6 +43,8 @@ export const DEF = {
   // Climb the planned volume one set per group each loading microcycle and start every mesocycle
   // from the bottom of the band. See rampOn in lib/muscle-feedback.js.
   volumeRamp: true,
+  // Android app: the running session as an ongoing notification. See lib/session-notice.js.
+  sessionNotice: true,
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
   // Sessions left paused instead of finished — each one the running session as it was, plus
   // `pausedAt`. Resumable while their microcycle runs; not counted until finished. See

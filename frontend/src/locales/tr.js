@@ -1537,4 +1537,8 @@ export default {
   'Per side:': 'Her tarafa:',
   'bar {0}': 'bar {0}',
   '{0} per side has no plate': 'her tarafta {0} için plaka yok',
+  'Every set is done — finish the workout.': 'Tüm setler bitti — antrenmanı bitir.',
+  'Resting until {0}': '{0} saatine kadar dinlenme',
+  'Workout': 'Antrenman',
+  'Workout in the notification bar': 'Bildirim çubuğunda antrenman',
 }

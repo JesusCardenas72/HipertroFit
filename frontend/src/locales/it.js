@@ -1537,4 +1537,8 @@ export default {
   'Per side:': 'Per lato:',
   'bar {0}': 'bilanciere {0}',
   '{0} per side has no plate': '{0} per lato senza disco',
+  'Every set is done — finish the workout.': 'Tutte le serie fatte: termina l’allenamento.',
+  'Resting until {0}': 'Recupero fino alle {0}',
+  'Workout': 'Allenamento',
+  'Workout in the notification bar': 'Allenamento nella barra delle notifiche',
 }

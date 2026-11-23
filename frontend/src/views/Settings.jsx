@@ -284,6 +284,10 @@ export default function Settings() {
           options={[{ value: 'none', label: t('Off') }, { value: 'rir', label: t('RIR') }, { value: 'rpe', label: t('RPE') }]}
           value={effortOf(S)} onChange={v => update(s => { s.effort = v; delete s.showRir })} />
       </Row>
+      {/* The running session in the notification shade (lib/session-notice.js), Android app only. */}
+      {MOBILE && <Row icon="bell" iconTint="var(--blue)" title={t('Workout in the notification bar')}>
+        <Switch checked={S.sessionNotice !== false} onChange={v => update(s => { s.sessionNotice = v })} />
+      </Row>}
       {/* The effort the mesocycle aims at, microcycle by microcycle (lib/mesocycle.js rirGoalOf). */}
       <Row icon="flame" iconTint="var(--orange)" title={t('Target RIR by microcycle')}>
         <Switch checked={S.rirPlan !== false} onChange={v => update(s => { s.rirPlan = v })} />

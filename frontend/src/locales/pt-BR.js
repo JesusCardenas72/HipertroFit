@@ -1043,6 +1043,10 @@ export const PT_BR_OVERRIDES = {
   'Per side:': 'Por lado:',
   'bar {0}': 'barra {0}',
   '{0} per side has no plate': '{0} por lado sem anilha',
+  'Every set is done — finish the workout.': 'Todas as séries feitas — finalize o treino.',
+  'Resting until {0}': 'Descanso até {0}',
+  'Workout': 'Treino',
+  'Workout in the notification bar': 'Treino na barra de notificações',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

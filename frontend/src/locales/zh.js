@@ -1537,4 +1537,8 @@ export default {
   'Per side:': '每侧：',
   'bar {0}': '杆 {0}',
   '{0} per side has no plate': '每侧 {0} 无对应杠铃片',
+  'Every set is done — finish the workout.': '所有组已完成——结束训练吧。',
+  'Resting until {0}': '休息至 {0}',
+  'Workout': '训练',
+  'Workout in the notification bar': '在通知栏显示训练',
 }

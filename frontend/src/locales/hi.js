@@ -1537,4 +1537,8 @@ export default {
   'Per side:': 'हर तरफ़:',
   'bar {0}': 'बार {0}',
   '{0} per side has no plate': 'हर तरफ़ {0} के लिए प्लेट नहीं',
+  'Every set is done — finish the workout.': 'सारे सेट पूरे — वर्कआउट ख़त्म करें।',
+  'Resting until {0}': '{0} तक आराम',
+  'Workout': 'वर्कआउट',
+  'Workout in the notification bar': 'नोटिफ़िकेशन बार में वर्कआउट',
 }

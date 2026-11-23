@@ -1537,4 +1537,8 @@ export default {
   'Per side:': 'На сторону:',
   'bar {0}': 'гриф {0}',
   '{0} per side has no plate': '{0} на сторону без блина',
+  'Every set is done — finish the workout.': 'Все подходы сделаны — завершите тренировку.',
+  'Resting until {0}': 'Отдых до {0}',
+  'Workout': 'Тренировка',
+  'Workout in the notification bar': 'Тренировка в панели уведомлений',
 }
