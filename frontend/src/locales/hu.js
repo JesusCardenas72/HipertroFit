@@ -1529,4 +1529,9 @@ export default {
   'Volume of the new mesocycle': 'Az új mezociklus volumene',
   'volume ramp: one set more': 'volumenemelés: eggyel több sorozat',
   'new mesocycle: back to the bottom of the band': 'új mezociklus: vissza a tartomány aljára',
+  'Stalled exercises': 'Megakadt gyakorlatok',
+  'Try a variation of the exercise, another rep range, or fewer sets around it. A deload also often breaks a stall.': 'Próbáld a gyakorlat egy változatát, másik ismétléstartományt, vagy kevesebb sorozatot körülötte. Egy deload is gyakran áttöri a megakadást.',
+  'est. 1RM': 'becsült 1RM',
+  'weight × reps': 'súly × ism.',
+  '{0} microcycles without beating {1}': '{0} mikrociklus óta nem sikerült túllépni: {1}',
 }

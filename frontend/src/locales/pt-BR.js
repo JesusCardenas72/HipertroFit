@@ -1030,6 +1030,11 @@ export const PT_BR_OVERRIDES = {
   'Volume of the new mesocycle': 'Volume do novo mesociclo',
   'volume ramp: one set more': 'rampa de volume: mais uma série',
   'new mesocycle: back to the bottom of the band': 'novo mesociclo: de volta ao mínimo da faixa',
+  'Stalled exercises': 'Exercícios estagnados',
+  'Try a variation of the exercise, another rep range, or fewer sets around it. A deload also often breaks a stall.': 'Experimente uma variação do exercício, outra faixa de repetições ou menos séries ao redor. Um deload também costuma destravar a estagnação.',
+  'est. 1RM': '1RM est.',
+  'weight × reps': 'peso × reps',
+  '{0} microcycles without beating {1}': '{0} microciclos sem superar {1}',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

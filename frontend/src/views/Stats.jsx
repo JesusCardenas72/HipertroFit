@@ -31,6 +31,7 @@ import { isWarmupRow } from '../lib/workout-model.js'
 import { doubleProgressExercises, doubleProgressStatus } from '../lib/double-progress.js'
 import { DoubleProgressMeter } from '../components/DoubleProgress.jsx'
 import { aiAnalysisSheet } from '../components/AiAnalysis.jsx'
+import StalledCard from '../components/StalledCard.jsx'
 
 // Which muscles the training in a window actually hit — and, the point of the card,
 // which ones it keeps missing. Shading is relative within the window (lib/muscles.js).
@@ -519,6 +520,8 @@ export default function Stats() {
       </div>
 
       <DoubleProgressCard S={S} />
+
+      <StalledCard S={S} onPick={x => { setExId(x.id); setExMetric(x.metric === 'e1rm' ? 'e1rm' : 'top') }} />
 
       <div className="card">
         <h2>{t('Exercise progress')}</h2>

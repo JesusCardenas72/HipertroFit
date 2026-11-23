@@ -1524,4 +1524,9 @@ export default {
   'Volume of the new mesocycle': 'नई मेसोसाइकिल का वॉल्यूम',
   'volume ramp: one set more': 'वॉल्यूम रैंप: एक सेट और',
   'new mesocycle: back to the bottom of the band': 'नई मेसोसाइकिल: सीमा के निचले छोर पर वापस',
+  'Stalled exercises': 'रुके हुए व्यायाम',
+  'Try a variation of the exercise, another rep range, or fewer sets around it. A deload also often breaks a stall.': 'व्यायाम का कोई वैरिएशन, कोई और रेप रेंज, या उसके आसपास कम सेट आज़माएँ। डीलोड से भी अक्सर रुकावट टूटती है।',
+  'est. 1RM': 'अनुमानित 1RM',
+  'weight × reps': 'वज़न × रेप्स',
+  '{0} microcycles without beating {1}': '{0} माइक्रोसाइकिल से {1} पार नहीं',
 }

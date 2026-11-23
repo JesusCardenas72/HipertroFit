@@ -1524,4 +1524,9 @@ export default {
   'Volume of the new mesocycle': '새 메조사이클의 볼륨',
   'volume ramp: one set more': '볼륨 점증: 한 세트 추가',
   'new mesocycle: back to the bottom of the band': '새 메조사이클: 범위 하한으로 복귀',
+  'Stalled exercises': '정체된 운동',
+  'Try a variation of the exercise, another rep range, or fewer sets around it. A deload also often breaks a stall.': '운동 변형, 다른 반복 범위, 또는 주변 세트를 줄여 보세요. 디로드도 정체를 깨는 데 자주 도움이 됩니다.',
+  'est. 1RM': '추정 1RM',
+  'weight × reps': '무게 × 반복',
+  '{0} microcycles without beating {1}': '{0}개 마이크로사이클 동안 {1}을 넘지 못함',
 }

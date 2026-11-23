@@ -1524,4 +1524,9 @@ export default {
   'Volume of the new mesocycle': '新中周期的训练量',
   'volume ramp: one set more': '逐步加量：多一组',
   'new mesocycle: back to the bottom of the band': '新中周期：回到区间下限',
+  'Stalled exercises': '停滞的动作',
+  'Try a variation of the exercise, another rep range, or fewer sets around it. A deload also often breaks a stall.': '试试该动作的变式、换个次数区间，或减少它周围的组数。减量周也常能打破停滞。',
+  'est. 1RM': '估算 1RM',
+  'weight × reps': '重量 × 次数',
+  '{0} microcycles without beating {1}': '{0} 个微周期未超过 {1}',
 }

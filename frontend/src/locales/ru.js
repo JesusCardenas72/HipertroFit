@@ -1524,4 +1524,9 @@ export default {
   'Volume of the new mesocycle': 'Объём нового мезоцикла',
   'volume ramp: one set more': 'рост объёма: на подход больше',
   'new mesocycle: back to the bottom of the band': 'новый мезоцикл: обратно к нижней границе диапазона',
+  'Stalled exercises': 'Упражнения без прогресса',
+  'Try a variation of the exercise, another rep range, or fewer sets around it. A deload also often breaks a stall.': 'Попробуйте вариацию упражнения, другой диапазон повторений или меньше подходов вокруг него. Разгрузка тоже часто снимает застой.',
+  'est. 1RM': 'расч. 1ПМ',
+  'weight × reps': 'вес × повт.',
+  '{0} microcycles without beating {1}': '{0} микроциклов без превышения {1}',
 }

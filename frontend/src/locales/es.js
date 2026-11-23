@@ -1645,4 +1645,9 @@ export default {
   'Volume of the new mesocycle': 'Volumen del nuevo mesociclo',
   'volume ramp: one set more': 'rampa de volumen: una serie más',
   'new mesocycle: back to the bottom of the band': 'nuevo mesociclo: vuelta al mínimo del rango',
+  'Stalled exercises': 'Ejercicios estancados',
+  'Try a variation of the exercise, another rep range, or fewer sets around it. A deload also often breaks a stall.': 'Prueba una variante del ejercicio, otro rango de repeticiones o menos series a su alrededor. Una descarga también suele romper el estancamiento.',
+  'est. 1RM': '1RM est.',
+  'weight × reps': 'peso × reps',
+  '{0} microcycles without beating {1}': '{0} microciclos sin superar {1}',
 }

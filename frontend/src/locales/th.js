@@ -1537,4 +1537,9 @@ export default {
   'Volume of the new mesocycle': 'ปริมาณของเมโซไซเคิลใหม่',
   'volume ramp: one set more': 'เพิ่มปริมาณ: เพิ่มอีกหนึ่งเซ็ต',
   'new mesocycle: back to the bottom of the band': 'เมโซไซเคิลใหม่: กลับไปที่ขั้นต่ำของช่วง',
+  'Stalled exercises': 'ท่าที่ไม่พัฒนา',
+  'Try a variation of the exercise, another rep range, or fewer sets around it. A deload also often breaks a stall.': 'ลองท่าแบบอื่น ช่วงจำนวนครั้งอื่น หรือลดเซ็ตรอบ ๆ ท่านั้น การดีโหลดก็มักช่วยให้หลุดจากการติด',
+  'est. 1RM': '1RM โดยประมาณ',
+  'weight × reps': 'น้ำหนัก × ครั้ง',
+  '{0} microcycles without beating {1}': '{0} ไมโครไซเคิลที่ยังไม่เกิน {1}',
 }

@@ -1524,4 +1524,9 @@ export default {
   'Volume of the new mesocycle': 'Yeni mezo döngünün hacmi',
   'volume ramp: one set more': 'hacim artışı: bir set daha',
   'new mesocycle: back to the bottom of the band': 'yeni mezo döngü: aralığın alt sınırına dönüş',
+  'Stalled exercises': 'Takılan egzersizler',
+  'Try a variation of the exercise, another rep range, or fewer sets around it. A deload also often breaks a stall.': 'Egzersizin bir varyasyonunu, başka bir tekrar aralığını ya da çevresinde daha az seti dene. Bir deload da çoğu zaman takılmayı aşar.',
+  'est. 1RM': 'tahmini 1RM',
+  'weight × reps': 'ağırlık × tekrar',
+  '{0} microcycles without beating {1}': '{0} mikro döngüdür {1} aşılamadı',
 }
