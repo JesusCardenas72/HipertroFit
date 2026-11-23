@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  normalizeAnswer, normalizeFeedback, feedbackGroups, answerScore, stepOf, groupSignal, feedbackPlan,
+  normalizeAnswer, normalizeFeedback, feedbackGroups, answerScore, stepOf, groupSignal, feedbackPlan, mesoStartPlan, rampOn,
 } from './muscle-feedback.js'
 import { nudgeProposal, applyProposal, MAX_STEP } from './ai-actions.js'
 import { plannedVolume } from './volume.js'
@@ -11,11 +11,12 @@ const fly = sets => ({ id: 'x-fly', tg: 'chest', sets })
 const curl = sets => ({ id: 'x-curl', tg: 'biceps', sets })
 const done = n => Array.from({ length: n }, () => ({ w: 50, r: 10, done: true }))
 
-// Full body: one microcycle = 3 sessions, the one routine trained three times.
+// Full body: one microcycle = 3 sessions, the one routine trained three times. The volume ramp is
+// off unless a test turns it on, so the feedback is read on its own.
 const fullBody = (ex, workouts = [], extra = {}) => ({
   program: { on: true, seq: ['A'], anchor: '2026-09-01', strategy: 'full-body' },
   routines: [{ id: 'A', name: 'Full A', ex }],
-  workouts, meso: null,
+  workouts, meso: null, volumeRamp: false,
   ...extra,
 })
 const session = (d, feedback, entries = [{ ...bench(), sets: done(3) }]) =>
@@ -191,5 +192,55 @@ describe('feedbackPlan', () => {
   it('keeps a group whose answers balance out off the list', () => {
     const S = fullBody(ex, [session('2026-09-02', { chest: FINE })])
     expect(feedbackPlan(S).groups).toEqual([])
+  })
+})
+
+describe('the volume ramp', () => {
+  const ramp = (ex, workouts = [], extra = {}) => fullBody(ex, workouts, { volumeRamp: true, ...extra })
+  const steps = plan => Object.fromEntries(plan.groups.map(g => [g.key, [g.source, g.signal.step, g.before, g.after]]))
+
+  it('is on unless switched off', () => {
+    expect(rampOn({})).toBe(true)
+    expect(rampOn({ volumeRamp: false })).toBe(false)
+  })
+
+  it('adds a set to every group the plan trains, with or without answers', () => {
+    const plan = feedbackPlan(ramp([bench(3), curl(3)]))
+    expect(plan.blocked).toBeNull()
+    // Triceps only gets bench as a secondary: the ramp has nothing to move and says nothing.
+    expect(steps(plan)).toEqual({ chest: ['ramp', 1, 9, 12], biceps: ['ramp', 1, 9, 12] })
+    expect(plan.changes.map(c => [c.exId, c.from, c.to])).toEqual([['x-bench', 3, 4], ['x-curl', 3, 4]])
+  })
+
+  it('climbs only to the top of the band, while answers asking for more go on to the MRV', () => {
+    // 6 sets × 3 = 18; one more is 21, past chest's band top of 20.
+    expect(feedbackPlan(ramp([bench(6)])).groups).toEqual([])
+    const asked = feedbackPlan(ramp([bench(6)], [session('2026-09-02', { chest: EASY })]))
+    expect(steps(asked)).toEqual({ chest: ['feedback', 2, 18, 21] })   // MRV 22
+  })
+
+  it('reads neutral answers as "go on climbing", and holds or cuts when they say so', () => {
+    expect(steps(feedbackPlan(ramp([bench(3)], [session('2026-09-02', { chest: FINE })])))).toEqual({ chest: ['ramp', 1, 9, 12] })
+    // A great pump alone: the dose already works, hold.
+    expect(feedbackPlan(ramp([bench(3)], [session('2026-09-02', { chest: { pump: 2, work: 1, sore: 1 } })])).groups).toEqual([])
+    expect(steps(feedbackPlan(ramp([bench(4)], [session('2026-09-02', { chest: WRECKED })])))).toEqual({ chest: ['feedback', -2, 12, 9] })
+  })
+
+  it('starts the next mesocycle from the bottom of each band when the deload closes', () => {
+    const S = ramp([bench(7), curl(3)], [], { meso: { deloads: [0] } })
+    const plan = feedbackPlan(S)
+    expect(plan.kind).toBe('start')
+    // Chest 21 → no lower than 12, at most MAX_STEP sets off one exercise: 7 → 5 sets, 15.
+    expect(steps(plan)).toEqual({ chest: ['start', -9, 21, 15] })
+    expect(plan.changes).toEqual([{ routineId: 'A', routineName: 'Full A', idx: 0, exId: 'x-bench', from: 7, to: 5 }])
+    expect(mesoStartPlan(S, { skip: ['chest'] }).changes).toEqual([])
+  })
+
+  it('without it, a deload proposes nothing', () => {
+    expect(feedbackPlan(fullBody([bench(7)], [], { meso: { deloads: [0] } })).blocked).toBe('deload')
+  })
+
+  it('needs calendar programming, like the feedback does', () => {
+    expect(feedbackPlan({ ...ramp([bench(3)]), program: null, microcycleSessions: 3 }).groups).toEqual([])
   })
 })

@@ -12,7 +12,7 @@ import { deloadControlSheet } from './Deload.jsx'
 import { programSheet } from '../sheets.jsx'
 import Icon from './Icon.jsx'
 import { Button } from './ui.jsx'
-import { FeedbackAdjustments, feedbackOn } from './MuscleFeedback.jsx'
+import { FeedbackAdjustments, adjustmentsOn } from './MuscleFeedback.jsx'
 import { feedbackPlan } from '../lib/muscle-feedback.js'
 import { applyProposal } from '../lib/ai-actions.js'
 
@@ -36,7 +36,7 @@ export function openNextCycle(strategy) {
 }
 
 // Whether opening the next microcycle has set changes from the feedback to show first.
-const feedbackToReview = S => feedbackOn(S) && feedbackPlan(S).changes.length > 0
+const feedbackToReview = S => adjustmentsOn(S) && feedbackPlan(S).changes.length > 0
 
 /**
  * "Start the next microcycle" under the same strategy: straight away, unless the microcycle's
@@ -60,11 +60,12 @@ function CloseMicrocycle({ close }) {
   // The set changes the microcycle's feedback proposes (and the user left on) are written into
   // the routines first, so the new microcycle opens on them.
   const confirm = () => {
-    const { changes } = feedbackPlan(useStore.getState().S, { skip })
+    const now = useStore.getState().S
+    const { changes } = adjustmentsOn(now) ? feedbackPlan(now, { skip }) : { changes: [] }
     let applied = false
     if (changes.length) useStore.getState().update(d => { applied = applyProposal(d, { kind: 'volume', changes }) })
     close(); openNextCycle(pick)
-    if (applied) useUI.getState().toast(t('Sets adjusted by your feedback'))
+    if (applied) useUI.getState().toast(t('Sets adjusted for the next microcycle'))
   }
 
   return <>
@@ -109,7 +110,7 @@ function MicrocycleOver({ close }) {
       {t('{0} – {1} · {2} of {3} sessions. All its days, rest days included, have passed. Start microcycle #{4}?',
         fmtDate(pos.start), fmtDate(cycleEndOf(S) || todayISO()), pos.sessions, pos.len, next)}
     </div>
-    {review && <div className="small" style={{ marginBottom: 12, color: 'var(--acc)' }}>{t('Your feedback proposes adjusting some sets.')}</div>}
+    {review && <div className="small" style={{ marginBottom: 12, color: 'var(--acc)' }}>{t('Closing it proposes adjusting some sets.')}</div>}
     <Button variant="primary" icon="flag" onClick={() => { close(); startNextCycle() }}>
       {review ? t('Review and start #{0}', next) : t('Start microcycle #{0}', next)}
     </Button>

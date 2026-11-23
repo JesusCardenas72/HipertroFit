@@ -40,6 +40,9 @@ export const DEF = {
   // Aim the effort of the work sets at the mesocycle's RIR for this microcycle (3, 2, 1, 0 and
   // the deload's 4). See rirGoalOf in lib/mesocycle.js.
   rirPlan: true,
+  // Climb the planned volume one set per group each loading microcycle and start every mesocycle
+  // from the bottom of the band. See rampOn in lib/muscle-feedback.js.
+  volumeRamp: true,
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
   // Sessions left paused instead of finished — each one the running session as it was, plus
   // `pausedAt`. Resumable while their microcycle runs; not counted until finished. See

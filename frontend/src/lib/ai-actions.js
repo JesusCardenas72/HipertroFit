@@ -120,8 +120,11 @@ export function volumeProposal(S, groupKey, dir) {
  * A step that would overshoot the ask is only taken when nothing smaller has moved yet: a routine
  * trained twice a microcycle moves the group two sets per set added, and refusing it would leave a
  * plan that can never change. Null when nothing can move.
+ *
+ * `ceil` / `floor` (effective sets per microcycle) replace the guard rails: the volume ramp adds
+ * only up to the top of the band, and brings a new mesocycle down no lower than its bottom.
  */
-export function nudgeProposal(S, groupKey, delta) {
+export function nudgeProposal(S, groupKey, delta, { ceil: ceilAt = null, floor = null } = {}) {
   const group = VOLUME_GROUPS.find(g => g.key === groupKey)
   const want = Math.abs(Math.round(Number(delta) || 0))
   if (!group || !want) return null
@@ -129,7 +132,7 @@ export function nudgeProposal(S, groupKey, delta) {
   const steps = trainingSteps(S && S.program)
   if (!steps.length) return null
   const before = round1(plannedVolume(S).groups[group.key] || 0)
-  const ceil = (group.ref && group.ref.mrv) || targetOf(group).max
+  const ceil = ceilAt != null ? ceilAt : (group.ref && group.ref.mrv) || targetOf(group).max
 
   const len = microcycleLen(S)
   const occ = {}
@@ -147,7 +150,7 @@ export function nudgeProposal(S, groupKey, delta) {
   for (let guard = 0; guard < 60 && left > 0.25; guard++) {
     const pickable = cands.filter(c => (dir === 'up'
       ? c.to - c.from < MAX_STEP && vol + c.gain <= ceil
-      : c.from - c.to < MAX_STEP && c.to > 1))
+      : c.from - c.to < MAX_STEP && c.to > 1 && (floor == null || vol - c.gain >= floor - 0.01)))
     const moved = cands.some(c => c.to !== c.from)
     const fits = pickable.filter(c => c.gain <= left + 0.25)
     const pool = fits.length ? fits : (moved ? [] : pickable)

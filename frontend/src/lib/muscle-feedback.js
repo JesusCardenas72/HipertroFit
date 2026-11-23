@@ -17,8 +17,14 @@
 // Recovery weighs more than pump: a great pump is a sign the dose already works, a muscle still
 // sore when it is trained again is a sign the dose is beyond what it recovers from — and that is
 // the one that costs growth.
+//
+// The volume ramp (Settings, `S.volumeRamp`, on unless switched off) is the default those answers
+// modulate, the way a hypertrophy mesocycle is run: it starts low and climbs. Closing a loading
+// microcycle adds one set to every group the plan trains, up to the top of its band, unless its
+// answers say to hold or cut; answers asking for more still go up to the MRV. Closing the deload
+// starts the next mesocycle again from the bottom of each band.
 
-import { VOLUME_GROUPS, groupVolume, plannedVolume } from './volume.js'
+import { VOLUME_GROUPS, groupVolume, plannedVolume, targetOf } from './volume.js'
 import { cycleWorkouts, isExtra, trainingSteps } from './microcycle.js'
 import { mesoState } from './mesocycle.js'
 import { nudgeProposal, nudgeBlocker, applyProposal } from './ai-actions.js'
@@ -107,6 +113,66 @@ export function groupSignal(workouts, key) {
   return { sessions: answers.length, score, step: stepOf(score), reasons }
 }
 
+/** Whether the volume ramp runs (Settings). On unless switched off. */
+export const rampOn = S => !!S && S.volumeRamp !== false
+
+// One set a microcycle: the ramp's step for a group with no answers, or answers that did not ask
+// to hold (score 0 or better, rounded down to a hold by stepOf).
+export const RAMP_STEP = 1
+
+const round1 = v => Math.round((v || 0) * 10) / 10
+const cloneRoutines = S => ({ ...S, routines: (S.routines || []).map(r => ({ ...r, ex: (r.ex || []).map(c => ({ ...c })) })) })
+
+// The merged set changes between S and the trial copy it was walked on.
+function changesBetween(S, trial) {
+  const changes = []
+  ;(S.routines || []).forEach((r, ri) => (r.ex || []).forEach((cfg, idx) => {
+    const now = trial.routines[ri].ex[idx]
+    const from = Math.max(1, Math.round(cfg && cfg.sets) || 1), to = Math.max(1, Math.round(now && now.sets) || 1)
+    if (cfg && from !== to) changes.push({ routineId: r.id, routineName: r.name || '', idx, exId: cfg.id, from, to })
+  }))
+  return changes
+}
+
+// Walk `wanted` ({ g, sig, step, source, opts }) in order on a trial copy: each group's nudge sees
+// the sets the earlier ones moved. Ramp-only groups that cannot move are left out — the ramp has
+// nothing to say about them — while a group the user's answers asked about keeps its reason.
+function walk(S, wanted, skip) {
+  const trial = cloneRoutines(S)
+  const before = plannedVolume(S).groups
+  const groups = []
+  for (const { g, sig, step, source, opts } of wanted) {
+    const off = skip.includes(g.key)
+    const p = off ? null : nudgeProposal(trial, g.key, step, opts)
+    if (p) applyProposal(trial, p)
+    const capped = !off && !p ? nudgeBlocker(trial, g.key, step) || (step > 0 ? 'max' : 'min') : false
+    if (capped && source !== 'feedback') continue
+    groups.push({ key: g.key, name: g.name, signal: { ...sig, step }, source, skipped: off, capped, changes: p ? p.changes : [] })
+  }
+  const after = plannedVolume(trial).groups
+  for (const x of groups) {
+    x.before = round1(before[x.key])
+    x.after = x.skipped || x.capped ? x.before : round1(after[x.key])
+  }
+  return { groups, changes: changesBetween(S, trial) }
+}
+
+/**
+ * A new mesocycle opening after the deload: every group the plan takes above the bottom of its
+ * band comes back down to it, never below, so the ramp has room to climb again.
+ */
+export function mesoStartPlan(S, { skip = [] } = {}) {
+  if (!trainingSteps(S && S.program).length) return { blocked: 'noplan', groups: [], changes: [], kind: 'start' }
+  const planned = plannedVolume(S).groups
+  const wanted = []
+  for (const g of VOLUME_GROUPS) {
+    const min = targetOf(g).min
+    const over = Math.floor((planned[g.key] || 0) - min)
+    if (over >= 1) wanted.push({ g, sig: { sessions: 0, score: null, reasons: [] }, step: -over, source: 'start', opts: { floor: min } })
+  }
+  return { blocked: null, kind: 'start', ...walk(S, wanted, skip) }
+}
+
 /**
  * The set changes the running microcycle's feedback proposes for the next one.
  *
@@ -125,36 +191,30 @@ export function groupSignal(workouts, key) {
 export function feedbackPlan(S, { skip = [] } = {}) {
   const empty = { blocked: null, groups: [], changes: [] }
   const m = mesoState(S)
-  if (m.deload || m.next) return { ...empty, blocked: 'deload' }
+  const ramp = rampOn(S)
+  if (m.next) return { ...empty, blocked: 'deload' }
+  if (m.deload) return ramp ? mesoStartPlan(S, { skip }) : { ...empty, blocked: 'deload' }
   const ws = cycleWorkouts(S).filter(w => !isExtra(w))
-  const asked = VOLUME_GROUPS.map(g => ({ g, sig: groupSignal(ws, g.key) })).filter(x => x.sig.sessions > 0)
-  if (!asked.length) return { ...empty, blocked: 'none' }
+  const signals = VOLUME_GROUPS.map(g => ({ g, sig: groupSignal(ws, g.key) }))
+  const asked = signals.filter(x => x.sig.sessions > 0)
+  const planned = plannedVolume(S).groups
+  const wanted = []
+  for (const { g, sig } of signals) {
+    const band = targetOf(g)
+    if (sig.sessions > 0) {
+      // Answers asking for more go up to the MRV (nudgeProposal's default); the ramp's own set
+      // only to the top of the band.
+      if (sig.step) wanted.push({ g, sig, step: sig.step, source: 'feedback' })
+      else if (ramp && sig.score >= 0 && (planned[g.key] || 0) >= 1) wanted.push({ g, sig, step: RAMP_STEP, source: 'ramp', opts: { ceil: band.max } })
+    } else if (ramp && (planned[g.key] || 0) >= 1) {
+      wanted.push({ g, sig, step: RAMP_STEP, source: 'ramp', opts: { ceil: band.max } })
+    }
+  }
+  if (!asked.length && !wanted.length) return { ...empty, blocked: 'none' }
   if (!trainingSteps(S && S.program).length) {
-    const groups = asked.filter(x => x.sig.step).map(({ g, sig }) => ({ key: g.key, name: g.name, signal: sig, skipped: false, capped: 'noplan', changes: [] }))
+    const groups = wanted.filter(x => x.source === 'feedback')
+      .map(({ g, sig }) => ({ key: g.key, name: g.name, signal: sig, source: 'feedback', skipped: false, capped: 'noplan', changes: [] }))
     return { ...empty, blocked: 'noplan', groups, asked: asked.length }
   }
-
-  const trial = { ...S, routines: (S.routines || []).map(r => ({ ...r, ex: (r.ex || []).map(c => ({ ...c })) })) }
-  const before = plannedVolume(S).groups
-  const groups = []
-  for (const { g, sig } of asked) {
-    if (!sig.step) continue
-    const off = skip.includes(g.key)
-    const p = off ? null : nudgeProposal(trial, g.key, sig.step)
-    if (p) applyProposal(trial, p)
-    const capped = !off && !p ? nudgeBlocker(trial, g.key, sig.step) : false
-    groups.push({ key: g.key, name: g.name, signal: sig, skipped: off, capped, changes: p ? p.changes : [] })
-  }
-  const after = plannedVolume(trial).groups
-  for (const x of groups) {
-    x.before = Math.round((before[x.key] || 0) * 10) / 10
-    x.after = x.skipped || x.capped ? x.before : Math.round((after[x.key] || 0) * 10) / 10
-  }
-  const changes = []
-  ;(S.routines || []).forEach((r, ri) => (r.ex || []).forEach((cfg, idx) => {
-    const now = trial.routines[ri].ex[idx]
-    const from = Math.max(1, Math.round(cfg && cfg.sets) || 1), to = Math.max(1, Math.round(now && now.sets) || 1)
-    if (cfg && from !== to) changes.push({ routineId: r.id, routineName: r.name || '', idx, exId: cfg.id, from, to })
-  }))
-  return { blocked: null, groups, changes, asked: asked.length }
+  return { blocked: null, ...walk(S, wanted, skip), asked: asked.length }
 }

@@ -7,13 +7,15 @@ import { fmtNum } from '../lib/format.js'
 import { EXIDX } from '../lib/exercises.js'
 import { VOLUME_GROUPS } from '../lib/volume.js'
 import { glyphOfMuscle } from '../lib/glyphs.js'
-import { feedbackGroups, normalizeFeedback, feedbackPlan, FEEDBACK_FIELDS } from '../lib/muscle-feedback.js'
+import { feedbackGroups, normalizeFeedback, feedbackPlan, rampOn, FEEDBACK_FIELDS } from '../lib/muscle-feedback.js'
 
 // The two ends of the per-group feedback (lib/muscle-feedback.js): the questions asked when a
 // session ends, and the set changes they add up to when the microcycle closes.
 
 /** Whether the questions are asked at all (Settings ▸ Training). On unless switched off. */
 export const feedbackOn = S => !!S && S.muscleFeedback !== false
+/** Whether closing a microcycle proposes set changes at all: from the answers, or the volume ramp. */
+export const adjustmentsOn = S => feedbackOn(S) || rampOn(S)
 
 const FIELD = {
   pump: { q: 'Pump', a: ['Low', 'Good', 'Great'] },
@@ -97,28 +99,38 @@ const CAPPED = {
 }
 const exName = id => (EXIDX[id] ? exerciseNameFor(EXIDX[id]) : id)
 
+// Where a step comes from when it is not the user's answers (muscle-feedback.js `source`).
+const SOURCE = {
+  ramp: 'volume ramp: one set more',
+  start: 'new mesocycle: back to the bottom of the band',
+}
+
 /**
- * The set changes this microcycle's answers propose, each group switchable off. `skip` and
- * `setSkip` belong to the parent, which applies `feedbackPlan(S, { skip }).changes` on confirm.
+ * The set changes closing this microcycle proposes — from the answers and the volume ramp, or,
+ * closing a deload, the new mesocycle's start — each group switchable off. `skip` and `setSkip`
+ * belong to the parent, which applies `feedbackPlan(S, { skip }).changes` on confirm.
  */
 export function FeedbackAdjustments({ S, skip, setSkip }) {
-  if (!feedbackOn(S)) return null
+  if (!adjustmentsOn(S)) return null
   const plan = feedbackPlan(S, { skip })
   if (plan.blocked === 'deload') return null
+  // Nothing to say without programming unless the answers asked for something.
+  if (plan.blocked === 'noplan' && !plan.groups.length) return null
   const toggle = key => setSkip(skip.includes(key) ? skip.filter(k => k !== key) : [...skip, key])
   return <>
-    <h4 className="sec">{t('Adjust sets by how you felt')}</h4>
-    {plan.blocked === 'noplan' && plan.groups.length > 0 && <div className="small dim" style={{ marginBottom: 8 }}>
+    <h4 className="sec">{t(plan.kind === 'start' ? 'Volume of the new mesocycle' : 'Adjust sets by how you felt')}</h4>
+    {plan.blocked === 'noplan' && <div className="small dim" style={{ marginBottom: 8 }}>
       {t('Without a microcycle programming (Plan ▸ Programming) the sets cannot be changed for you. This is what your feedback asks for:')}
     </div>}
     {plan.blocked === 'none'
       ? <div className="small dim" style={{ marginBottom: 14 }}>{t('No session of this microcycle has feedback, so its sets stay as they are.')}</div>
       : !plan.groups.length
-        ? <div className="small dim" style={{ marginBottom: 14 }}>{t('Every group responded as expected: the sets stay as they are.')}</div>
+        ? <div className="small dim" style={{ marginBottom: 14 }}>{t('Nothing to adjust: the sets stay as they are.')}</div>
         : <div className="list" style={{ display: 'flex', flexDirection: 'column', marginBottom: 6 }} data-testid="fb-adjustments">
           {plan.groups.map(g => {
             const on = !g.skipped && !g.capped
-            const why = g.signal.reasons.map(r => REASON[r.f][r.v]).filter(Boolean).map(x => t(x)).join(' · ')
+            const why = SOURCE[g.source] ? t(SOURCE[g.source])
+              : g.signal.reasons.map(r => REASON[r.f][r.v]).filter(Boolean).map(x => t(x)).join(' · ')
             return <div key={g.key} className="item" role="checkbox" aria-checked={on} aria-disabled={g.capped}
               onClick={() => !g.capped && toggle(g.key)} style={{ alignItems: 'flex-start', opacity: g.capped ? 0.6 : 1 }}>
               <div className="grow">

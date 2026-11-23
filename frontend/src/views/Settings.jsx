@@ -287,6 +287,11 @@ export default function Settings() {
       <Row icon="flame" iconTint="var(--orange)" title={t('Target RIR by microcycle')}>
         <Switch checked={S.rirPlan !== false} onChange={v => update(s => { s.rirPlan = v })} />
       </Row>
+      {/* One set more per group each microcycle, back to the bottom of the band after the deload
+          (lib/muscle-feedback.js rampOn). */}
+      <Row icon="chartLine" iconTint="var(--green)" title={t('Volume ramp across the mesocycle')}>
+        <Switch checked={S.volumeRamp !== false} onChange={v => update(s => { s.volumeRamp = v })} />
+      </Row>
       {/* Pump, workload and soreness per group after each session (lib/muscle-feedback.js). */}
       <Row icon="heart" iconTint="var(--red)" title={t('Ask how each muscle responded')}>
         <Switch checked={S.muscleFeedback !== false} onChange={v => update(s => { s.muscleFeedback = v })} />
