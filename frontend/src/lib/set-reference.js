@@ -72,6 +72,13 @@ export function suggestionFor({ mode = 'reps', plan = null, row = {}, reference 
 // failure, which is a whole point on either scale (RIR 2 → 1, RPE 8 → 9).
 const EFFORT_SCALE = { rir: { f: 'rir', dir: -1, min: 0, max: 10 }, rpe: { f: 'rpe', dir: 1, min: 6, max: 10 } }
 
+// The mesocycle's target RIR (mesocycle.js rirGoalOf) on the scale `e` logs, or null without one.
+const goalOn = (e, goal) => {
+  const g = num(goal)
+  if (!e || g == null || !(g >= 0)) return null
+  return Math.min(e.max, Math.max(e.min, e.f === 'rpe' ? 10 - g : g))
+}
+
 /** The heaviest work set last session — the weight the prescription was decided from. */
 export function topWeight(prevSets) {
   const ws = (Array.isArray(prevSets) ? prevSets : []).filter(s => s && !isWarmupRow(s)).map(s => num(s.w)).filter(w => w != null)
@@ -112,6 +119,10 @@ function positionWeight(plan, reference, base, step) {
  * the effort stays where it was — more load at the same effort is the overload. A deload, a
  * fatigued session, a plan that already moved (`up`) or progression off never push. No logged
  * effort last time means nothing to aim at, so none is set.
+ *
+ * A plan carrying the mesocycle's target RIR (`plan.rirGoal`, see mesocycle.js rirGoalOf) sets
+ * the effort instead: every work set aims at the microcycle's RIR, whatever last time's was, and
+ * the effort stops being a lever of its own — the mesocycle already moves it a rep per microcycle.
  */
 export function targetFor({ mode = 'reps', plan = null, reference = null, effort = null, base = null, step = 2.5 } = {}) {
   // Cardio has no overload rule in the engine (nextPrescription only decides weight/reps/sec),
@@ -136,8 +147,10 @@ export function targetFor({ mode = 'reps', plan = null, reference = null, effort
   if (w != null) want.w = w
   if (r != null && r > 0) want.r = r
   const e = EFFORT_SCALE[effort]
+  const goal = goalOn(e, plan?.rirGoal)
   const prev = e && reference ? num(reference[e.f]) : null
-  if (prev != null) {
+  if (goal != null) want[e.f] = goal
+  else if (prev != null) {
     const sameReps = r == null || rr == null || same(r, rr)
     const next = owes && sameReps ? prev + e.dir : prev
     want[e.f] = Math.min(e.max, Math.max(e.min, next))
@@ -203,20 +216,25 @@ export function extraSetsWanted(plan, sets, prevSets) {
  * else the next load step with reps and effort kept. `top` is the rep range's upper end and
  * `step` the load increment (a number, or a ladder). Null outside reps mode or without a
  * reference set to beat.
+ *
+ * With the mesocycle's target RIR (`goal`, in RIR) the effort is that target and never a lever:
+ * one more rep while under the top of the range, else the next load step.
  */
-export function overloadTargetFor({ mode = 'reps', reference = null, top = null, effort = null, step = 2.5 } = {}) {
+export function overloadTargetFor({ mode = 'reps', reference = null, top = null, effort = null, step = 2.5, goal = null } = {}) {
   if (mode !== 'reps' || !reference) return null
   const rw = num(reference.w), rr = num(reference.r)
   if (rw == null || rr == null || rr < 1) return null
   const e = EFFORT_SCALE[effort]
+  const aim = goalOn(e, goal)
   const prev = e ? num(reference[e.f]) : null
   const want = { w: rw, r: rr }
-  if (prev != null) want[e.f] = prev
+  if (aim != null) want[e.f] = aim
+  else if (prev != null) want[e.f] = prev
   if (top > rr) {
     want.r = rr + 1
     return want
   }
-  if (prev != null) {
+  if (aim == null && prev != null) {
     const next = Math.min(e.max, Math.max(e.min, prev + e.dir))
     if (next !== prev) {
       want[e.f] = next

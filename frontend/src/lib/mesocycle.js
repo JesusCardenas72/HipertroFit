@@ -121,6 +121,36 @@ export function mesoState(S) {
 }
 
 /**
+ * The effort a mesocycle aims at, microcycle by microcycle: reps in reserve on the work sets,
+ * one closer to failure each loading microcycle — 3, 2, 1 — and at failure (0) for any microcycle
+ * the deload is put off past that. The ramp is what lets the load climb across the block without
+ * the first weeks being spent at failure: early microcycles leave room, the last one uses it up,
+ * and the deload that follows clears the fatigue that cost.
+ */
+export const RIR_SCHEDULE = [3, 2, 1, 0]
+/** A deload microcycle's aim: well away from failure. */
+export const DELOAD_RIR = 4
+
+/**
+ * The RIR the work sets of the running microcycle aim at, or null when the target is switched
+ * off (Settings, `S.rirPlan === false`) or there is no programming to have a mesocycle.
+ */
+export function rirGoalOf(S) {
+  if (!S || S.rirPlan === false || !S.program) return null
+  const m = mesoState(S)
+  if (m.deload) return DELOAD_RIR
+  return RIR_SCHEDULE[Math.min(RIR_SCHEDULE.length - 1, Math.max(0, m.number - 1))]
+}
+
+/**
+ * A prescription carrying the session's target RIR, for set-reference.js targetFor to aim the
+ * effort at. A plan that is off (a deload, a routine kept out of progression) or missing stays
+ * as it is.
+ */
+export const withRirGoal = (plan, goal) =>
+  plan && goal != null && plan.kind !== 'off' ? { ...plan, rirGoal: goal } : plan
+
+/**
  * The mesocycle after the block count restarts (closeMicrocycle). Deloads, postponements and
  * announcements are all microcycle *indices* from the block start, so once the count goes
  * back to index 0 the old ones would land on unrelated microcycles; they are dropped. The cut

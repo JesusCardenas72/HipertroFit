@@ -14,7 +14,7 @@ import FreePlanVolume from './components/FreePlanVolume.jsx'
 import PickerGaps from './components/PickerGaps.jsx'
 import { usePersistedToggle } from './lib/use-persisted-toggle.js'
 import { freePlanItem, freePlanVolume, stepFreeSets, freePlanProjection, freePlanEntries, freePlanDraft, toggleFreeLink, linkedToNext, removeFreeItem, lastFreePlan } from './lib/free-plan.js'
-import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber, carriedBase } from './lib/mesocycle.js'
+import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber, carriedBase, rirGoalOf, withRirGoal } from './lib/mesocycle.js'
 import { DeloadBadge } from './components/Deload.jsx'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, upcomingDays, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, stepEffort, capEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
 import { seedTargets } from './lib/set-reference.js'
@@ -61,6 +61,7 @@ import { useSheetKeyboard, useRevealActiveChip, tappable } from './lib/use-sheet
 import { buildSessionEntries } from './lib/session-start.js'
 import { workoutsOn, backfillStart, backfillEnd, completeBackfill } from './lib/backfill.js'
 import { buildExtraEntry, fileExtraEntry } from './lib/extra-log.js'
+import { maybeMuscleFeedback } from './components/MuscleFeedback.jsx'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -1188,7 +1189,7 @@ export function swapActiveWorkoutExercise(index) {
     // prescription — swapping barbell for dumbbell bench must not start you at an empty bar.
     const freestyle = !st.active?.routineId
     const step = defaultIncrement(ex.id, st.unit)
-    const plan = freestyle ? null : nextPrescription(st, full, st.routines.find(r => r.id === st.active.routineId))
+    const plan = freestyle ? null : withRirGoal(nextPrescription(st, full, st.routines.find(r => r.id === st.active.routineId)), st.active.rirGoal)
     const built = buildSets(st, full, { step, ...(freestyle ? { preferLast: true } : {}) })
     const replacement = {
       id: ex.id,
@@ -2431,7 +2432,9 @@ function sessionFlow(routineId) {
 export function beginWorkout(routineId, bw, deload = 0, freeItems = null) {
   const st = S()
   const r = routineId ? st.routines.find(x => x.id === routineId) : null
-  const built = buildSessionEntries(st, r, { deload })
+  // The mesocycle's target RIR for this microcycle (lib/mesocycle.js), a deload's when it is one.
+  const rirGoal = rirGoalOf(st)
+  const built = buildSessionEntries(st, r, { deload, rirGoal })
   const excluded = built.excluded
   // A freestyle session planned in freePlanSheet starts with its exercises already in.
   const entries = !r && freeItems && freeItems.length ? freePlanEntries(st, freeItems, { deload }) : built.entries
@@ -2440,7 +2443,8 @@ export function beginWorkout(routineId, bw, deload = 0, freeItems = null) {
       id: uid(), d: todayISO(), start: Date.now(), routineId,
       name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries,
       ...(excluded ? { excludeFromProgression: true } : {}),
-      ...(deload > 0 ? { deload } : {})
+      ...(deload > 0 ? { deload } : {}),
+      ...(rirGoal != null ? { rirGoal } : {}),
     }
     // The saved freestyle plan has become this session: the next one is planned afresh.
     if (!r && freeItems && freeItems.length) s.freePlan = null
@@ -3040,7 +3044,10 @@ function doFinishWorkout() {
   useStore.getState().autoBackupNow()
   useUI.getState().stopRest()
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
-  const summary = () => ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: true })
+  const showSummary = () => ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: true })
+  // How each muscle group answered the session (components/MuscleFeedback.jsx), asked right
+  // before the summary. A past workout is logged from memory: its pump is not worth guessing.
+  const summary = () => (past ? showSummary() : maybeMuscleFeedback(S(), w, ui().openSheet, showSummary))
   // Rests changed during the session, asked about after the routine itself: if it was just
   // replaced with this session's plan, the rests are kept in that one. A past workout has no
   // timers to have changed.

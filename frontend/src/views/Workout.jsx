@@ -32,7 +32,8 @@ import Wheel from '../components/Wheel.jsx'
 import WorkoutDock from '../components/WorkoutDock.jsx'
 import { exerciseProgressSheet } from '../components/ExerciseProgress.jsx'
 import { DeloadStatus, DeloadSessionBand } from '../components/Deload.jsx'
-import { isDeloadWorkout } from '../lib/mesocycle.js'
+import { isDeloadWorkout, withRirGoal } from '../lib/mesocycle.js'
+import { goalLabel } from '../lib/effort.js'
 import { workIndexOf, referenceSet, suggestionFor, targetFor, overloadOf, overloadTargetFor, extraSetsWanted, seedTargets, topWeight } from '../lib/set-reference.js'
 import { repRangeFor } from '../lib/exercise-class.js'
 import { swipeLock, rowOffset, rowArmed, navDirection, navCommit } from '../lib/swipe.js'
@@ -634,7 +635,7 @@ function AimCards({ entryIdx, best, onProgressionSettings, onField }) {
     const planned = targetFor({ mode, plan, reference, effort: effortCol, base: prevTop, step: loadStep })
     const holds = !plan || ['off', 'first', 'hold', 'decide'].includes(plan.kind)
     if (!holds || !reference || (planned && overloadOf(planned, reference).length)) return planned
-    return overloadTargetFor({ mode, reference, top: repRangeFor(exOr(entry.id)).reps, effort: effortCol, step: loadStep }) || planned
+    return overloadTargetFor({ mode, reference, top: repRangeFor(exOr(entry.id)).reps, effort: effortCol, step: loadStep, goal: plan?.rirGoal }) || planned
   }
   const nextAim = ni >= 0 ? { ...entry.sets[ni], ...(aimAt(ni) || {}) } : null
   const guidance = progressionGuidance(plan)
@@ -1375,7 +1376,7 @@ function ActiveWorkout() {
       const step = loadScaleFor(full, s.unit)
       // A config without a set count keeps the rows the session already has.
       if (!(full.sets > 0)) full.sets = activeEntry.sets.filter(x => !isWarmupRow(x)).length || 1
-      const plan = nextPrescription(s, full, activeRoutine)
+      const plan = withRirGoal(nextPrescription(s, full, activeRoutine), s.active.rirGoal)
       // The sheet edits sets, reps, weight and warm-ups as well as the rule — so the rows are
       // rebuilt from the new config the way the session was, and only what you already logged
       // is kept in place (done warm-ups first, then done work sets, then the fresh remainder).
@@ -1447,7 +1448,7 @@ function ActiveWorkout() {
     const seed = freestyle ? freestyleConfig(S, { id: ex.id, ...defaultConfig(ex.id) }) : null
     exConfigSheet(ex, null, cfg => update(s => {
       const full = { ...cfg, id: ex.id }
-      const plan = freestyle ? null : nextPrescription(s, full, s.routines.find(r => r.id === s.active.routineId))
+      const plan = freestyle ? null : withRirGoal(nextPrescription(s, full, s.routines.find(r => r.id === s.active.routineId)), s.active.rirGoal)
       const step = loadScaleFor(full, s.unit)
       const sets = buildSets(s, full, { step, ...(freestyle ? { preferLast: true } : {}) })
       const progressed = freestyle ? sets : seedTargets(applyPrescription(sets, plan, step),
@@ -1886,7 +1887,7 @@ function ActiveWorkout() {
         <button type="button" className="wtop-tg" data-testid="workout-top" aria-expanded={!slimTop}
           aria-label={slimTop ? t('Show workout details') : t('Hide workout details')} onClick={() => setTopOpen(!slimTop ? false : true)}>
           <div className="wtop-name"><span>{A.name}</span><Icon name={slimTop ? 'chevronDown' : 'chevronUp'} /></div>
-          <div className="sub">{A.backfill ? fmtDate(A.d, true) : <Elapsed start={A.start} />}{estSec > 0 && <> / {t('~{0} min', Math.round(estSec / 60))}</>} ·{t('{0} sets', done + '/' + total)}{slimTop && !!A.entries.length && <> · {position}</>}</div>
+          <div className="sub">{A.backfill ? fmtDate(A.d, true) : <Elapsed start={A.start} />}{estSec > 0 && <> / {t('~{0} min', Math.round(estSec / 60))}</>} ·{t('{0} sets', done + '/' + total)}{A.rirGoal != null && <> · <span className="wtop-rir" title={t('Target effort this microcycle')}>{goalLabel(S, A.rirGoal)}</span></>}{slimTop && !!A.entries.length && <> · {position}</>}</div>
         </button>
         {/* Pause sets the session aside unfiled, to be resumed within this microcycle; a past
             workout being logged has no clock to stop. */}

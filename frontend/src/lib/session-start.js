@@ -5,7 +5,7 @@
 // either imports this file, so there is no cycle.
 import { buildSets, applyIntensifierPlan, sessionSetCount, lastEntryFor, modeOf, effortOf } from './history.js'
 import { nextPrescription, applyPrescription, loadScaleFor } from './progression.js'
-import { applyDeload } from './mesocycle.js'
+import { applyDeload, withRirGoal, rirGoalOf, DELOAD_RIR } from './mesocycle.js'
 import { seedTargets } from './set-reference.js'
 import { isWarmupRow } from './workout-model.js'
 
@@ -19,7 +19,10 @@ function prescribedSets(st, cfg, plan, { useTarget = false } = {}) {
   return applyIntensifierPlan(progressed, cfg)
 }
 
-export function buildSessionEntries(st, r, { deload = 0 } = {}) {
+// `rirGoal`: the mesocycle's target RIR for the session (mesocycle.js rirGoalOf), carried on each
+// plan so the rows are seeded aiming at it. Null — a past workout, the target switched off — leaves
+// the effort to the usual one-rep-closer lever.
+export function buildSessionEntries(st, r, { deload = 0, rirGoal = null } = {}) {
   // The prescription is applied as the session is built, so you walk up to the bar with the
   // right weight already on the screen instead of being told about it afterwards. `plan` is
   // kept on the entry purely so the workout can explain the number it chose.
@@ -27,7 +30,7 @@ export function buildSessionEntries(st, r, { deload = 0 } = {}) {
   // reduced numbers must not be read back as a stall, nor become the base to progress from.
   const excluded = r?.excludeFromProgression === true || deload > 0
   const entries = (r ? r.ex : []).map(cfg => {
-    const plan = excluded ? { policy: 'off', kind: 'off' } : nextPrescription(st, cfg, r)
+    const plan = excluded ? { policy: 'off', kind: 'off' } : withRirGoal(nextPrescription(st, cfg, r), rirGoal)
     const step = loadScaleFor(cfg, st.unit)
     const built = prescribedSets(st, cfg, plan, { useTarget: excluded })
     const sets = deload > 0 ? applyDeload(built, deload, step) : built
@@ -51,6 +54,8 @@ export function deloadActiveSession(active, pct, unit = 'kg') {
     ...active,
     deload: pct,
     excludeFromProgression: true,
+    // A session that had a target RIR now aims where a deload does.
+    ...(active.rirGoal != null ? { rirGoal: DELOAD_RIR } : {}),
     entries: (active.entries || []).map(e => ({ ...e, sets: applyDeload(e.sets || [], pct, loadScaleFor({ ...(e.target || {}), id: e.id }, unit)) })),
   }
 }
@@ -66,9 +71,12 @@ export function undeloadActiveSession(active, st) {
   if (!active || !(Number(active.deload) > 0)) return active
   const r = active.routineId ? (st.routines || []).find(x => x.id === active.routineId) || null : null
   const keepOut = r?.excludeFromProgression === true
+  // Back at full load, back to the loading microcycle's target — never the deload's own.
+  const goal = active.rirGoal != null ? rirGoalOf(st) : null
+  const rirGoal = goal === DELOAD_RIR ? null : goal
   const entries = (active.entries || []).map(e => {
     const cfg = { ...(e.target || {}), id: e.id }
-    const plan = keepOut ? { policy: 'off', kind: 'off' } : nextPrescription(st, cfg, r)
+    const plan = keepOut ? { policy: 'off', kind: 'off' } : withRirGoal(nextPrescription(st, cfg, r), rirGoal)
     const fresh = prescribedSets(st, cfg, plan, { useTarget: keepOut })
     const sets = e.sets || []
     const doneWarm = sets.filter(x => x.done && isWarmupRow(x))
@@ -78,6 +86,6 @@ export function undeloadActiveSession(active, st) {
     const target = { ...(e.target || {}), sets: Math.max(sessionSetCount(st, cfg), doneWork.length) }
     return { ...e, plan, target, sets: [...doneWarm, ...freshWarm.slice(doneWarm.length), ...doneWork, ...freshWork.slice(doneWork.length)] }
   })
-  const { deload, excludeFromProgression, ...rest } = active
-  return { ...rest, entries, ...(keepOut ? { excludeFromProgression: true } : {}) }
+  const { deload, excludeFromProgression, rirGoal: _goal, ...rest } = active
+  return { ...rest, entries, ...(keepOut ? { excludeFromProgression: true } : {}), ...(rirGoal != null ? { rirGoal } : {}) }
 }

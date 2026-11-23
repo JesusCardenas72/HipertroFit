@@ -22,6 +22,13 @@ export const MIN_RATED = 5
 export const rirOf = s =>
   !s ? null : s.rir != null ? s.rir : s.rpe != null ? 10 - s.rpe : null
 
+/**
+ * The mesocycle's target RIR (mesocycle.js rirGoalOf) as the profile reads effort: "RPE 8" on
+ * RPE (10 − RIR), "RIR 2" otherwise — without an effort column it is still the unit the target
+ * is set in.
+ */
+export const goalLabel = (S, rir) => (effortOf(S) === 'rpe' ? 'RPE ' + (10 - rir) : 'RIR ' + rir)
+
 /** RIR → the scale being displayed. The reverse of rirOf, for one number. */
 export const toScale = (kind, rir) =>
   rir == null ? null : Math.round((kind === 'rpe' ? 10 - rir : rir) * 10) / 10

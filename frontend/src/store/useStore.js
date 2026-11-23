@@ -34,6 +34,12 @@ export const DEF = {
   // Mesocycle bookkeeping: which microcycle indices are deloads, which suggestions were
   // postponed, and the last reduction the user chose. See lib/mesocycle.js.
   meso: null,
+  // After each session, ask how every trained group responded (pump, workload, soreness); the
+  // answers adjust the sets when the microcycle closes. See lib/muscle-feedback.js.
+  muscleFeedback: true,
+  // Aim the effort of the work sets at the mesocycle's RIR for this microcycle (3, 2, 1, 0 and
+  // the deload's 4). See rirGoalOf in lib/mesocycle.js.
+  rirPlan: true,
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
   // Sessions left paused instead of finished — each one the running session as it was, plus
   // `pausedAt`. Resumable while their microcycle runs; not counted until finished. See

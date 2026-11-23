@@ -283,6 +283,14 @@ export default function Settings() {
           options={[{ value: 'none', label: t('Off') }, { value: 'rir', label: t('RIR') }, { value: 'rpe', label: t('RPE') }]}
           value={effortOf(S)} onChange={v => update(s => { s.effort = v; delete s.showRir })} />
       </Row>
+      {/* The effort the mesocycle aims at, microcycle by microcycle (lib/mesocycle.js rirGoalOf). */}
+      <Row icon="flame" iconTint="var(--orange)" title={t('Target RIR by microcycle')}>
+        <Switch checked={S.rirPlan !== false} onChange={v => update(s => { s.rirPlan = v })} />
+      </Row>
+      {/* Pump, workload and soreness per group after each session (lib/muscle-feedback.js). */}
+      <Row icon="heart" iconTint="var(--red)" title={t('Ask how each muscle responded')}>
+        <Switch checked={S.muscleFeedback !== false} onChange={v => update(s => { s.muscleFeedback = v })} />
+      </Row>
     </Section>
 
     {/* ---------- training volume ---------- */}

@@ -4,8 +4,10 @@ import { todayISO, mondayOf, DAYS, fmtDate } from '../lib/format.js'
 import { effectiveRoutine, nextSessionRoutine } from '../lib/history.js'
 import { sequenceDays } from '../lib/sequence-days.js'
 import { cyclePosition, strategyOf, isExtra, STRATEGIES, cycleEndOf } from '../lib/microcycle.js'
+import { rirGoalOf } from '../lib/mesocycle.js'
+import { goalLabel } from '../lib/effort.js'
 import { mesoState, acceptDeload, postponeDeload, isDeloadWorkout, carriedBase, DELOAD_AFTER, DELOAD_MAX } from '../lib/mesocycle.js'
-import { openNextCycle, closeMicrocycleSheet } from './MicrocycleActions.jsx'
+import { startNextCycle, closeMicrocycleSheet } from './MicrocycleActions.jsx'
 import { DeloadBadge, DeloadStatus } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -77,6 +79,8 @@ export default function MicrocycleCard() {
         <div className="small muted" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...(meso.deload ? { color: 'var(--deload)' } : {}) }}>
           {t('Microcycle')} #{meso.number} · {t(STRATEGY_NAME[strategyOf(S)] || 'Custom')}
         </div>
+        {rirGoalOf(S) != null && <span className="chip nocap" style={{ flex: 'none', padding: '1px 8px', fontSize: 11 }}
+          title={t('Target effort this microcycle')} data-testid="rir-goal">{t('Target')} {goalLabel(S, rirGoalOf(S))}</span>}
       </div>
     </div>
 
@@ -177,7 +181,7 @@ function CycleOverBanner({ S, number }) {
       {t('All its days, rest days included, have passed. Start microcycle #{0}?', next)}
     </div>
     <div className="row" style={{ gap: 8 }}>
-      <Button variant="primary" icon="flag" onClick={() => openNextCycle(strategyOf(S))}>{t('Start microcycle #{0}', next)}</Button>
+      <Button variant="primary" icon="flag" onClick={startNextCycle}>{t('Start microcycle #{0}', next)}</Button>
       <Button icon="target" onClick={closeMicrocycleSheet}>{t('Change strategy')}</Button>
     </div>
   </div>
