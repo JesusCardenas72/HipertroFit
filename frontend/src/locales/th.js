@@ -1490,4 +1490,10 @@ export default {
   'Sets missing this microcycle': 'เซตที่ยังขาดในไมโครไซเคิลนี้',
   'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': 'รูทีนนี้อยู่นอกลำดับ: แต่ละกลุ่มยังขาดกี่เซตจนถึงขั้นต่ำ หากทำรูทีนนี้เพิ่มจากแผน',
   '{0} here': '{0} ที่นี่',
+  'Microcycle programming': 'โปรแกรมไมโครไซเคิล',
+  'This microcycle': 'ไมโครไซเคิลนี้',
+  'Every group is in its optimal range': 'ทุกกลุ่มอยู่ในช่วงที่เหมาะสม',
+  'Under the optimum · sets missing': 'ต่ำกว่าค่าเหมาะสม · เซ็ตที่ขาด',
+  'Over the optimum · sets too many': 'สูงกว่าค่าเหมาะสม · เซ็ตที่เกิน',
+  'Filters': 'ตัวกรอง',
 }

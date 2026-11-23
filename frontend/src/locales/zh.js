@@ -1477,4 +1477,10 @@ export default {
   'Sets missing this microcycle': '本微周期还缺的组数',
   'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': '此计划不在顺序中：在计划之外完成它后，每个肌群距离最低量还缺多少组。',
   '{0} here': '此处 {0}',
+  'Microcycle programming': '微周期计划',
+  'This microcycle': '本微周期',
+  'Every group is in its optimal range': '所有肌群都在最佳范围内',
+  'Under the optimum · sets missing': '低于最佳 · 缺少的组数',
+  'Over the optimum · sets too many': '高于最佳 · 多出的组数',
+  'Filters': '筛选',
 }

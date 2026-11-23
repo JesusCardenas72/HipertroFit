@@ -47,14 +47,16 @@ export function useSheetKeyboard(inputRef, enabled = true) {
 }
 
 /* Chip strips scroll sideways, and a filter set from code ("★ Chosen", a reset) can land the
-   active chip off-screen. Pull it into view along the strip only — block:'nearest' never moves
-   the page when the strip is already visible, which is the case for every strip we have. */
+   active chip off-screen. Pull it into view along the strip only, by scrolling the strip itself:
+   scrollIntoView would also move any scrolling box around it (the picker's fixed head). */
 export function useRevealActiveChip(stripRef, active) {
   useEffect(() => {
     const strip = stripRef.current
     const chip = strip?.querySelector?.('.chip.on')
-    if (!chip || typeof chip.scrollIntoView !== 'function') return
-    chip.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+    if (!chip || typeof strip.getBoundingClientRect !== 'function') return
+    const s = strip.getBoundingClientRect(), c = chip.getBoundingClientRect()
+    if (c.left < s.left) strip.scrollLeft -= s.left - c.left
+    else if (c.right > s.right) strip.scrollLeft += c.right - s.right
   }, [stripRef, active])
 }
 

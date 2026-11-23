@@ -1477,4 +1477,10 @@ export default {
   'Sets missing this microcycle': '이번 마이크로사이클에 부족한 세트',
   'This routine is outside the sequence: what each group still lacks for its minimum once it is done on top of the plan.': '이 루틴은 순서 밖에 있습니다: 계획에 더해 이 루틴을 하면 각 그룹이 최소치까지 남는 세트입니다.',
   '{0} here': '여기서 {0}',
+  'Microcycle programming': '마이크로사이클 프로그램',
+  'This microcycle': '이번 마이크로사이클',
+  'Every group is in its optimal range': '모든 부위가 최적 범위에 있습니다',
+  'Under the optimum · sets missing': '최적 미만 · 부족한 세트',
+  'Over the optimum · sets too many': '최적 초과 · 초과 세트',
+  'Filters': '필터',
 }

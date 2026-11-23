@@ -406,7 +406,7 @@ export default function RoutineEdit() {
     exConfigSheet(exOr(e.id), e, cfg => edit(x => { x[i] = { id: x[i].id, sg: x[i].sg, ...cfg } }), () => edit(x => { x.splice(i, 1); cleanupSg(x) }), r)
   }
   const removeExercise = i => edit(x => { x.splice(i, 1); cleanupSg(x) })
-  const addExercise = () => exercisePicker(ex => addExerciseToRoutine(ex, r, cfg => edit(x => { x.push({ id: ex.id, ...cfg }) })))
+  const addExercise = () => exercisePicker(ex => addExerciseToRoutine(ex, r, cfg => edit(x => { x.push({ id: ex.id, ...cfg }) })), { routineId: r.id })
   // Same choosing and configuring as adding one (its config from another routine, or seeded for
   // its class), but it lands in this row's place and superset. One pick, then back to the plan.
   const swapExercise = i => {
@@ -415,7 +415,7 @@ export default function RoutineEdit() {
     const picker = exercisePicker(ex => addExerciseToRoutine(ex, r, cfg => {
       picker.close()
       edit(x => { replaceRoutineEntry(x, key, ex.id, cfg) })
-    }))
+    }), { routineId: r.id })
   }
 
   const units = supersetUnits(r.ex)

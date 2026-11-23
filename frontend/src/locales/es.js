@@ -1599,4 +1599,10 @@ export default {
   'Clear the plan': 'Vaciar la programación',
   'Start from your last freestyle workout': 'Partir del último entrenamiento libre',
   'This session takes some groups past their optimal maximum.':'Esta sesión lleva algunos grupos por encima de su máximo óptimo.',
+  'Microcycle programming': 'Programación del microciclo',
+  'This microcycle': 'Este microciclo',
+  'Every group is in its optimal range': 'Todos los grupos están en su rango óptimo',
+  'Under the optimum · sets missing': 'Por debajo del óptimo · series que faltan',
+  'Over the optimum · sets too many': 'Por encima del óptimo · series de más',
+  'Filters': 'Filtros',
 }

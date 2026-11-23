@@ -11,7 +11,9 @@ import { resumableOf, pausedFor, pauseActive, resumePaused, discardPaused } from
 import { plannedVolume } from './lib/volume.js'
 import VolumeGroupBars from './components/VolumeGroupBars.jsx'
 import FreePlanVolume from './components/FreePlanVolume.jsx'
-import { freePlanItem, stepFreeSets, freePlanProjection, freePlanEntries, freePlanDraft, toggleFreeLink, linkedToNext, removeFreeItem, lastFreePlan } from './lib/free-plan.js'
+import PickerGaps from './components/PickerGaps.jsx'
+import { usePersistedToggle } from './lib/use-persisted-toggle.js'
+import { freePlanItem, freePlanVolume, stepFreeSets, freePlanProjection, freePlanEntries, freePlanDraft, toggleFreeLink, linkedToNext, removeFreeItem, lastFreePlan } from './lib/free-plan.js'
 import { mesoState, setDeloadPct, isDeloadWorkout, DELOAD_PCT, microNumber, carriedBase } from './lib/mesocycle.js'
 import { DeloadBadge } from './components/Deload.jsx'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, upcomingDays, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, stepEffort, capEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
@@ -1008,7 +1010,7 @@ export function FavoriteStar({ st, id }) {
 // favourites and the equipment profile. Picking an exercise from another database imports it
 // as a custom exercise in one step (picture downloaded, credit kept) and hands that to the
 // caller, so adding and swapping work exactly as with a built-in; picking it again reuses it.
-function ExercisePicker({ onPick, close }) {
+function ExercisePicker({ onPick, close, ctx }) {
   const st = useStore(s => s.S)
   const favs = favoriteMap(st)
   const [q, setQ] = useState('')
@@ -1017,6 +1019,7 @@ function ExercisePicker({ onPick, close }) {
   const [bp, setBp] = useState('')          // '' = all body parts
   const [eq, setEq] = useState('')          // '' = any equipment
   const [showAll, setShowAll] = useState(false)
+  const [filtersOpen, toggleFilters] = usePersistedToggle('picker_filters_open', true)
   const [shown, setShown] = useState(50)
   const [sources, setSources] = useState({}) // source id → candidates, 'loading' or 'failed'
   const [busy, setBusy] = useState('')
@@ -1086,15 +1089,30 @@ function ExercisePicker({ onPick, close }) {
     toast(t('“{0}” imported from {1}', record.n, sourceName(c.source)))
     onPick(EXIDX[id] || record)
   }
-  useRevealActiveChip(dbStrip, db)
-  useRevealActiveChip(bpStrip, bpOn)
-  useRevealActiveChip(eqStrip, eqOn)
+  useRevealActiveChip(dbStrip, db + filtersOpen)
+  useRevealActiveChip(bpStrip, bpOn + filtersOpen)
+  useRevealActiveChip(eqStrip, eqOn + filtersOpen)
+  // What the folded filters still narrow the list by, so a filter in force is never hidden.
+  const filterSummary = [
+    scope === 'in' ? t('Favourites') : scope === 'out' ? t('Not favourites') : '',
+    db === ALL_DB ? t('All databases') : db === APP_DB ? '' : sourceName(db),
+    bpOn ? t(bpOn) : '', eqOn ? t(eqOn) : '',
+  ].filter(Boolean).join(' · ')
   return <>
     <h3>{t('Add exercise')}</h3>
     {/* .picker-search is what index.css keys the keyboard-aware sheet layout on: the sheet
-        lifts above the keys and the search stays put while the list scrolls under it. */}
-    <div className="picker-search"><div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input ref={searchRef} className="input" placeholder={total ? t('Search {0} exercises…', total) : t('Search…')} value={q} onFocus={onSearchFocus} onChange={e => { setQ(e.target.value); setShown(50) }} /></div></div>
+        lifts above the keys. The whole head — volume gaps, search and filters — stays put while
+        the list scrolls under it; the gaps and the filters each fold away to make room. */}
+    <div className="picker-search picker-head">
+    <PickerGaps S={st} ctx={ctx} />
+    <div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      <input ref={searchRef} className="input" placeholder={total ? t('Search {0} exercises…', total) : t('Search…')} value={q} onFocus={onSearchFocus} onChange={e => { setQ(e.target.value); setShown(50) }} /></div>
+    <button type="button" className="pg-fold pf-fold" aria-expanded={filtersOpen} onClick={toggleFilters}>
+      <span className="small dim">{t('Filters')}</span>
+      {!filtersOpen && filterSummary && <span className="small pf-sum">{filterSummary}</span>}
+      <Icon name={filtersOpen ? 'chevronUp' : 'chevronDown'} className="pg-chev" />
+    </button>
+    {filtersOpen && <>
     {profile && <div className="small dim row" style={{ margin: '8px 0 2px', gap: 6, alignItems: 'center' }}>
       <Icon name="dumbbell" style={{ fontSize: 13 }} />
       {showAll ? t('Showing all equipment') : t('Showing what you have in "{0}"', profile.name)}
@@ -1124,6 +1142,8 @@ function ExercisePicker({ onPick, close }) {
         {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
       </div>
     </>}
+    </>}
+    </div>
     {loading.length > 0 && <div className="small dim" style={{ margin: '0 2px 8px' }}>{t('Loading…')} {loading.map(s => s.name).join(', ')}</div>}
     {failed.length > 0 && <div className="small dim" style={{ margin: '0 2px 8px' }}>{t('Could not reach {0}. Try again later.', failed.map(s => s.name).join(', '))}</div>}
     <div className="list">
@@ -1149,7 +1169,9 @@ function ExercisePicker({ onPick, close }) {
     {shownSources.length > 0 && <div className="small dim" style={{ marginTop: 10 }}>{shownSources.map(s => <div key={s.id}>{s.credit}</div>)}</div>}
   </>
 }
-export const exercisePicker = onPick => ui().openSheet(close => <ExercisePicker onPick={onPick} close={close} />)
+// `ctx` tells the volume gaps above the list where the picker was opened from (lib/picker-gaps.js):
+// { routineId } for a routine being programmed, { adds } for a freestyle plan not started yet.
+export const exercisePicker = (onPick, ctx) => ui().openSheet(close => <ExercisePicker onPick={onPick} close={close} ctx={ctx} />)
 
 /** Start a safe swap for one exact active-workout occurrence. */
 export function swapActiveWorkoutExercise(index) {
@@ -2442,7 +2464,8 @@ function FreePlanSheet({ onStart, close }) {
   // The last freestyle session done, offered as the base of this one while the plan is empty.
   const last = useMemo(() => items.length ? null : lastFreePlan(st), [st, items.length])
   const add = () => {
-    const p = exercisePicker(ex => { p.close(); setItems(xs => [...xs, freePlanItem(S(), ex)]) })
+    const p = exercisePicker(ex => { p.close(); setItems(xs => [...xs, freePlanItem(S(), ex)]) },
+      { adds: freePlanVolume(items.map(it => ({ ...it, ex: exOr(it.id) }))) })
   }
   // The same magnets as the routine editor: hold a line to lift it, let go on another to make a
   // superset, move it inside its capsule to only reorder, pull it clear to leave the superset.
