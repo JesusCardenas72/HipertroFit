@@ -2235,15 +2235,18 @@ function WorkoutDetail({ w, close }) {
 export const workoutDetailSheet = w => ui().openSheet(close => <WorkoutDetail w={w} close={close} />)
 
 /* ============================ calendar ============================ */
-function Calendar({ start, close }) {
+// Also embedded in Home (MicrocycleCard), where there is no sheet to close: `close` defaults to a no-op.
+export function Calendar({ start, close = () => {} }) {
   const st = useStore(s => s.S)
   const [cur, setCur] = useState(() => { const d = start ? new Date(start) : new Date(); d.setDate(1); return d })
   const y = cur.getFullYear(), mo = cur.getMonth()
   const byDay = {}
-  st.workouts.forEach(w => (byDay[w.d] = byDay[w.d] || []).push(w))
+  // A workout without its date (a damaged record) belongs to no day: it is left off the grid, not a crash.
+  const dated = st.workouts.filter(w => typeof w.d === 'string')
+  dated.forEach(w => (byDay[w.d] = byDay[w.d] || []).push(w))
   const startOffset = (new Date(y, mo, 1).getDay() + 6) % 7
   const daysIn = new Date(y, mo + 1, 0).getDate()
-  const monthWs = st.workouts.filter(w => w.d.startsWith(y + '-' + String(mo + 1).padStart(2, '0')))
+  const monthWs = dated.filter(w => w.d.startsWith(y + '-' + String(mo + 1).padStart(2, '0')))
   const monthVol = monthWs.reduce((a, w) => a + (w.vol || 0), 0)
   const monthMs = monthWs.reduce((a, w) => a + Math.max(0, (w.end || w.start) - w.start), 0)
   const cells = []
@@ -2254,8 +2257,7 @@ function Calendar({ start, close }) {
     const dotCls = ws ? 'done' : ovr && effId ? 'ovr' : effId ? 'plan' : ''
     cells.push(<button key={d} className={'cal-d' + (ws ? ' has' : '') + (iso === todayISO() ? ' today' : '')} onClick={() => {
       if (!ws) { close(); dayOverrideSheet(iso); return }
-      if (ws.length === 1) { close(); workoutDetailSheet(ws[0]); return }
-      close(); ui().openSheet(c2 => <><h3>{fmtDate(iso, true)}</h3><div className="list">{ws.map(w => <WorkoutRow key={w.id} w={w} onClick={() => { c2(); workoutDetailSheet(w) }} />)}</div></>)
+      close(); dayDetailSheet(iso)
     }}><span>{d}</span><i className={dotCls} /></button>)
   }
   return <>
@@ -2275,6 +2277,35 @@ function Calendar({ start, close }) {
   </>
 }
 export const calendarSheet = start => ui().openSheet(close => <Calendar start={start} close={close} />)
+
+// Everything trained on one day, set by set: each exercise with its weights, reps and the RIR the
+// set was logged with. Opened from the calendar; a workout's name opens its own sheet, where the
+// session note is edited and the workout deleted.
+export const dayDetailSheet = iso => ui().openSheet(close => <DayDetail iso={iso} close={close} />)
+function DayDetail({ iso, close }) {
+  const st = useStore(s => s.S)
+  const ws = st.workouts.filter(w => w.d === iso)
+  return <>
+    <h3>{fmtDate(iso, true)}</h3>
+    {!ws.length && <div className="muted small">{t('Rest day')}</div>}
+    {ws.map(w => <div key={w.id} style={{ marginBottom: 18 }}>
+      <button className="btn plain" style={{ padding: 0, marginBottom: 2, fontWeight: 600 }} onClick={() => { close(); workoutDetailSheet(w) }}>{w.name || t('Workout done')}</button>
+      <div className="muted small" style={{ marginBottom: 10 }}>{[...durPart(w.end - w.start), fmtVol(w.vol, st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
+      {w.entries.map((e, i) => {
+        const ex = EXIDX[e.id]
+        const done = e.sets.filter(s => s.done)
+        return <div key={i} className="row" style={{ marginBottom: 10, alignItems: 'flex-start' }}>
+          {ex && <Thumb ex={ex} muscle />}
+          <div className="grow">
+            <div className="tt capitalize" style={{ fontWeight: 600 }}>{ex ? exerciseNameFor(ex) : (e.n || e.id)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
+            {done.length ? done.map((s, k) => <div key={k} className="small">{k + 1}. {setLabel(e.id, s, e.target)}</div>) : <div className="small dim">{t('no sets')}</div>}
+            {e.note && <div className="small dim" style={{ marginTop: 3 }}>{e.note}</div>}
+          </div>
+        </div>
+      })}
+    </div>)}
+  </>
+}
 
 /* shared small workout row (used in lists) */
 export function WorkoutRow({ w, onClick }) {

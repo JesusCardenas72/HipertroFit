@@ -9,7 +9,7 @@ import { openNextCycle, closeMicrocycleSheet } from './MicrocycleActions.jsx'
 import { DeloadBadge, DeloadStatus } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { dayOverrideSheet, startFlow, loadStarterPlan, resumePausedWorkout } from '../sheets.jsx'
+import { dayOverrideSheet, startFlow, loadStarterPlan, resumePausedWorkout, Calendar } from '../sheets.jsx'
 import { resumableOf, pausedFor, pausedOn } from '../lib/paused-workout.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
@@ -120,6 +120,11 @@ export default function MicrocycleCard() {
         ? <>{t('Complete — {0} of {1} sessions', pos.sessions, pos.len)}{!over && <> · {t('until {0}', fmtDate(end, true))}</>}</>
         : t('Session {0} of {1}', pos.step + 1, pos.len)}
       {meso.deload ? <b style={{ color: 'var(--deload)' }}> · {t('Deload')}</b> : ''}
+    </div>
+
+    {/* The calendar, in place of the block's session order: the month with its trained and planned days. */}
+    <div style={{ marginTop: 12 }}>
+      <Calendar />
     </div>
 
     {/* Once today's session is logged the row stops asking for it — the strip already knows. */}
