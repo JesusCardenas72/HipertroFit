@@ -1529,4 +1529,12 @@ export default {
   'est. 1RM': 'szac. 1RM',
   'weight × reps': 'ciężar × powt.',
   '{0} microcycles without beating {1}': '{0} mikrocykli bez przebicia {1}',
+  'Bar and plates': 'Gryf i talerze',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'Serie ze sztangą pokazują, jakie talerze założyć z każdej strony. Gryf łamany i trap bar mają swoją zwykłą wagę.',
+  'Barbell weight': 'Waga gryfu',
+  'Below the empty bar ({0})': 'Poniżej pustego gryfu ({0})',
+  'Empty bar ({0})': 'Pusty gryf ({0})',
+  'Per side:': 'Na stronę:',
+  'bar {0}': 'gryf {0}',
+  '{0} per side has no plate': '{0} na stronę bez talerza',
 }

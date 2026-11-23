@@ -1546,4 +1546,12 @@ export default {
   'est. 1RM': 'geschätztes 1RM',
   'weight × reps': 'Gewicht × Wdh.',
   '{0} microcycles without beating {1}': '{0} Mikrozyklen ohne {1} zu übertreffen',
+  'Bar and plates': 'Stange und Scheiben',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'Langhantelsätze zeigen, welche Scheiben auf jede Seite kommen. SZ- und Trap-Bar nutzen ihr übliches Gewicht.',
+  'Barbell weight': 'Gewicht der Langhantel',
+  'Below the empty bar ({0})': 'Unter der leeren Stange ({0})',
+  'Empty bar ({0})': 'Leere Stange ({0})',
+  'Per side:': 'Pro Seite:',
+  'bar {0}': 'Stange {0}',
+  '{0} per side has no plate': '{0} pro Seite ohne Scheibe',
 }

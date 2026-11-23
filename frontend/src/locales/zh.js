@@ -1529,4 +1529,12 @@ export default {
   'est. 1RM': '估算 1RM',
   'weight × reps': '重量 × 次数',
   '{0} microcycles without beating {1}': '{0} 个微周期未超过 {1}',
+  'Bar and plates': '杠铃杆与杠铃片',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': '杠铃组会显示每侧要挂哪些杠铃片。EZ 杆和六角杆按常用重量计算。',
+  'Barbell weight': '杠铃杆重量',
+  'Below the empty bar ({0})': '低于空杆重量（{0}）',
+  'Empty bar ({0})': '空杆（{0}）',
+  'Per side:': '每侧：',
+  'bar {0}': '杆 {0}',
+  '{0} per side has no plate': '每侧 {0} 无对应杠铃片',
 }

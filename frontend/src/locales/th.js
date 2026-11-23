@@ -1542,4 +1542,12 @@ export default {
   'est. 1RM': '1RM โดยประมาณ',
   'weight × reps': 'น้ำหนัก × ครั้ง',
   '{0} microcycles without beating {1}': '{0} ไมโครไซเคิลที่ยังไม่เกิน {1}',
+  'Bar and plates': 'บาร์และแผ่นน้ำหนัก',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'เซ็ตบาร์เบลจะแสดงว่าต้องใส่แผ่นน้ำหนักใดแต่ละข้าง บาร์ EZ และแทรปบาร์ใช้น้ำหนักปกติของมัน',
+  'Barbell weight': 'น้ำหนักบาร์',
+  'Below the empty bar ({0})': 'ต่ำกว่าบาร์เปล่า ({0})',
+  'Empty bar ({0})': 'บาร์เปล่า ({0})',
+  'Per side:': 'ต่อข้าง:',
+  'bar {0}': 'บาร์ {0}',
+  '{0} per side has no plate': '{0} ต่อข้างไม่มีแผ่นที่ตรง',
 }

@@ -1035,6 +1035,14 @@ export const PT_BR_OVERRIDES = {
   'est. 1RM': '1RM est.',
   'weight × reps': 'peso × reps',
   '{0} microcycles without beating {1}': '{0} microciclos sem superar {1}',
+  'Bar and plates': 'Barra e anilhas',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'As séries com barra mostram quais anilhas vão de cada lado. As barras W e hexagonal usam o peso habitual.',
+  'Barbell weight': 'Peso da barra',
+  'Below the empty bar ({0})': 'Abaixo da barra vazia ({0})',
+  'Empty bar ({0})': 'Barra vazia ({0})',
+  'Per side:': 'Por lado:',
+  'bar {0}': 'barra {0}',
+  '{0} per side has no plate': '{0} por lado sem anilha',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES,

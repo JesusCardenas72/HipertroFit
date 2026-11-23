@@ -1529,4 +1529,12 @@ export default {
   'est. 1RM': 'अनुमानित 1RM',
   'weight × reps': 'वज़न × रेप्स',
   '{0} microcycles without beating {1}': '{0} माइक्रोसाइकिल से {1} पार नहीं',
+  'Bar and plates': 'बार और प्लेट्स',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'बारबेल सेट दिखाते हैं कि हर तरफ़ कौन-सी प्लेट्स लगेंगी। EZ और ट्रैप बार अपना सामान्य वज़न लेते हैं।',
+  'Barbell weight': 'बारबेल का वज़न',
+  'Below the empty bar ({0})': 'खाली बार से कम ({0})',
+  'Empty bar ({0})': 'खाली बार ({0})',
+  'Per side:': 'हर तरफ़:',
+  'bar {0}': 'बार {0}',
+  '{0} per side has no plate': 'हर तरफ़ {0} के लिए प्लेट नहीं',
 }

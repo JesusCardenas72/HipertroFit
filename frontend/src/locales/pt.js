@@ -1529,4 +1529,12 @@ export default {
   'est. 1RM': '1RM est.',
   'weight × reps': 'peso × reps',
   '{0} microcycles without beating {1}': '{0} microciclos sem superar {1}',
+  'Bar and plates': 'Barra e discos',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'As séries com barra mostram que discos vão de cada lado. As barras EZ e hexagonal usam o seu peso habitual.',
+  'Barbell weight': 'Peso da barra',
+  'Below the empty bar ({0})': 'Abaixo da barra vazia ({0})',
+  'Empty bar ({0})': 'Barra vazia ({0})',
+  'Per side:': 'Por lado:',
+  'bar {0}': 'barra {0}',
+  '{0} per side has no plate': '{0} por lado sem disco',
 }

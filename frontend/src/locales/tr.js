@@ -1529,4 +1529,12 @@ export default {
   'est. 1RM': 'tahmini 1RM',
   'weight × reps': 'ağırlık × tekrar',
   '{0} microcycles without beating {1}': '{0} mikro döngüdür {1} aşılamadı',
+  'Bar and plates': 'Bar ve plakalar',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'Barlı setler her tarafa hangi plakaların takılacağını gösterir. EZ ve trap bar olağan ağırlıklarını kullanır.',
+  'Barbell weight': 'Bar ağırlığı',
+  'Below the empty bar ({0})': 'Boş barın altında ({0})',
+  'Empty bar ({0})': 'Boş bar ({0})',
+  'Per side:': 'Her tarafa:',
+  'bar {0}': 'bar {0}',
+  '{0} per side has no plate': 'her tarafta {0} için plaka yok',
 }

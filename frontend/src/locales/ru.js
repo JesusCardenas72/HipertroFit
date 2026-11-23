@@ -1529,4 +1529,12 @@ export default {
   'est. 1RM': 'расч. 1ПМ',
   'weight × reps': 'вес × повт.',
   '{0} microcycles without beating {1}': '{0} микроциклов без превышения {1}',
+  'Bar and plates': 'Гриф и блины',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'Для подходов со штангой показано, какие блины вешать на каждую сторону. EZ-гриф и трэп-гриф считаются со своим обычным весом.',
+  'Barbell weight': 'Вес грифа',
+  'Below the empty bar ({0})': 'Меньше пустого грифа ({0})',
+  'Empty bar ({0})': 'Пустой гриф ({0})',
+  'Per side:': 'На сторону:',
+  'bar {0}': 'гриф {0}',
+  '{0} per side has no plate': '{0} на сторону без блина',
 }

@@ -1534,4 +1534,12 @@ export default {
   'est. 1RM': 'becsült 1RM',
   'weight × reps': 'súly × ism.',
   '{0} microcycles without beating {1}': '{0} mikrociklus óta nem sikerült túllépni: {1}',
+  'Bar and plates': 'Rúd és tárcsák',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'A rudas sorozatoknál látszik, melyik tárcsa kerül egy-egy oldalra. Az EZ- és a trap bar a szokásos súlyával számít.',
+  'Barbell weight': 'Rúd súlya',
+  'Below the empty bar ({0})': 'Az üres rúd alatt ({0})',
+  'Empty bar ({0})': 'Üres rúd ({0})',
+  'Per side:': 'Oldalanként:',
+  'bar {0}': 'rúd {0}',
+  '{0} per side has no plate': 'oldalanként {0}-hoz nincs tárcsa',
 }

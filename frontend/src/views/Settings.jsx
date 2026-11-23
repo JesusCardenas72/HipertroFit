@@ -15,6 +15,7 @@ import { UpdateRow } from '../components/AppUpdate.jsx'
 import { loadStarterPlan, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
+import { PlatesSettings } from '../components/Plates.jsx'
 import { restSound, exerciseEndSound, progressSound, playProgressSound, customSoundProblem, MAX_SOUND_BYTES, MAX_SOUND_SECONDS } from '../lib/custom-sound.js'
 import { playClips, stopClips } from '../lib/sound.js'
 import { REST_EX_PRESETS, restExLabel, settingChoice } from '../lib/rest-between.js'
@@ -305,6 +306,9 @@ export default function Settings() {
 
     {/* ---------- equipment ---------- */}
     <EquipmentCard S={S} update={update} />
+
+    {/* ---------- bar and plates (lib/plates.js) ---------- */}
+    <PlatesSettings S={S} update={update} />
 
     {/* ---------- appearance ---------- */}
     <Section title={t('Appearance')} footer={DEMO || MOBILE ? undefined : t('synced with your profile')}>

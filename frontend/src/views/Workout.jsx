@@ -34,6 +34,7 @@ import { exerciseProgressSheet } from '../components/ExerciseProgress.jsx'
 import { DeloadStatus, DeloadSessionBand } from '../components/Deload.jsx'
 import { isDeloadWorkout, withRirGoal } from '../lib/mesocycle.js'
 import { goalLabel } from '../lib/effort.js'
+import { PlatesLine } from '../components/Plates.jsx'
 import { workIndexOf, referenceSet, suggestionFor, targetFor, overloadOf, overloadTargetFor, extraSetsWanted, seedTargets, topWeight } from '../lib/set-reference.js'
 import { repRangeFor } from '../lib/exercise-class.js'
 import { swipeLock, rowOffset, rowArmed, navDirection, navCommit } from '../lib/swipe.js'
@@ -814,6 +815,7 @@ function SetSheetBody({ entryIdx, i, close, onField, onKind, onRemoveSetAt }) {
           format={v => v == null ? '–' : v.toLocaleString(dateLocale(), { maximumFractionDigits: 2 })} onChange={v => onField(i, col.f, v)} />
       </div>)}
     </div>
+    {mode === 'reps' && <PlatesLine S={S} exId={entry.id} w={s.w} />}
     <div className="ss-foot">
       <span>{t('Saved when you tick the set')}</span>
       <button type="button" className="ss-del" disabled={entry.sets.length <= 1 || !!working}
@@ -905,6 +907,8 @@ function DrumHero({ chamber, members, onToggle, onToggleDrop, onOpenSet, onField
         <button className="dh-b" aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
       </div>)}
     </div>
+    {/* What goes on each side of the bar for the weight in the stepper (lib/plates.js). */}
+    {mode === 'reps' && <PlatesLine S={S} exId={entry.id} w={s.w} className="dh-plates" />}
     {/* The drop-set and rest-pause rows this set has grown, edited where they were added. */}
     {intensify && (drops.length > 0 || bursts.length > 0) && <div className="dh-int">
       <IntensifierRows entryIdx={entryIdx} i={i} cols={cols} onToggleDrop={(si, di) => onToggleDrop?.(entryIdx, si, di)}

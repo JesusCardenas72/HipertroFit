@@ -1529,4 +1529,12 @@ export default {
   'est. 1RM': '1RM stim.',
   'weight × reps': 'peso × rip.',
   '{0} microcycles without beating {1}': '{0} microcicli senza superare {1}',
+  'Bar and plates': 'Bilanciere e dischi',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': 'Le serie con bilanciere mostrano quali dischi mettere su ogni lato. Bilanciere EZ e trap bar usano il loro peso abituale.',
+  'Barbell weight': 'Peso del bilanciere',
+  'Below the empty bar ({0})': 'Sotto il bilanciere scarico ({0})',
+  'Empty bar ({0})': 'Bilanciere scarico ({0})',
+  'Per side:': 'Per lato:',
+  'bar {0}': 'bilanciere {0}',
+  '{0} per side has no plate': '{0} per lato senza disco',
 }

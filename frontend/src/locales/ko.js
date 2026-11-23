@@ -1529,4 +1529,12 @@ export default {
   'est. 1RM': '추정 1RM',
   'weight × reps': '무게 × 반복',
   '{0} microcycles without beating {1}': '{0}개 마이크로사이클 동안 {1}을 넘지 못함',
+  'Bar and plates': '바벨과 원판',
+  'Barbell sets show which plates go on each side. EZ and trap bars use their usual weight.': '바벨 세트에서 양쪽에 끼울 원판을 보여 줍니다. EZ 바와 트랩 바는 일반적인 무게를 사용합니다.',
+  'Barbell weight': '바벨 무게',
+  'Below the empty bar ({0})': '빈 바보다 가벼움 ({0})',
+  'Empty bar ({0})': '빈 바 ({0})',
+  'Per side:': '한쪽:',
+  'bar {0}': '바 {0}',
+  '{0} per side has no plate': '한쪽 {0}은 맞는 원판 없음',
 }
