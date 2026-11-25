@@ -8,8 +8,6 @@ import BodyMap, { BodyMapLegend } from './BodyMap.jsx'
 import VolumeGroupBars from './VolumeGroupBars.jsx'
 import MinimumGaps from './MinimumGaps.jsx'
 import CyclePicker, { useCycleChoice, CycleStatsLine } from './CyclePicker.jsx'
-import Icon from './Icon.jsx'
-import { logExtraSheet } from '../sheets.jsx'
 
 // The muscle map from Stats, windowed on the microcycle instead of the week, over the
 // effective-set bars for the same block. Same numbers as the Stats card by construction:
@@ -39,11 +37,8 @@ export default function MuscleVolumeCard({ S }) {
   return <div className="card">
     <div className="row between" style={{ marginBottom: 6, flexWrap: 'nowrap', gap: 8 }}>
       <h2 style={{ margin: 0 }}>{t('Volume')}</h2>
-      <div className="row" style={{ gap: 8, flexWrap: 'nowrap', minWidth: 0 }}>
-        <CyclePicker value={cycle} list={list} onPick={id => { pick(id); setSel(null) }} />
-        {/* Sets done outside a session go in from here — this card is where they show up. */}
-        <button className="iconbtn" onClick={logExtraSheet} aria-label={t('Log extra work')} title={t('Log extra work')}><Icon name="plus" /></button>
-      </div>
+      {/* Sets done outside a session go in from the "Log extra work" row of the microcycle card. */}
+      <CyclePicker value={cycle} list={list} onPick={id => { pick(id); setSel(null) }} />
     </div>
     {win.length > 0 && <CycleStatsLine cycle={cycle} style={{ marginBottom: 8 }} />}
     {win.length ? <>

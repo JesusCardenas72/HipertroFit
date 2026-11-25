@@ -11,7 +11,7 @@ import { startNextCycle, closeMicrocycleSheet } from './MicrocycleActions.jsx'
 import { DeloadBadge, DeloadStatus } from './Deload.jsx'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { dayOverrideSheet, startFlow, loadStarterPlan, resumePausedWorkout, Calendar } from '../sheets.jsx'
+import { dayOverrideSheet, startFlow, loadStarterPlan, resumePausedWorkout, Calendar, logExtraSheet } from '../sheets.jsx'
 import { resumableOf, pausedFor, pausedOn } from '../lib/paused-workout.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
@@ -38,6 +38,26 @@ export default function MicrocycleCard() {
   // History up to today, the sequence carried on from there (lib/sequence-days.js).
   const days = sequenceDays(S, 7, mondayOf(today), today)
   const meso = mesoState(S)
+  const freeRow = <div className="today-row free" data-testid="home-free" {...tappable(() => startFlow(null))}>
+    <div className="row" style={{ gap: 9, minWidth: 0 }}>
+      <span className="lrow-i"><Icon name="freeWorkout" /></span>
+      <div style={{ minWidth: 0 }}>
+        <div className="ttl">{t('Freestyle workout')}</div>
+        <div className="muted small">{t('Pick exercises as you go')}</div>
+      </div>
+    </div>
+    <span className="tag">{t('Start')}</span>
+  </div>
+  const extraRow = <div className="today-row extra" data-testid="home-extra" {...tappable(logExtraSheet)}>
+    <div className="row" style={{ gap: 9, minWidth: 0 }}>
+      <span className="lrow-i"><Icon name="extraWork" /></span>
+      <div style={{ minWidth: 0 }}>
+        <div className="ttl">{t('Log extra work')}</div>
+        <div className="muted small">{t('Sets done outside a session')}</div>
+      </div>
+    </div>
+    <Icon name="plus" className="chev" />
+  </div>
   // Complete, the block runs on through its rest days; past its last day it is over and waits
   // for the user to open the next one (lib/microcycle.js).
   const end = cycleEndOf(S)
@@ -147,17 +167,10 @@ export default function MicrocycleCard() {
         : next ? <span className="tag acc">{t('Start')}</span>
         : <Icon name="plus" className="chev" />}
     </div>
-    {/* Under today's session: a session without routine, for a day off the plan. */}
-    {!S.active && next && <div className="today-row free" data-testid="home-free" {...tappable(() => startFlow(null))}>
-      <div className="row" style={{ gap: 9, minWidth: 0 }}>
-        <span className="lrow-i"><Icon name="freeWorkout" /></span>
-        <div style={{ minWidth: 0 }}>
-          <div className="ttl">{t('Freestyle workout')}</div>
-          <div className="muted small">{t('Pick exercises as you go')}</div>
-        </div>
-      </div>
-      <span className="tag">{t('Start')}</span>
-    </div>}
+    {/* Under today's session, side by side: a session without routine (for a day off the plan)
+        and the sets done outside a session, which show up in the Volume card below. With no
+        session to start the freestyle tile goes and the other one takes the full row. */}
+    {!S.active && next ? <div className="today-pair">{freeRow}{extraRow}</div> : extraRow}
 
     {/* Under today's rows: the month with its trained and planned days. */}
     <div style={{ marginTop: 14 }}>

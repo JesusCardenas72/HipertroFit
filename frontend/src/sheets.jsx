@@ -48,6 +48,7 @@ import { useSheetKeyboard, useRevealActiveChip, tappable } from './lib/use-sheet
 import { buildSessionEntries } from './lib/session-start.js'
 import { workoutsOn, backfillStart } from './lib/backfill.js'
 import { buildExtraEntry, fileExtraEntry } from './lib/extra-log.js'
+import { removeSetFromHistory, removeEntryFromHistory, removalScope } from './lib/history-edit.js'
 import { finishWorkout, workoutCompleteSheet } from './sheets-finish.jsx'
 import { ProgramSheet, programSheet } from './sheets-program.jsx'
 import { copyExSheet, customExSheet, deleteCustomEx, importExercisesSheet, muscleEditSheet, renameExSheet } from './sheets-custom-exercise.jsx'
@@ -1411,7 +1412,9 @@ export const calendarSheet = start => ui().openSheet(close => <Calendar start={s
 
 // Everything trained on one day, set by set: each exercise with its weights, reps and the RIR the
 // set was logged with. Opened from the calendar; a workout's name opens its own sheet, where the
-// session note is edited and the workout deleted.
+// session note is edited and the workout deleted. Any set or exercise — of a planned session, a
+// freestyle one or the day's extra work — can be taken back out of history from here, always
+// after a confirmation that says what goes with it (lib/history-edit.js).
 export const dayDetailSheet = iso => ui().openSheet(close => <DayDetail iso={iso} close={close} />)
 function DayDetail({ iso, close }) {
   const st = useStore(s => s.S)
@@ -1424,18 +1427,53 @@ function DayDetail({ iso, close }) {
       <div className="muted small" style={{ marginBottom: 10 }}>{[...durPart(w.end - w.start), fmtVol(w.vol, st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
       {w.entries.map((e, i) => {
         const ex = EXIDX[e.id]
-        const done = e.sets.filter(s => s.done)
-        return <div key={i} className="row" style={{ marginBottom: 10, alignItems: 'flex-start' }}>
+        const name = ex ? exerciseNameFor(ex) : (e.n || e.id)
+        // the original index rides along: a set is removed by its place in e.sets, done or not
+        const done = e.sets.map((s, k) => [s, k]).filter(([s]) => s.done)
+        return <div key={i} className="row" style={{ marginBottom: 10, alignItems: 'flex-start', flexWrap: 'nowrap' }}>
           {ex && <Thumb ex={ex} muscle />}
-          <div className="grow">
-            <div className="tt capitalize" style={{ fontWeight: 600 }}>{ex ? exerciseNameFor(ex) : (e.n || e.id)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
-            {done.length ? done.map((s, k) => <div key={k} className="small">{k + 1}. {setLabel(e.id, s, e.target)}</div>) : <div className="small dim">{t('no sets')}</div>}
+          <div className="grow" style={{ flex: 1, minWidth: 0 }}>
+            <div className="row between" style={{ flexWrap: 'nowrap', gap: 8, alignItems: 'flex-start' }}>
+              <div className="tt capitalize" style={{ fontWeight: 600, minWidth: 0 }}>{name} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
+              <button className="iconbtn hist-del" onClick={() => confirmHistoryRemoval(w, i, null, name)} aria-label={t('Delete exercise')} title={t('Delete exercise')}><Icon name="trash" /></button>
+            </div>
+            {done.length ? done.map(([s, k], n) => <div key={k} className="row between small hist-set">
+              <span>{n + 1}. {setLabel(e.id, s, e.target)}</span>
+              <button className="iconbtn hist-del sm" onClick={() => confirmHistoryRemoval(w, i, k, name + ' · ' + t('Set {0}', n + 1))} aria-label={t('Delete set')} title={t('Delete set')}><Icon name="trash" /></button>
+            </div>) : <div className="small dim">{t('no sets')}</div>}
             {e.note && <div className="small dim" style={{ marginTop: 3 }}>{e.note}</div>}
           </div>
         </div>
       })}
     </div>)}
   </>
+}
+
+// The confirmation before a set (setIdx given) or an exercise leaves history, naming what goes
+// with it: the exercise with its last set, the workout with its last exercise.
+function confirmHistoryRemoval(w, entryIdx, setIdx, what) {
+  const scope = removalScope(w, entryIdx, setIdx)
+  if (!scope) return
+  const isSet = setIdx != null
+  const message = scope === 'workout' ? t('It is all that is left of this workout, so the whole workout is removed from your history.')
+    : isSet && scope === 'entry' ? t('It is the last set of this exercise, so the exercise is removed from the workout too.')
+      : isSet ? t('This set is removed from your history for good.')
+        : t('This exercise and all its sets are removed from the workout for good.')
+  confirmSheet({
+    title: isSet ? t('Delete set?') : t('Delete exercise?'),
+    message: <><b className="capitalize" style={{ display: 'block', color: 'var(--label)', marginBottom: 6 }}>{what}</b>{message}</>,
+    confirmText: t('Delete'), danger: true,
+    onConfirm: () => {
+      let removed = null
+      update(s => {
+        const res = isSet ? removeSetFromHistory(s.workouts, w.id, entryIdx, setIdx) : removeEntryFromHistory(s.workouts, w.id, entryIdx)
+        if (!res) return
+        s.workouts = res.workouts
+        removed = res.removed
+      })
+      if (removed) toast(removed === 'workout' ? t('Workout deleted') : removed === 'entry' ? t('Exercise deleted') : t('Set deleted'))
+    },
+  })
 }
 
 /* shared small workout row (used in lists) */

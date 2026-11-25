@@ -2303,6 +2303,23 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .today-row.free .lrow-i{--tint:var(--blue)}
 .today-row.free .ttl{color:var(--blue);text-transform:none}
 .today-row.free .tag{background:color-mix(in srgb,var(--blue) 22%,transparent);color:var(--blue)}
+/* Home: "Log extra work" under the freestyle row — the same row in the neutral surface. */
+.today-row.extra{margin-top:8px}
+.today-row.extra .ttl{text-transform:none}
+/* Home: the freestyle and extra-work rows side by side, as two tiles — icon on top, the title
+   free to wrap to two lines, the action pinned to the top-right corner. Same height either way. */
+.today-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.today-pair>.today-row{margin-top:0;position:relative;flex-direction:column;align-items:stretch;justify-content:flex-start;padding:12px}
+.today-pair>.today-row>.row{flex-direction:column;align-items:flex-start;gap:8px!important}
+.today-pair .lrow-i{width:36px;height:36px}
+.today-pair .ttl{white-space:normal;font-size:calc(16px * var(--fs))}
+.today-pair>.today-row>.tag,.today-pair>.today-row>.chev{position:absolute;top:12px;right:12px}
+/* Day detail (calendar): the bin beside each exercise and each set, quiet until pressed. */
+.hist-del{width:30px;height:30px;flex:none;font-size:calc(14px * var(--fs));background:transparent;color:var(--label-3)}
+.hist-del.sm{width:26px;height:26px;font-size:calc(12.5px * var(--fs))}
+.hist-del:hover{color:var(--red)}
+.hist-del:active{color:var(--red);background:color-mix(in srgb,var(--red) 15%,transparent)}
+.hist-set{flex-wrap:nowrap;gap:8px;min-height:28px}
 /* Freestyle planner: its exercise rows (the volume panel is components/FreePlanVolume.jsx). */
 .free-plan-ex{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:var(--hair) solid var(--sep)}
 .free-plan-ex .grow{min-width:0}
