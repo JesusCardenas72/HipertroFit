@@ -214,27 +214,35 @@ describe('rest alert lands on the end of the rest', () => {
     expect(playClips).toHaveBeenCalledTimes(1)
   })
 
-  // Only the countdown between two sets ends on the bell.
-  it('does not ring at the end of the rest between exercises', async () => {
-    useUI.getState().startRest(90, 0, 'exercise')
-    await vi.advanceTimersByTimeAsync(90_000)
-    expect(useUI.getState().timer).toBe(null)
+  // The rest between exercises (after the last set, or a superset's last round) ends on the
+  // same bell as the rest between sets.
+  it('rings at the end of the rest between exercises, landing on zero', async () => {
+    useUI.getState().startRest(90, 0, 'exercise', { keepClips: true })
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync((90 - CLIP_SECONDS) * 1000 - GAP - 1)
     expect(playClips).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(playClips).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(CLIP_SECONDS * 1000 + GAP)
+    expect(useUI.getState().timer).toBe(null)
   })
 
-  it('does not ring for a rest between exercises picked up after a reload', async () => {
+  it('rings for a rest between exercises picked up after a reload', async () => {
     useStore.setState({ S: { ...useStore.getState().S, active: { id: 'w1', entries: [] } } })
     localStorage.setItem('gym_rest_v1', JSON.stringify({ endsAt: Date.now() + 5000, total: 90, forIdx: 1, kind: 'exercise', wid: 'w1' }))
     useUI.getState().resumeRest()
     await vi.advanceTimersByTimeAsync(5000)
-    expect(playClips).not.toHaveBeenCalled()
+    expect(playClips).toHaveBeenCalledTimes(1)
   })
 
-  it('does not ring when extending a rest between exercises', async () => {
+  it('re-times the bell when extending a rest between exercises', async () => {
     useUI.getState().startRest(30, 0, 'exercise')
     useUI.getState().addRest(15)
-    await vi.advanceTimersByTimeAsync(45_000)
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync((45 - CLIP_SECONDS) * 1000 - GAP - 1)
     expect(playClips).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(playClips).toHaveBeenCalledTimes(1)
   })
 
   // A backgrounded page runs timeouts late: one that lands after the rest is over stays quiet.
