@@ -6,6 +6,8 @@ import { VOLUME_GROUPS, volumeMethod, volumeStatus, volumeColor, targetOf, group
 import ZoneBar from './ZoneBar.jsx'
 import { VERDICT } from './volume-verdict.js'
 import { glyphOfMuscle } from '../lib/glyphs.js'
+import { useStore } from '../store/useStore.js'
+import { effortOf } from '../lib/history.js'
 
 // Effective sets per muscle group for one microcycle, read against each group's target band.
 // Shared by Home and Stats so the two can never report different numbers for the same block, and
@@ -135,6 +137,20 @@ export default function VolumeGroupBars({ vol, title, planned, ahead, isPlan }) 
     </div>}
     {vol.unrated > 0 && <div className="small" style={{ color: 'var(--yellow)', marginTop: 8 }}>
       {t('{0} of {1} sets without RIR — counted as effective', vol.unrated, vol.total)}
+      <LogRirNudge />
     </div>}
   </>
+}
+
+// With the effort column switched off every set is counted as effective on trust: the panel offers
+// to turn it on, right where the doubt is shown. Nothing when the profile already logs effort.
+function LogRirNudge() {
+  const S = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  if (effortOf(S) !== 'none') return null
+  return <div style={{ marginTop: 6 }}>
+    <span className="dim">{t('Log RIR on each set so only the sets close to failure count.')} </span>
+    <button className="chip nocap on" style={{ padding: '2px 10px', fontSize: 12 }} data-testid="log-rir"
+      onClick={() => update(s => { s.effort = 'rir'; delete s.showRir })}>{t('Log RIR')}</button>
+  </div>
 }

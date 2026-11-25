@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   rirOf, toScale, displayScale, avgRir, effortSummary, hasEffort, effortWeeks,
-  effortHistogram, isHardSet, HARD_RIR, MIN_RATED
+  effortHistogram, isHardSet, HARD_RIR, MIN_RATED, goalLabel
 } from './effort.js'
 import { isoOf } from './format.js'
 
@@ -182,5 +182,13 @@ describe('isHardSet', () => {
     expect(isHardSet({ rir: HARD_RIR + 0.5 })).toBe(false)
     expect(isHardSet({ rpe: 10 })).toBe(true)
     expect(isHardSet({})).toBe(false)          // unrated is not hard, and not easy either
+  })
+})
+
+describe('goalLabel', () => {
+  it('reads the target RIR on the profile’s scale', () => {
+    expect(goalLabel({ effort: 'rir' }, 2)).toBe('RIR 2')
+    expect(goalLabel({ effort: 'rpe' }, 2)).toBe('RPE 8')
+    expect(goalLabel({ effort: 'none' }, 0)).toBe('RIR 0')
   })
 })

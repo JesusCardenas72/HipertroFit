@@ -42,3 +42,13 @@ describe('overloadTargetFor', () => {
     expect(overloadTargetFor({ reference: { r: 8 }, top: 12 })).toBeNull()
   })
 })
+
+describe('overloadTargetFor — the mesocycle’s target RIR', () => {
+  const last = { w: 80, r: 10, rir: 3, done: true }
+  it('carries the target instead of last time’s effort', () => {
+    expect(overloadTargetFor({ reference: last, top: 12, effort: 'rir', goal: 1 })).toEqual({ w: 80, r: 11, rir: 1 })
+  })
+  it('never uses the effort as a lever: at the top of the range the load goes up', () => {
+    expect(overloadTargetFor({ reference: { ...last, r: 12 }, top: 12, effort: 'rir', goal: 2 })).toEqual({ w: 82.5, r: 12, rir: 2 })
+  })
+})

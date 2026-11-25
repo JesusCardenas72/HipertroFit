@@ -217,3 +217,29 @@ describe('overloadOf', () => {
     expect(overloadOf({ w: 60, r: 10 }, null)).toEqual([])
   })
 })
+
+describe('targetFor — the mesocycle’s target RIR', () => {
+  const ref = (w, r, rir) => ({ w, r, rir, done: true })
+  it('aims every work set at the microcycle’s RIR, whatever last time’s was', () => {
+    expect(targetFor({ plan: { kind: 'up', weight: 132.5, rirGoal: 1 }, reference: ref(130, 8, 3), effort: 'rir' }))
+      .toEqual({ w: 132.5, r: 8, rir: 1 })
+    // No effort logged last time: the target still has one.
+    expect(targetFor({ plan: { kind: 'up', weight: 132.5, rirGoal: 2 }, reference: work(130, 8, true), effort: 'rir' }))
+      .toEqual({ w: 132.5, r: 8, rir: 2 })
+  })
+  it('replaces the one-rep-closer lever on a held load', () => {
+    expect(targetFor({ plan: { kind: 'hold', weight: 130, rirGoal: 2 }, reference: ref(130, 8, 2), effort: 'rir' }).rir).toBe(2)
+  })
+  it('is written on the profile’s scale', () => {
+    expect(targetFor({ plan: { kind: 'up', weight: 132.5, rirGoal: 1 }, reference: { w: 130, r: 8, rpe: 7, done: true }, effort: 'rpe' }).rpe).toBe(9)
+    expect(targetFor({ plan: { kind: 'up', weight: 132.5, rirGoal: 4 }, reference: { w: 130, r: 8, rpe: 7, done: true }, effort: 'rpe' }).rpe).toBe(6)
+  })
+  it('sets no effort when the profile does not log it', () => {
+    expect(targetFor({ plan: { kind: 'up', weight: 132.5, rirGoal: 1 }, reference: ref(130, 8, 2), effort: 'none' })).toEqual({ w: 132.5, r: 8 })
+  })
+  it('is seeded into the rows when the session is built', () => {
+    const prev = [{ w: 130, r: 8, rir: 3, done: true }, { w: 130, r: 7, rir: 2, done: true }]
+    const out = seedTargets([work(130, 8), work(130, 7)], prev, { plan: { kind: 'hold', weight: 130, rirGoal: 1 }, effort: 'rir' })
+    expect(out.map(s => s.rir)).toEqual([1, 1])
+  })
+})

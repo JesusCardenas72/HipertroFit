@@ -36,9 +36,11 @@ import hamstrings from '../assets/muscles/hamstrings.webp'
 import calves from '../assets/muscles/calves.webp'
 // The freestyle workout (a session with no routine) is a picture too: the lifter on the bench.
 import freeWorkout from '../assets/free-workout.webp'
+// Sets done outside a session (the "log extra work" row on Home): the fist out of the ground.
+import extraWork from '../assets/extra-work.webp'
 
 const IMG = {
-  freeWorkout,
+  freeWorkout, extraWork,
   pushDay, pullDay, legDay, upperDay, fullBody,
   chest, shoulders, biceps, triceps, forearms, core, lats, upperBack, lowerBack,
   glutes, quads, hamstrings, calves,

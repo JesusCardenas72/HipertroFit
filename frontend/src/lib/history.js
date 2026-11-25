@@ -96,9 +96,12 @@ export const capEffort = (kind, v) =>
 // Which scale a profile logs. `showRir` is the boolean this replaced and is only consulted
 // when the profile has no answer of its own — an explicit 'none' has to win over it, or a
 // backup or another device that still carries the old flag would switch the column back on.
+// A profile that never chose logs RIR: effective-set volume, the mesocycle's target RIR and the
+// muscle feedback all read it, and an unrated set can only be counted as effective on trust. Only
+// an explicit choice — the setting, or the old `showRir: false` — turns the column off.
 export const effortOf = S => {
   const e = S && S.effort
-  return e === 'none' || EFFORT[e] ? e : (S && S.showRir ? 'rir' : 'none')
+  return e === 'none' || EFFORT[e] ? e : (S && S.showRir === false ? 'none' : 'rir')
 }
 // The "(RIR 2)" / "(RPE 8)" tail on a set summary, empty when nothing was logged.
 const effortTail = s => {

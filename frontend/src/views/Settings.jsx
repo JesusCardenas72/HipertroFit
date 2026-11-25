@@ -15,6 +15,7 @@ import { UpdateRow } from '../components/AppUpdate.jsx'
 import { loadStarterPlan, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
+import { PlatesSettings } from '../components/Plates.jsx'
 import { restSound, exerciseEndSound, progressSound, playProgressSound, customSoundProblem, MAX_SOUND_BYTES, MAX_SOUND_SECONDS } from '../lib/custom-sound.js'
 import { playClips, stopClips } from '../lib/sound.js'
 import { REST_EX_PRESETS, restExLabel, settingChoice } from '../lib/rest-between.js'
@@ -283,6 +284,23 @@ export default function Settings() {
           options={[{ value: 'none', label: t('Off') }, { value: 'rir', label: t('RIR') }, { value: 'rpe', label: t('RPE') }]}
           value={effortOf(S)} onChange={v => update(s => { s.effort = v; delete s.showRir })} />
       </Row>
+      {/* The running session in the notification shade (lib/session-notice.js), Android app only. */}
+      {MOBILE && <Row icon="bell" iconTint="var(--blue)" title={t('Workout in the notification bar')}>
+        <Switch checked={S.sessionNotice !== false} onChange={v => update(s => { s.sessionNotice = v })} />
+      </Row>}
+      {/* The effort the mesocycle aims at, microcycle by microcycle (lib/mesocycle.js rirGoalOf). */}
+      <Row icon="flame" iconTint="var(--orange)" title={t('Target RIR by microcycle')}>
+        <Switch checked={S.rirPlan !== false} onChange={v => update(s => { s.rirPlan = v })} />
+      </Row>
+      {/* One set more per group each microcycle, back to the bottom of the band after the deload
+          (lib/muscle-feedback.js rampOn). */}
+      <Row icon="chartLine" iconTint="var(--green)" title={t('Volume ramp across the mesocycle')}>
+        <Switch checked={S.volumeRamp !== false} onChange={v => update(s => { s.volumeRamp = v })} />
+      </Row>
+      {/* Pump, workload and soreness per group after each session (lib/muscle-feedback.js). */}
+      <Row icon="heart" iconTint="var(--red)" title={t('Ask how each muscle responded')}>
+        <Switch checked={S.muscleFeedback !== false} onChange={v => update(s => { s.muscleFeedback = v })} />
+      </Row>
     </Section>
 
     {/* ---------- training volume ---------- */}
@@ -292,6 +310,9 @@ export default function Settings() {
 
     {/* ---------- equipment ---------- */}
     <EquipmentCard S={S} update={update} />
+
+    {/* ---------- bar and plates (lib/plates.js) ---------- */}
+    <PlatesSettings S={S} update={update} />
 
     {/* ---------- appearance ---------- */}
     <Section title={t('Appearance')} footer={DEMO || MOBILE ? undefined : t('synced with your profile')}>

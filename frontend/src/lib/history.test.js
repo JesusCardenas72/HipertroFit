@@ -99,15 +99,20 @@ describe('effortOf', () => {
     expect(effortOf({ effort: 'rpe' })).toBe('rpe')
     expect(effortOf({ effort: 'rir' })).toBe('rir')
     expect(effortOf({ effort: 'none' })).toBe('none')
-    expect(effortOf({})).toBe('none')
+  })
+
+  it('logs RIR for a profile that never chose', () => {
+    expect(effortOf({})).toBe('rir')
+    expect(effortOf({ effort: null })).toBe('rir')
+    expect(effortOf(null)).toBe('rir')
   })
 
   it('keeps the column for a profile still carrying the old showRir flag', () => {
     expect(effortOf({ showRir: true })).toBe('rir')
     // what a stored profile actually looks like once it is overlaid on DEF
     expect(effortOf({ effort: null, showRir: true })).toBe('rir')
-    expect(effortOf({ effort: null })).toBe('none')
     expect(effortOf({ showRir: false })).toBe('none')
+    expect(effortOf({ effort: null, showRir: false })).toBe('none')
     // once the new setting is chosen it wins, whatever the old flag said
     expect(effortOf({ showRir: true, effort: 'rpe' })).toBe('rpe')
     expect(effortOf({ showRir: true, effort: 'none' })).toBe('none')
@@ -123,8 +128,8 @@ describe('effortOf', () => {
     // arrive as a stored object spread over the defaults, and all must keep the column
     expect(effortOf(overlay({ showRir: true }))).toBe('rir')
     expect(effortOf(overlay({ showRir: false }))).toBe('none')
-    // a profile predating the RIR feature entirely
-    expect(effortOf(overlay({}))).toBe('none')
+    // a profile predating the RIR feature entirely: it never chose, so it logs RIR
+    expect(effortOf(overlay({}))).toBe('rir')
     // and one written by this version
     expect(effortOf(overlay({ effort: 'rpe' }))).toBe('rpe')
     // an old backup restored over a profile that had already chosen: the file wins, because
@@ -132,12 +137,11 @@ describe('effortOf', () => {
     expect(effortOf(overlay({ showRir: true, effort: undefined }))).toBe('rir')
   })
 
-  it('is not fooled by a junk value', () => {
-    expect(effortOf({ effort: 'rpe10' })).toBe('none')
-    expect(effortOf({ effort: 'RIR' })).toBe('none')
-    expect(effortOf({ effort: 'f' })).toBe('none')
-    expect(effortOf(null)).toBe('none')
-    expect(effortOf(undefined)).toBe('none')
+  it('is not fooled by a junk value: that is no choice, so the default holds', () => {
+    expect(effortOf({ effort: 'rpe10' })).toBe('rir')
+    expect(effortOf({ effort: 'RIR' })).toBe('rir')
+    expect(effortOf({ effort: 'f', showRir: false })).toBe('none')
+    expect(effortOf(undefined)).toBe('rir')
     // a junk value with the old flag still set falls back rather than showing nothing
     expect(effortOf({ effort: 'nope', showRir: true })).toBe('rir')
   })

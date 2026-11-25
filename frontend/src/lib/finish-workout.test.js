@@ -103,3 +103,12 @@ describe('session notes', () => {
     expect(completed.entries[1]).not.toHaveProperty('aim')
   })
 })
+
+describe('target RIR', () => {
+  const active = { id: 'a', d: '2026-08-08', start: 1000, routineId: 'r', entries: [{ id: 'x', sets: [{ done: true, w: 60, r: 8 }] }] }
+  it('keeps the RIR the mesocycle aimed the session at, and adds nothing without one', () => {
+    expect(buildCompletedWorkout({ ...active, rirGoal: 2 }, { end: 2000 }).rirGoal).toBe(2)
+    expect(buildCompletedWorkout({ ...active, rirGoal: 0 }, { end: 2000 }).rirGoal).toBe(0)
+    expect(buildCompletedWorkout(active, { end: 2000 })).not.toHaveProperty('rirGoal')
+  })
+})

@@ -12,6 +12,9 @@ import { deloadControlSheet } from './Deload.jsx'
 import { programSheet } from '../sheets.jsx'
 import Icon from './Icon.jsx'
 import { Button } from './ui.jsx'
+import { FeedbackAdjustments, adjustmentsOn } from './MuscleFeedback.jsx'
+import { feedbackPlan } from '../lib/muscle-feedback.js'
+import { applyProposal } from '../lib/ai-actions.js'
 
 // The three things you do to a microcycle as a whole, as one row of buttons: take a deload,
 // close it and open another, lay it out. On Home they sit between the microcycle card and the
@@ -32,14 +35,38 @@ export function openNextCycle(strategy) {
   if (strategy !== before && (strategy === 'custom' || !steps || microcycleLen(after) % steps)) programSheet()
 }
 
+// Whether opening the next microcycle has set changes from the feedback to show first.
+const feedbackToReview = S => adjustmentsOn(S) && feedbackPlan(S).changes.length > 0
+
+/**
+ * "Start the next microcycle" under the same strategy: straight away, unless the microcycle's
+ * feedback proposes set changes — those go through the close sheet, where they are listed and
+ * can be switched off, never applied unseen.
+ */
+export function startNextCycle() {
+  const S = useStore.getState().S
+  if (feedbackToReview(S)) closeMicrocycleSheet()
+  else openNextCycle(strategyOf(S))
+}
+
 /* ---------- close the microcycle and pick the strategy of the next one ---------- */
 function CloseMicrocycle({ close }) {
   const S = useStore(s => s.S)
   const pos = cyclePosition(S)
   const meso = mesoState(S)
   const [pick, setPick] = useState(strategyOf(S))
+  const [skip, setSkip] = useState([])
 
-  const confirm = () => { close(); openNextCycle(pick) }
+  // The set changes the microcycle's feedback proposes (and the user left on) are written into
+  // the routines first, so the new microcycle opens on them.
+  const confirm = () => {
+    const now = useStore.getState().S
+    const { changes } = adjustmentsOn(now) ? feedbackPlan(now, { skip }) : { changes: [] }
+    let applied = false
+    if (changes.length) useStore.getState().update(d => { applied = applyProposal(d, { kind: 'volume', changes }) })
+    close(); openNextCycle(pick)
+    if (applied) useUI.getState().toast(t('Sets adjusted for the next microcycle'))
+  }
 
   return <>
     <h3 className="row" style={{ gap: 8 }}><Icon name="flag" />{t('Close microcycle')}</h3>
@@ -58,6 +85,7 @@ function CloseMicrocycle({ close }) {
         {pick === x.key && <Icon name="check" style={{ color: 'var(--acc)' }} />}
       </div>)}
     </div>
+    <FeedbackAdjustments S={S} skip={skip} setSkip={setSkip} />
     {resumableOf(S).length > 0 && <div className="small row" style={{ gap: 6, color: 'var(--orange)', marginBottom: 14 }}>
       <Icon name="pause" />{t('Its paused workouts can no longer be resumed once it closes.')}
     </div>}
@@ -74,6 +102,7 @@ function MicrocycleOver({ close }) {
   const pos = cyclePosition(S)
   const meso = mesoState(S)
   const next = carriedBase(S) + 1
+  const review = feedbackToReview(S)
   return <div style={{ textAlign: 'center', padding: '4px 0' }}>
     <div className="deload-hero micro-hero"><Icon name="flag" /></div>
     <h3 style={{ marginBottom: 8 }}>{t('Microcycle #{0} is over', meso.number)}</h3>
@@ -81,7 +110,10 @@ function MicrocycleOver({ close }) {
       {t('{0} – {1} · {2} of {3} sessions. All its days, rest days included, have passed. Start microcycle #{4}?',
         fmtDate(pos.start), fmtDate(cycleEndOf(S) || todayISO()), pos.sessions, pos.len, next)}
     </div>
-    <Button variant="primary" icon="flag" onClick={() => { close(); openNextCycle(strategyOf(S)) }}>{t('Start microcycle #{0}', next)}</Button>
+    {review && <div className="small" style={{ marginBottom: 12, color: 'var(--acc)' }}>{t('Closing it proposes adjusting some sets.')}</div>}
+    <Button variant="primary" icon="flag" onClick={() => { close(); startNextCycle() }}>
+      {review ? t('Review and start #{0}', next) : t('Start microcycle #{0}', next)}
+    </Button>
     <div style={{ height: 8 }} />
     <Button icon="target" onClick={() => { close(); closeMicrocycleSheet() }}>{t('Change strategy')}</Button>
     <div style={{ height: 8 }} />

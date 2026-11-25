@@ -34,6 +34,17 @@ export const DEF = {
   // Mesocycle bookkeeping: which microcycle indices are deloads, which suggestions were
   // postponed, and the last reduction the user chose. See lib/mesocycle.js.
   meso: null,
+  // After each session, ask how every trained group responded (pump, workload, soreness); the
+  // answers adjust the sets when the microcycle closes. See lib/muscle-feedback.js.
+  muscleFeedback: true,
+  // Aim the effort of the work sets at the mesocycle's RIR for this microcycle (3, 2, 1, 0 and
+  // the deload's 4). See rirGoalOf in lib/mesocycle.js.
+  rirPlan: true,
+  // Climb the planned volume one set per group each loading microcycle and start every mesocycle
+  // from the bottom of the band. See rampOn in lib/muscle-feedback.js.
+  volumeRamp: true,
+  // Android app: the running session as an ongoing notification. See lib/session-notice.js.
+  sessionNotice: true,
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
   // Sessions left paused instead of finished — each one the running session as it was, plus
   // `pausedAt`. Resumable while their microcycle runs; not counted until finished. See
@@ -44,8 +55,8 @@ export const DEF = {
   setView: 'drum',
   // effort: which per-set effort scale is logged — 'none' | 'rir' | 'rpe'. null, not 'none', so
   // that a profile which never chose (loaded state is overlaid on DEF, on every path: local,
-  // server pull, backup import) still falls back to the `showRir` boolean this replaced and
-  // keeps the column it had. See effortOf.
+  // server pull, backup import) falls back to the `showRir` boolean this replaced, and without
+  // it to RIR — the default, since volume, the target RIR and the feedback all read it. See effortOf.
   reminder: { on: false, time: '08:00', tz: null }, effort: null, autoBackup: false,
   // Equipment profiles (issue: filter Library/picker/routines by what you actually own —
   // e.g. "Home" vs "Gym" — building on the session-only equipment filter from issue #6).

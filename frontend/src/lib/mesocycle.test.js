@@ -3,10 +3,10 @@ import {
   DELOAD_AFTER, DELOAD_MAX, DELOAD_PCT, emptyMeso, mesoOf, isDeloadCycle,
   mesoState, acceptDeload, postponeDeload, setDeloadPct, applyDeload,
   forceDeloadNow, forceDeloadNext, cancelDeload, exitDeload, deloadNotice, markDeloadNotified, isDeloadWorkout,
-  restartMeso, microNumber, carriedBase, shiftMeso,
+  restartMeso, microNumber, carriedBase, shiftMeso, rirGoalOf, RIR_SCHEDULE, DELOAD_RIR, withRirGoal,
 } from './mesocycle.js'
 import { closeMicrocycle } from './microcycle.js'
-import { deloadActiveSession, undeloadActiveSession } from './session-start.js'
+import { deloadActiveSession, undeloadActiveSession, buildSessionEntries } from './session-start.js'
 
 // A profile whose block is 3 sessions long, so `n` sessions is exactly n/3 microcycles.
 const state = (sessions, meso) => ({
@@ -318,5 +318,69 @@ describe('shifting the block count down', () => {
 
   it('starts the mesocycle over after a closed deload', () => {
     expect(shiftMeso(state(12, { deloads: [3] }), 4).base).toBe(0)
+  })
+})
+
+describe('the target RIR of each microcycle', () => {
+  it('steps one rep closer to failure per loading microcycle: 3, 2, 1', () => {
+    expect(RIR_SCHEDULE).toEqual([3, 2, 1, 0])
+    expect(rirGoalOf(state(0))).toBe(3)
+    expect(rirGoalOf(state(4))).toBe(2)     // microcycle #2 under way
+    expect(rirGoalOf(state(7))).toBe(1)     // #3
+  })
+
+  it('goes to failure while the deload is put off, and never past it', () => {
+    expect(rirGoalOf(state(10))).toBe(0)    // #4
+    expect(rirGoalOf(state(16))).toBe(0)    // #6, past the ceiling
+  })
+
+  it('aims well away from failure on a deload, then starts the ramp again', () => {
+    const deload = state(10, { deloads: [3] })   // microcycle index 3 under way
+    expect(mesoState(deload).deload).toBe(true)
+    expect(rirGoalOf(deload)).toBe(DELOAD_RIR)
+    expect(rirGoalOf(state(13, { deloads: [3] }))).toBe(3)   // #1 of the next mesocycle
+  })
+
+  it('counts from the loading microcycles carried over when the block count restarts', () => {
+    expect(rirGoalOf(state(0, { base: 2 }))).toBe(1)
+  })
+
+  it('is off when switched off', () => {
+    expect(rirGoalOf({ ...state(0), rirPlan: false })).toBeNull()
+    expect(rirGoalOf(null)).toBeNull()
+  })
+
+  it('works without calendar programming: the microcycles count from the first workout', () => {
+    expect(rirGoalOf({ ...state(4), program: null, microcycleSessions: 3 })).toBe(2)
+  })
+})
+
+describe('the target RIR in a session', () => {
+  const cfg = { id: 'x-bench', tg: 'chest', sets: 2, reps: 8, w: 100, policy: 'linear' }
+  const st = extra => ({
+    unit: 'kg', effort: 'rir', exWeights: {}, customEx: [], exDefaults: {},
+    routines: [{ id: 'r', name: 'Push', ex: [cfg] }],
+    workouts: [{ id: 'w0', d: '2026-01-01', start: 1, routineId: 'r',
+      entries: [{ id: 'x-bench', sets: [{ w: 100, r: 8, rir: 3, done: true }, { w: 100, r: 8, rir: 3, done: true }], target: cfg }] }],
+    ...extra,
+  })
+
+  it('stamps it on the plans and seeds it into the work rows', () => {
+    const { entries } = buildSessionEntries(st(), st().routines[0], { rirGoal: 1 })
+    expect(entries[0].plan.rirGoal).toBe(1)
+    expect(entries[0].sets.filter(s => !s.phase).map(s => s.rir)).toEqual([1, 1])
+  })
+
+  it('leaves a deload session and a missing target alone', () => {
+    expect(buildSessionEntries(st(), st().routines[0], { deload: 0.4, rirGoal: 4 }).entries[0].plan).toEqual({ policy: 'off', kind: 'off' })
+    expect(buildSessionEntries(st(), st().routines[0]).entries[0].plan).not.toHaveProperty('rirGoal')
+    expect(withRirGoal(null, 2)).toBeNull()
+    expect(withRirGoal({ kind: 'up' }, null)).toEqual({ kind: 'up' })
+  })
+
+  it('aims a session brought down to a deload at the deload’s RIR, and only one that had a target', () => {
+    const active = { id: 'a', rirGoal: 2, entries: [] }
+    expect(deloadActiveSession(active, 0.4).rirGoal).toBe(DELOAD_RIR)
+    expect(deloadActiveSession({ id: 'b', entries: [] }, 0.4)).not.toHaveProperty('rirGoal')
   })
 })

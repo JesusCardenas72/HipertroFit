@@ -31,6 +31,9 @@ import { isWarmupRow } from '../lib/workout-model.js'
 import { doubleProgressExercises, doubleProgressStatus } from '../lib/double-progress.js'
 import { DoubleProgressMeter } from '../components/DoubleProgress.jsx'
 import { aiAnalysisSheet } from '../components/AiAnalysis.jsx'
+import StalledCard from '../components/StalledCard.jsx'
+import MeasuresCard from '../components/MeasuresCard.jsx'
+import MesoReportCard from '../components/MesoReport.jsx'
 
 // Which muscles the training in a window actually hit — and, the point of the card,
 // which ones it keeps missing. Shading is relative within the window (lib/muscles.js).
@@ -518,7 +521,13 @@ export default function Stats() {
         <div className="chart"><LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} /></div>
       </div>
 
+      <MesoReportCard S={S} />
+
+      <MeasuresCard S={S} />
+
       <DoubleProgressCard S={S} />
+
+      <StalledCard S={S} onPick={x => { setExId(x.id); setExMetric(x.metric === 'e1rm' ? 'e1rm' : 'top') }} />
 
       <div className="card">
         <h2>{t('Exercise progress')}</h2>
