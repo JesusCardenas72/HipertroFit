@@ -74,6 +74,10 @@ export default function MicrocycleCard() {
   // A session left paused in this microcycle is what today offers first: the one of today's
   // routine when there is one, else the last one paused (lib/paused-workout.js).
   const pausedNow = S.active ? null : (next && pausedFor(S, next.id, today)) || resumableOf(S, today)[0] || null
+  // The colour of the "Today" row, as its tag says it: running or paused, done, deload, to start.
+  // Green to start, not the accent: with a blue accent it would melt into the blue tiles below.
+  const mainTint = S.active || pausedNow ? 'var(--orange)' : doneToday ? 'var(--green)'
+    : next ? (meso.deload ? 'var(--deload)' : 'var(--green)') : null
   const onToday = () => {
     if (S.active) { useUI.getState().resumeWorkout(); nav('/workout') }
     else if (pausedNow) resumePausedWorkout(pausedNow.id)
@@ -146,8 +150,10 @@ export default function MicrocycleCard() {
       {meso.deload ? <b style={{ color: 'var(--deload)' }}> · {t('Deload')}</b> : ''}
     </div>
 
-    {/* Once today's session is logged the row stops asking for it — the strip already knows. */}
-    <div className="today-row" {...tappable(onToday)}>
+    {/* Once today's session is logged the row stops asking for it — the strip already knows.
+        The main row of the three: tinted like the two tiles under it, in the colour of its state
+        and a step stronger (.today-row.main); a rest day keeps the plain surface. */}
+    <div className={'today-row' + (mainTint ? ' main' : '')} style={mainTint ? { '--main': mainTint } : undefined} {...tappable(onToday)}>
       <div className="row" style={{ gap: 9, minWidth: 0 }}>
         <span className="lrow-i" style={{ background: S.active || pausedNow ? 'var(--orange)' : doneToday ? 'var(--surface-3)' : next ? 'var(--acc)' : 'var(--surface-3)' }}>
           <Icon name={S.active ? 'timer' : pausedNow ? 'pause' : doneToday ? 'checkCircle' : next ? glyphOf(next.emoji) : 'moon'}
