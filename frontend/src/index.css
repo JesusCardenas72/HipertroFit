@@ -36,6 +36,22 @@
   --sep-op:    rgba(84,84,88,.34);   /* for edges sitting over blur */
   --hair:      .5px;
 
+  /* box relief. On black a drop shadow is invisible, so dark builds the depth inside the box,
+     all with inset shadows (they paint over any background, halo included, and need no extra
+     markup): a lit top bevel, a faint rim, light falling in from the top edge and fading down,
+     and the lower edge sinking into shade. The two outer shadows only read where a box sits
+     on a lighter fill (a sheet, another card). */
+  --lift:
+    inset 0 1px 0 rgba(255,255,255,.11),
+    inset 0 0 0 .5px rgba(255,255,255,.07),
+    inset 0 30px 34px -30px rgba(255,255,255,.07),
+    inset 0 -1px 0 rgba(0,0,0,.55),
+    inset 0 -22px 26px -22px rgba(0,0,0,.42),
+    0 1px 0 rgba(0,0,0,.8),
+    0 10px 22px -10px rgba(0,0,0,.95);
+  --halo-rim: 30%;  /* accent strength of a .halo box's rim */
+  --halo-a: 16%;   /* accent strength of .halo */
+
   /* system palette (iOS dark values) */
   --blue:#0a84ff; --green:#30d158; --red:#ff453a; --orange:#ff9f0a;
   --yellow:#ffd60a; --teal:#40c8e0; --indigo:#5e5ce6; --pink:#ff375f;
@@ -72,17 +88,26 @@
   --sar:env(safe-area-inset-right,0px);
 }
 
+/* Light theme, "relief" palette. The iOS greys (60,60,67 at .60/.30/.16) measured 3.4:1,
+   1.7:1 and 1.3:1 on a white card, and the white card sat at 1.12:1 on #f2f2f7 with no edge,
+   so secondary text and the boxes themselves washed out while dark mode read fine (5.9:1).
+   Solid greys now: label-2 9.1:1, label-3 5.1:1, label-4 2.3:1 (rings, grab handles, dashes),
+   a slightly deeper page and a soft lift on the boxes (--lift, applied below the reset). */
 :root[data-theme="light"] {
-  --bg:        #f2f2f7;
-  --bg-el:     #f7f7fa;
+  --bg:        #ebecf0;
+  --bg-el:     #f4f5f8;
   --surface:   #ffffff;
-  --surface-2: #ececef;
-  --surface-3: #e3e3e8;
+  --surface-2: #e8e9ed;
+  --surface-3: #dddee4;
 
   --label:     #000000;
-  --label-2:   rgba(60,60,67,.60);
-  --label-3:   rgba(60,60,67,.30);
-  --label-4:   rgba(60,60,67,.16);
+  --label-2:   #48484f;
+  --label-3:   #6e6e76;
+  --label-4:   #a9a9b1;
+
+  --lift: 0 1px 2px rgba(0,0,0,.06), 0 6px 16px -6px rgba(0,0,0,.14);
+  --halo-a: 12%;
+  --halo-rim: 22%;
 
   --sep:       rgba(60,60,67,.29);
   --sep-op:    rgba(60,60,67,.20);
@@ -118,6 +143,9 @@
 
 /* ---------------------------------------------------------------- reset -- */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* lift the boxes off the page (both themes, see --lift). Zero specificity on purpose, so any
+   box-shadow a component sets for itself (deload ring, today-row outline, armed strip…) still wins. */
+:where(.card,.sect-b,.item,.tile,.efftbl,.exnote,.sf-rec,.cal-d,.glyph-cell,.today-row,.prog-day){box-shadow:var(--lift)}
 /* Settings ▸ Appearance (lib/display.js): --fs scales every font size; --ui-zoom is the CSS zoom
    a desktop browser draws the app at, which --vh / --dvh take back out of the viewport units. */
 :root{--fs:1;--ui-zoom:1;--vh:calc(1vh / var(--ui-zoom));--dvh:var(--vh)}
@@ -276,6 +304,9 @@ body.resting .app{padding-bottom:calc(250px + var(--sab))}
 /* --brand-h is the title block's measured height (Home.jsx); the calc is only the fallback without
    ResizeObserver: h1 line (34px × 1.06) + .sub margin (4px) + .sub line (15px × 1.29). The width
    follows from the mark's own aspect ratio */
+/* the mark is one cyan (#04e4f4): fine on black, 1.33:1 on the light page. Darkened there to
+   #027d86, 4.1:1, still the same hue. The splash (index.html) does the same. */
+:root[data-theme="light"] .brand-mark{filter:brightness(.55)}
 .hdr-brand{flex:none;height:var(--brand-h, calc((34px * 1.06 + 15px * 1.29) * var(--fs) + 4px));width:auto;aspect-ratio:auto;object-fit:contain;align-self:flex-end}
 .hdr-home .iconbtn{margin-left:auto}
 .hdr-title{flex:0 1 auto;min-width:0}
@@ -1329,7 +1360,7 @@ h4.sec{
 .prog-prev{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
 .prog-day{display:flex;flex-direction:column;align-items:center;gap:3px;flex:none;
   background:var(--surface-2);border-radius:10px;padding:7px 7px 6px;min-width:46px}
-.prog-day.today{box-shadow:inset 0 0 0 1.5px var(--acc)}
+.prog-day.today{box-shadow:inset 0 0 0 1.5px var(--acc),var(--lift)}
 .prog-day .wd{font-size:calc(10px * var(--fs));color:var(--label-3);text-transform:uppercase;letter-spacing:.02em}
 .prog-day .dn{font-size:calc(14px * var(--fs));font-weight:600;line-height:1}
 .prog-day .lrow-i.sm{width:26px;height:26px;font-size:calc(13px * var(--fs));margin-top:1px}
@@ -1347,11 +1378,23 @@ h4.sec{
   box-shadow:0 0 0 1.5px var(--surface)}
 /* A day with a session left paused: the pause glyph, ringed, since tapping it resumes the session. */
 .prog-day.paused .lrow-i.sm{box-shadow:inset 0 0 0 1.5px var(--orange)}
-.prog-day.deload.today{box-shadow:inset 0 0 0 1.5px var(--deload)}
+.prog-day.deload.today{box-shadow:inset 0 0 0 1.5px var(--deload),var(--lift)}
 
 /* --- stat tiles --- */
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .tile{background:var(--surface);border-radius:var(--r-card);padding:14px}
+
+/* featured boxes: the accent glows in from the top-right corner, the same light as the
+   in-workout hero (.dh). Only on the few boxes that lead a screen, never on lists. --halo-c
+   picks the colour (deload weeks glow indigo), --halo-a the strength per theme. */
+.halo{
+  --halo-c:var(--acc);
+  background:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--halo-c) var(--halo-a),transparent),transparent 62%),var(--surface);
+  /* the relief plus an accent rim; a box's own ring (.card.deload) is more specific and wins */
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--halo-c) var(--halo-rim),transparent),var(--lift);
+}
+.halo.deload{--halo-c:var(--deload)}
+.halo.gold{--halo-c:var(--yellow)}
 .tile .l{
   color:var(--label-2);font-size:calc(13px * var(--fs));font-weight:400;letter-spacing:-.004em;
   text-transform:none;display:flex;align-items:center;gap:5px;
@@ -1552,7 +1595,7 @@ h4.sec{
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;
   min-height:76px;padding:10px 6px;border-radius:var(--r);
   background:color-mix(in srgb,var(--c) 15%,var(--surface));
-  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 28%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 28%,transparent),var(--lift);
   color:var(--label);font-size:calc(12px * var(--fs));font-weight:600;line-height:1.15;
   letter-spacing:-.005em;text-align:center;
   transition:background var(--fast),transform var(--fast);
@@ -1576,7 +1619,7 @@ h4.sec{
 .micro-btn span.t{max-width:100%;overflow-wrap:anywhere}
 .micro-btn:active{background:color-mix(in srgb,var(--c) 26%,var(--surface));transform:scale(.97)}
 /* a deload running or booked: the card fills in, like the deload badges do */
-.micro-btn.dl.on{background:color-mix(in srgb,var(--c) 28%,var(--surface));box-shadow:inset 0 0 0 1.5px var(--deload-line)}
+.micro-btn.dl.on{background:color-mix(in srgb,var(--c) 28%,var(--surface));box-shadow:inset 0 0 0 1.5px var(--deload-line),var(--lift)}
 
 /* --- home: today's session row --- */
 .today-row{
@@ -2297,7 +2340,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .item.free .tt{color:var(--blue);font-weight:500}
 .item.free .tag{background:color-mix(in srgb,var(--blue) 22%,transparent);color:var(--blue)}
 /* The same freestyle colour under the home screen's "Today" row and in the check-in sheet. */
-.today-row.free{margin-top:8px;background:color-mix(in srgb,var(--blue) 16%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue) 35%,transparent)}
+.today-row.free{margin-top:8px;background:color-mix(in srgb,var(--blue) 16%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue) 35%,transparent),var(--lift)}
 .today-row.free:hover,:root[data-theme="light"] .today-row.free:hover{background:color-mix(in srgb,var(--blue) 21%,var(--surface))}
 .today-row.free:active{background:color-mix(in srgb,var(--blue) 26%,var(--surface))}
 .today-row.free .lrow-i{--tint:var(--blue)}
@@ -2305,14 +2348,14 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .today-row.free .tag{background:color-mix(in srgb,var(--blue) 22%,transparent);color:var(--blue)}
 /* Home: "Log extra work" under the freestyle row — the same row in the neutral surface. */
 /* Log extra work: the same blue tile as the freestyle workout beside it. */
-.today-row.extra{margin-top:8px;background:color-mix(in srgb,var(--blue) 16%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue) 35%,transparent)}
+.today-row.extra{margin-top:8px;background:color-mix(in srgb,var(--blue) 16%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue) 35%,transparent),var(--lift)}
 .today-row.extra:hover,:root[data-theme="light"] .today-row.extra:hover{background:color-mix(in srgb,var(--blue) 21%,var(--surface))}
 .today-row.extra:active{background:color-mix(in srgb,var(--blue) 26%,var(--surface))}
 .today-row.extra .ttl{color:var(--blue);text-transform:none}
 .today-row.extra .chev{color:var(--blue)}
 /* Today's session, the main row of the three: the same tinted look in the colour of its state
    (--main, set inline by MicrocycleCard), a step stronger — more tint, a firmer edge, bolder title. */
-.today-row.main{background:color-mix(in srgb,var(--main) 22%,var(--surface));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--main) 55%,transparent)}
+.today-row.main{background:color-mix(in srgb,var(--main) 22%,var(--surface));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--main) 55%,transparent),var(--lift)}
 .today-row.main:hover,:root[data-theme="light"] .today-row.main:hover{background:color-mix(in srgb,var(--main) 27%,var(--surface))}
 .today-row.main:active{background:color-mix(in srgb,var(--main) 32%,var(--surface))}
 .today-row.main .lbl2{color:color-mix(in srgb,var(--main) 75%,var(--label))}
@@ -2474,3 +2517,29 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .picker-gaps .pg-tags{display:flex;flex-wrap:wrap;gap:5px}
 .picker-gaps .pg-tag{text-transform:none;gap:5px}
 .picker-gaps .pg-tag b{font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ------------------------------------------------- dark: gradient surfaces -- */
+/* Dark only. Every box and button gets a light that falls from the top and a shade that pools
+   at the bottom, so it reads as an object instead of a flat patch of grey. The gradients are
+   translucent white/black and only set background-image, so they ride on top of whatever colour
+   the component paints (tinted rows, pressed states, accent fills) without touching it.
+   - sheen-box: large boxes. Fixed-height bands, so a tall card isn't dimmed all the way down.
+   - sheen-ctl: buttons and small squares. Spans the whole control.
+   - gloss:     solid accent fills (primary buttons, the start disc, icon squares).
+   - corner:    the accent halo at a whisper, on cards and tiles that aren't featured (.halo). */
+:root:not([data-theme="light"]){
+  --sheen-box:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,0) 96px),
+              linear-gradient(0deg,rgba(0,0,0,.2),rgba(0,0,0,0) 72px);
+  --sheen-ctl:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.02) 52%,rgba(0,0,0,.18));
+  --gloss:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,0) 56%,rgba(0,0,0,.16));
+  --corner:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--acc) 7%,transparent),transparent 60%);
+}
+:root:not([data-theme="light"]) :is(.card,.tile):not(.halo){background-image:var(--corner),var(--sheen-box)}
+:root:not([data-theme="light"]) :is(.sect-b,.efftbl,.exnote,.ss-card,.drum-strip,.today-row){background-image:var(--sheen-box)}
+:root:not([data-theme="light"]) .halo{
+  background-image:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--halo-c) var(--halo-a),transparent),transparent 62%),var(--sheen-box);
+}
+:root:not([data-theme="light"]) :is(.item,.sf-rec,.cal-d,.glyph-cell,.prog-day,.micro-btn,.iconbtn,.bw-pm,.seg-sel,
+  .btn:not(.ghost):not(.plain):not(.primary),.chip:not(.on)){background-image:var(--sheen-ctl)}
+:root:not([data-theme="light"]) :is(.btn.primary,.chip.on,.dh-go,.lrow-i:not(:has(>.icn-img))),
+:root:not([data-theme="light"]) #tabbar button.start .cir{background-image:var(--gloss)}

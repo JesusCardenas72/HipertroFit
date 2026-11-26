@@ -95,7 +95,7 @@ export default function MicrocycleCard() {
     <div style={{ height: 8 }} /><Button onClick={() => nav('/plan')}>{t('Build my own plan')}</Button>
   </div>
 
-  return <div className={'card' + (meso.deload ? ' deload' : '')}>
+  return <div className={'card halo' + (meso.deload ? ' deload' : '')}>
     <DeloadStatus />
     {/* The deload / close / programming buttons live in the row under this card (MicrocycleActions). */}
     <div className="row between" style={{ marginBottom: 8, flexWrap: 'nowrap', alignItems: 'center' }}>

@@ -31,7 +31,10 @@
     overflow:hidden;background:#000;color:#fff;transition:opacity .35s ease;
     font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,system-ui,sans-serif;
   }
-  :root[data-theme="light"] .splash{background:#f2f2f7;color:#000}
+  :root[data-theme="light"] .splash{background:#ebecf0;color:#000}
+  /* the mark is one cyan (#04e4f4): 1.33:1 on the light page. Darkened to #027d86, 4.1:1;
+     same rule as .brand-mark in index.css. */
+  :root[data-theme="light"] .splash img{filter:brightness(.55)}
   /* The logo holds still in the launch background until the splash goes. */
   .splash-in{display:flex;flex-direction:column;align-items:center;gap:18px}
   .splash img{width:min(38vw,168px);height:auto}
