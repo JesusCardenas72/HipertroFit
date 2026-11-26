@@ -105,7 +105,18 @@
   --label-3:   #6e6e76;
   --label-4:   #a9a9b1;
 
-  --lift: 0 1px 2px rgba(0,0,0,.06), 0 6px 16px -6px rgba(0,0,0,.14);
+  /* the same bevel dark builds inside the box (a lit top edge, a faint rim, a shaded bottom edge),
+     plus a stacked drop shadow — tight contact, mid and a soft long one — that lifts it off the page */
+  --lift:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 0 0 .5px rgba(0,0,0,.07),
+    inset 0 -1px 0 rgba(0,0,0,.08),
+    0 1px 1px rgba(0,0,0,.08),
+    0 3px 6px -2px rgba(0,0,0,.1),
+    0 12px 22px -10px rgba(0,0,0,.26);
+  /* the relief over an exercise picture (workout dock): a soft gloss and a hint of rim */
+  --icon-sheen: linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 48%,rgba(0,0,0,.07));
+  --icon-bevel: inset 0 1px 0 rgba(255,255,255,.7), inset 0 0 0 .5px rgba(0,0,0,.08), inset 0 -2px 4px -1px rgba(0,0,0,.12);
   --halo-a: 12%;
   --halo-rim: 22%;
 
@@ -146,6 +157,10 @@
 /* lift the boxes off the page (both themes, see --lift). Zero specificity on purpose, so any
    box-shadow a component sets for itself (deload ring, today-row outline, armed strip…) still wins. */
 :where(.card,.sect-b,.item,.tile,.efftbl,.exnote,.sf-rec,.cal-d,.glyph-cell,.today-row,.prog-day){box-shadow:var(--lift)}
+/* the workout's own boxes and controls take the same relief: the steppers and fields (kg, reps,
+   RIR…), the set cards and the buttons beside them. Same zero specificity, so a ring a state
+   sets (.stp.invalid, .st-cell.off…) carries var(--lift) itself where it should keep it. */
+:where(.stp,.st-cell,.st-card,.st-add,.st-del,.dh-play,.setgo,.setrow .n,.wdock-thumb,.giftoggle.inline){box-shadow:var(--lift)}
 /* Settings ▸ Appearance (lib/display.js): --fs scales every font size; --ui-zoom is the CSS zoom
    a desktop browser draws the app at, which --vh / --dvh take back out of the viewport units. */
 :root{--fs:1;--ui-zoom:1;--vh:calc(1vh / var(--ui-zoom));--dvh:var(--vh)}
@@ -809,7 +824,7 @@ h4.sec{
   height:100%;min-height:40px;cursor:text;
 }
 .stp .num::-webkit-inner-spin-button{display:none}
-.stp.invalid{box-shadow:inset 0 0 0 1px var(--red)}
+.stp.invalid{box-shadow:inset 0 0 0 1px var(--red),var(--lift)}
 
 /* --- slider --- */
 .sld{position:relative;height:32px;display:flex;align-items:center;cursor:pointer;touch-action:none}
@@ -1485,26 +1500,41 @@ h4.sec{
 .wdock-thumb.lifted{z-index:2;filter:drop-shadow(0 8px 16px rgba(0,0,0,.45))}
 .wdock.is-dragging .wdock-thumb:not(.lifted):not(.magnet){opacity:.7}
 /* the exercise the lifted one will superset with if let go now */
-.wdock-thumb.magnet{box-shadow:0 0 0 2.5px var(--acc),0 0 14px var(--acc)}
+.wdock-thumb.magnet{box-shadow:0 0 0 2.5px var(--acc),0 0 14px var(--acc),var(--lift)}
 .wdock-thumb{
-  position:relative;flex:none;width:54px;height:54px;border-radius:50%;padding:0;
+  --dock-d:54px;
+  position:relative;flex:none;width:var(--dock-d);height:var(--dock-d);border-radius:50%;padding:0;
   background:var(--surface-2);overflow:visible;
   -webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
-  transition:transform var(--fast) var(--ease),box-shadow var(--fast);
+  transition:transform var(--fast) var(--ease),box-shadow var(--fast),opacity var(--med) var(--ease),filter var(--med) var(--ease);
+}
+/* The relief of a raised button, laid over the picture: an inset shadow alone would be painted
+   under the image and lost. Light from the top, shade pooling at the bottom (--icon-sheen). */
+.wdock-thumb::after{
+  content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:var(--icon-sheen);box-shadow:var(--icon-bevel);
 }
 .wdock-thumb .thumb{width:100%;height:100%;border-radius:50%;pointer-events:none}
-.wdock-thumb.on{box-shadow:0 0 0 2.5px var(--acc)}
+.wdock-thumb .thumb-wrap{width:100%;height:100%}
+.wdock-thumb.on{box-shadow:0 0 0 2.5px var(--acc),var(--lift)}
 .wdock-thumb.done .thumb{opacity:.5}
 .wdock-thumb:not(.on):active{transform:scale(.93)}
+/* In a running session the exercise in front stands out from the strip: 20% larger, the others
+   10% smaller and faded back. Real sizes, not a transform, so the capsule WorkoutDock draws
+   behind a superset is measured round them and still wraps them. Only with one current (:has):
+   the plan editor shows the same strip with none, and keeps every thumbnail as it is. */
+.wdock:has(.wdock-thumb.on) :is(.wdock-thumb,.wdock-add){--dock-d:49px}
+.wdock:has(.wdock-thumb.on) .wdock-thumb.on{--dock-d:65px}
+.wdock:has(.wdock-thumb.on) .wdock-thumb:not(.on):not(.lifted):not(.magnet){opacity:.5;filter:saturate(.25)}
 .wdock-check{
-  position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;
+  position:absolute;right:-2px;bottom:-2px;z-index:1;width:20px;height:20px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   background:var(--acc);color:var(--on-acc);font-size:calc(11px * var(--fs));
   box-shadow:0 0 0 2px var(--bg);
 }
 /* the empty slot the "+" fills, drawn as an outline so it never competes with an exercise */
 .wdock-add{
-  flex:none;width:54px;height:54px;border-radius:50%;
+  flex:none;width:var(--dock-d,54px);height:var(--dock-d,54px);border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   color:var(--label-3);font-size:calc(20px * var(--fs));
   box-shadow:inset 0 0 0 1.5px var(--sep);
@@ -1531,7 +1561,7 @@ h4.sec{
 .routine-drag-row.magnet .item.in-ss{box-shadow:inset 3px 0 0 var(--ss,var(--acc)),0 0 0 2.5px var(--acc),0 0 14px var(--acc)}
 .ss-card{
   border-radius:var(--r-lg);padding:14px;
-  background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--acc-line);
+  background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--acc-line),var(--lift);
 }
 .workout-swipe-surface{touch-action:pan-y}
 
@@ -1938,7 +1968,7 @@ h4.sec{
 
 .drum-strip{
   height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;border-radius:15px;
-  background:var(--surface);box-shadow:inset 0 0 0 var(--hair) var(--sep);color:var(--label-2);font-size:calc(14px * var(--fs));
+  background:var(--surface);box-shadow:inset 0 0 0 var(--hair) var(--sep),var(--lift);color:var(--label-2);font-size:calc(14px * var(--fs));
   transition:box-shadow var(--fast),background var(--fast);
 }
 .drum-strip .ds-k{display:flex;align-items:center;gap:4px;flex:none;min-width:70px;font-size:calc(11px * var(--fs));font-weight:500;
@@ -1961,7 +1991,7 @@ h4.sec{
   --hc:var(--acc);position:relative;overflow:hidden;border-radius:22px;padding:14px 14px 12px;
   background:radial-gradient(130% 85% at 100% 0%,color-mix(in srgb,var(--hc) 13%,transparent),transparent 62%),var(--surface);
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hc) 40%,transparent),0 20px 44px -22px rgba(0,0,0,.8),
-    0 0 0 5px color-mix(in srgb,var(--hc) 6%,transparent);
+    0 0 0 5px color-mix(in srgb,var(--hc) 6%,transparent),var(--lift);
   transition:box-shadow var(--med) var(--ease);
 }
 .dh.warm{--hc:var(--orange)}
@@ -2000,7 +2030,7 @@ h4.sec{
 .dh-apply svg{width:12px;height:12px}
 .dh-cols{display:flex;gap:10px;margin-top:10px}
 .dh-col{flex:1;min-width:0;display:flex;flex-direction:column;border-radius:17px;overflow:hidden;container-type:inline-size;
-  background:color-mix(in srgb,var(--surface-2) 88%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep)}
+  background:color-mix(in srgb,var(--surface-2) 88%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep),var(--lift)}
 .dh-col.eff{flex:.78}
 .dh-l{padding:9px 4px 0;font-size:calc(10.5px * var(--fs));font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--label-3);
   text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2036,7 +2066,7 @@ h4.sec{
 /* a tool bar: one capsule of equal slots, icon over a short label — the set's (.dh-bar, inside
    the drum's hero) and the session's running order (.wtools, at the foot of the workout) */
 .dh-bar,.wtools,.wview{display:flex;align-items:stretch;margin-top:10px;border-radius:14px;overflow:hidden;
-  background:color-mix(in srgb,var(--surface-2) 70%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep)}
+  background:color-mix(in srgb,var(--surface-2) 70%,transparent);box-shadow:inset 0 0 0 var(--hair) var(--sep),var(--lift)}
 .dh-tool,.wtool{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   padding:8px 2px 7px;color:var(--label-2);font-size:calc(10.5px * var(--fs));font-weight:600;letter-spacing:.01em;
   transition:background var(--fast),color var(--fast)}
@@ -2115,7 +2145,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .dh-go:active{transform:scale(.97)}
 .dh-go-ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:calc(15px * var(--fs));
   background:rgba(0,0,0,.18);--icon-stroke:2.8}
-.dh-go.on{background:var(--surface-2);color:var(--label-2);box-shadow:none;font-weight:500;font-size:calc(14px * var(--fs))}
+.dh-go.on{background:var(--surface-2);color:var(--label-2);box-shadow:var(--lift);font-weight:500;font-size:calc(14px * var(--fs))}
 .dh-go.on .dh-go-ic{background:var(--acc);color:var(--on-acc)}
 .dh-play{width:clamp(56px,calc(7.4 * var(--vh)),68px);height:clamp(56px,calc(7.4 * var(--vh)),68px);flex:none;border-radius:17px;display:grid;place-items:center;font-size:calc(21px * var(--fs));
   background:var(--surface-2);color:var(--hc)}
@@ -2180,13 +2210,13 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .st-hd>span:first-child{text-align:center}
 .setswipe>.st-row:not(.st-hd){
   padding:6px 8px;margin-bottom:6px;border-radius:14px;background:var(--surface);
-  box-shadow:inset 0 0 0 1px var(--sep);
+  box-shadow:inset 0 0 0 1px var(--sep),var(--lift);
   transition:box-shadow var(--med) var(--ease),background var(--med) var(--ease);
 }
-.setswipe>.st-row.next{box-shadow:inset 0 0 0 1.5px var(--label-4)}
+.setswipe>.st-row.next{box-shadow:inset 0 0 0 1.5px var(--label-4),var(--lift)}
 /* a finished set: ringed in the accent over a faint wash of it, numbers dimmed, check filled */
 .setswipe>.st-row.done{
-  box-shadow:inset 0 0 0 1.5px var(--acc);
+  box-shadow:inset 0 0 0 1.5px var(--acc),var(--lift);
   background:color-mix(in srgb,var(--acc) 6%,var(--surface));
 }
 /* a drop's line is not a card of its own: it only covers the delete track while it is pulled */
@@ -2206,13 +2236,13 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .st-cell .num::-webkit-inner-spin-button{display:none}
 .st-row.done .st-cell .num{color:var(--label-3)}
 /* the row has drifted from the target: the cell keeps what you typed, the target rides under it */
-.st-cell.off{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 45%,transparent)}
+.st-cell.off{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 45%,transparent),var(--lift)}
 .st-aim{
   position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);
   font-size:calc(10px * var(--fs));font-weight:600;line-height:1;padding:2px 5px;border-radius:6px;
   background:var(--acc);color:var(--on-acc);white-space:nowrap;
 }
-.st-row .chk.st-ck{width:42px;height:40px;border-radius:10px;background:var(--surface-2);box-shadow:none;color:var(--label-3)}
+.st-row .chk.st-ck{width:42px;height:40px;border-radius:10px;background:var(--surface-2);box-shadow:var(--lift);color:var(--label-3)}
 .st-row .chk.st-ck.on{background:var(--acc);color:var(--on-acc)}
 /* a set's own tools: the foot's buttons, a size down — tighter top and bottom */
 .st-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px;margin:0 0 8px 38px}
@@ -2256,7 +2286,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .st-row.st-drop .st-n{gap:1px;font-size:calc(12px * var(--fs));font-weight:700;color:var(--purple)}
 .st-row.st-drop .st-n svg{width:11px;height:11px;color:var(--label-3)}
 .st-row.st-drop .st-n{background:none}
-.st-drop .st-cell.cut{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--purple) 70%,transparent)}
+.st-drop .st-cell.cut{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--purple) 70%,transparent),var(--lift)}
 .st-drop .st-cell.cut .num{color:var(--purple)}
 .st-drop .st-cell.cut .st-prev{color:var(--purple)}
 .st-row.st-drop.done .st-cell .num{color:var(--label-3)}
@@ -2274,9 +2304,9 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .st-del:active{transform:scale(.92)}
 /* a rest-pause burst: the drop's line in blue — R-P badge, its reps ringed, the pause on top */
 .st-row.st-burst .st-n{color:var(--blue);font-size:calc(11px * var(--fs));gap:0;white-space:nowrap}
-.st-burst .st-cell.cut{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--blue) 70%,transparent)}
+.st-burst .st-cell.cut{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--blue) 70%,transparent),var(--lift)}
 .st-burst .st-cell.cut .num{color:var(--blue)}
-.st-burst .st-cell.rest{background:none}
+.st-burst .st-cell.rest{background:none;box-shadow:none}
 .st-burst .st-cell.rest .st-prev{color:var(--blue)}
 .st-ro{display:flex;align-items:center;justify-content:center;height:42px;font-size:calc(15px * var(--fs));font-weight:600;color:var(--label-4)}
 .st-n{touch-action:manipulation}
@@ -2432,7 +2462,7 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .sf-tab.last::before{bottom:6px;border-radius:0 0 4px 4px}
 .sf-th{position:relative;z-index:1;display:block;width:46px;height:46px;border-radius:11px;overflow:hidden;background:var(--surface-2);
   opacity:.6;box-shadow:inset 0 0 0 2px var(--ss,var(--sep));
-  transition:width var(--med) var(--ease),height var(--med) var(--ease),opacity var(--fast),box-shadow var(--fast)}
+  transition:width var(--med) var(--ease),height var(--med) var(--ease),opacity var(--fast),box-shadow var(--fast),filter var(--med)}
 .sf-th .thumb{display:block;width:100%;height:100%;border-radius:0;pointer-events:none}
 .sf-tab.done:not(.on) .sf-th{opacity:.35}
 /* The unit being worked — the exercise, or every exercise linked in its superset — is laid over
@@ -2452,9 +2482,20 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .sf-frame{position:absolute;z-index:3;pointer-events:none;box-sizing:border-box;
   border:2px solid var(--ss,var(--acc));border-radius:16px;
   transition:top var(--med) var(--ease),left var(--med) var(--ease),width var(--med) var(--ease),height var(--med) var(--ease)}
-.sf-tab.on .sf-th{width:56px;height:56px;border-radius:13px;opacity:1;
+/* Only the exercise being worked grows, the same rule as the dock (.wdock-thumb.on): in a
+   superset the partner waiting its turn stays the size of every other tab, faded like them, so
+   the one in front is never in doubt. 62px is as large as the 74px column allows: the band's
+   inset comes down to 5px (its bar is hidden on superset and solo tabs anyway), leaving room for
+   the 3px ring and the superset frame's 6px around it — the rail scrolls, so past it is clipped. */
+.sf-tab.on{padding-left:5px}
+.sf-tab.cur .sf-th{width:62px;height:62px;border-radius:14px;opacity:1;filter:none;
   background:color-mix(in srgb,var(--ss,var(--acc)) 45%,var(--surface-2));
   box-shadow:0 0 0 3px var(--ss,var(--acc)),0 6px 16px rgba(0,0,0,.5)}
+.sf-th{width:41px;height:41px;opacity:.5;filter:saturate(.25)}
+.sf-tab.lifted .sf-th,.sf-tab.magnet .sf-th{opacity:1;filter:none}
+/* the dock's relief over the picture (--icon-sheen / --icon-bevel), drawn above the image */
+.sf-th::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:var(--icon-sheen);box-shadow:var(--icon-bevel)}
 /* Reordering the tabs (components/SessionFlow.jsx): a tab lifted under the finger is drawn over the
    rest, with the dock's magnet ring on the one a drop would join, and a marker on the gap it would take. */
 .sf-tab{transition:transform var(--med) var(--ease);-webkit-touch-callout:none;user-select:none}
@@ -2518,9 +2559,10 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
 .picker-gaps .pg-tag{text-transform:none;gap:5px}
 .picker-gaps .pg-tag b{font-weight:700;font-variant-numeric:tabular-nums}
 
-/* ------------------------------------------------- dark: gradient surfaces -- */
-/* Dark only. Every box and button gets a light that falls from the top and a shade that pools
-   at the bottom, so it reads as an object instead of a flat patch of grey. The gradients are
+/* ------------------------------------------------------ gradient surfaces -- */
+/* Both themes (App.jsx always sets data-theme). Every box and button gets a light that falls
+   from the top and a shade that pools at the bottom, so it reads as an object instead of a flat
+   patch of grey; light mode uses its own, gentler values (white highlight, grey shade). The gradients are
    translucent white/black and only set background-image, so they ride on top of whatever colour
    the component paints (tinted rows, pressed states, accent fills) without touching it.
    - sheen-box: large boxes. Fixed-height bands, so a tall card isn't dimmed all the way down.
@@ -2533,13 +2575,33 @@ body:has(.wfoot) #timer{bottom:calc(12px + var(--sab))}
   --sheen-ctl:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.02) 52%,rgba(0,0,0,.18));
   --gloss:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,0) 56%,rgba(0,0,0,.16));
   --corner:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--acc) 7%,transparent),transparent 60%);
+  --icon-sheen:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0) 50%,rgba(0,0,0,.22));
+  --icon-bevel:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 .5px rgba(255,255,255,.08),inset 0 -2px 5px -1px rgba(0,0,0,.45);
 }
-:root:not([data-theme="light"]) :is(.card,.tile):not(.halo){background-image:var(--corner),var(--sheen-box)}
-:root:not([data-theme="light"]) :is(.sect-b,.efftbl,.exnote,.ss-card,.drum-strip,.today-row){background-image:var(--sheen-box)}
-:root:not([data-theme="light"]) .halo{
+/* light: on a white card a white highlight barely shows, so the depth comes mostly from the
+   shade at the bottom; grey controls (surface-2) get a real white top and read as convex */
+:root[data-theme="light"]{
+  --sheen-box:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,0) 96px),
+              linear-gradient(0deg,rgba(0,0,0,.05),rgba(0,0,0,0) 72px);
+  --sheen-ctl:linear-gradient(180deg,rgba(255,255,255,.8),rgba(255,255,255,.18) 50%,rgba(0,0,0,.08));
+  --gloss:linear-gradient(180deg,rgba(255,255,255,.32),rgba(255,255,255,0) 56%,rgba(0,0,0,.12));
+  --corner:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--acc) 6%,transparent),transparent 60%);
+}
+:root[data-theme]:is(.card,.tile):not(.halo){background-image:var(--corner),var(--sheen-box)}
+:root[data-theme]:is(.sect-b,.efftbl,.exnote,.ss-card,.drum-strip,.today-row){background-image:var(--sheen-box)}
+:root[data-theme].halo{
   background-image:radial-gradient(120% 90% at 100% 0%,color-mix(in srgb,var(--halo-c) var(--halo-a),transparent),transparent 62%),var(--sheen-box);
 }
-:root:not([data-theme="light"]) :is(.item,.sf-rec,.cal-d,.glyph-cell,.prog-day,.micro-btn,.iconbtn,.bw-pm,.seg-sel,
+:root[data-theme]:is(.item,.sf-rec,.cal-d,.glyph-cell,.prog-day,.micro-btn,.iconbtn,.bw-pm,.seg-sel,
   .btn:not(.ghost):not(.plain):not(.primary),.chip:not(.on)){background-image:var(--sheen-ctl)}
-:root:not([data-theme="light"]) :is(.btn.primary,.chip.on,.dh-go,.lrow-i:not(:has(>.icn-img))),
-:root:not([data-theme="light"]) #tabbar button.start .cir{background-image:var(--gloss)}
+:root[data-theme]:is(.btn.primary,.chip.on,.dh-go,.lrow-i:not(:has(>.icn-img))),
+:root[data-theme]#tabbar button.start .cir{background-image:var(--gloss)}
+/* the workout: the set cards and the hero's columns as boxes, every field, stepper and button in
+   them as a control, and the solid accent ones (a ticked set, the start button) glossed */
+:root[data-theme]:is(.dh-col,.st-card,.setswipe>.st-row:not(.st-hd):not(.st-drop)){background-image:var(--sheen-box)}
+:root[data-theme].dh{
+  background-image:radial-gradient(130% 85% at 100% 0%,color-mix(in srgb,var(--hc) 13%,transparent),transparent 62%),var(--sheen-box);
+}
+:root[data-theme]:is(.stp,.st-cell:not(.rest),.st-row .chk.st-ck:not(.on),.st-add,.st-del,.dh-play,.dh-go.on,.setgo,
+  .setrow .n,.wdock-thumb,.wdock-add,.dh-bar,.wtools,.wview,.giftoggle.inline){background-image:var(--sheen-ctl)}
+:root[data-theme]:is(.chk.on,.ck.on,.wdock-check,.drum-strip .ds-ok,.dh-go.on .dh-go-ic){background-image:var(--gloss)}

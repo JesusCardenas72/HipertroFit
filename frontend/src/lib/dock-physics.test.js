@@ -43,6 +43,18 @@ describe('gooLayers', () => {
     expect(layer.bridges[0].y).toBeGreaterThan(0)
   })
 
+  it('takes a per-pair resting distance, so a larger drop beside a smaller one has no neck', () => {
+    // the current exercise drawn larger: 65px and 49px thumbnails 8px apart, 5px capsule padding
+    const big = blob(0, 'a', 65 / 2 + 5)
+    const small = blob(65 / 2 + 8 + 49 / 2, 'a', 49 / 2 + 5)
+    const half = b => b.r - 5
+    const [layer] = gooLayers([big, small], (a, b) => half(a) + half(b) + 8)
+    expect(layer.bridges[0].h).toBe(2 * small.r)
+    // the same pair against one fixed distance (two small ones) would read as pulled apart
+    const [fixed] = gooLayers([big, small], 49 + 8)
+    expect(fixed.bridges[0].h).toBeLessThan(2 * small.r)
+  })
+
   it('keeps separate layers apart, so two capsules never melt into one', () => {
     const layers = gooLayers([blob(0, 'a'), blob(62, 'b')], 62)
     expect(layers).toHaveLength(2)

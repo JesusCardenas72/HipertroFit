@@ -30,9 +30,12 @@ export function neck(gap, reach = 52, min = 0.18) {
 /**
  * Group drawable blobs (`{ cx, cy, r, fill, layer }`) into the layers that are blurred
  * together. Within a layer, neighbours in x order are joined by a bridge whose height follows
- * `neck`; `rest` is the centre-to-centre distance of two members sitting side by side.
+ * `neck`; `rest` is the centre-to-centre distance of two members sitting side by side — a number,
+ * or `(a, b) => distance` when the members are not all one size (the dock's current exercise is
+ * drawn larger than the rest), so a big and a small drop at rest still meet without a neck.
  */
 export function gooLayers(blobs, rest) {
+  const restOf = typeof rest === 'function' ? rest : () => rest
   const layers = new Map()
   for (const blob of blobs) {
     if (!layers.has(blob.layer)) layers.set(blob.layer, [])
@@ -44,7 +47,7 @@ export function gooLayers(blobs, rest) {
     for (let i = 1; i < circles.length; i++) {
       const a = circles[i - 1]
       const b = circles[i]
-      const h = 2 * Math.min(a.r, b.r) * neck(b.cx - a.cx - rest)
+      const h = 2 * Math.min(a.r, b.r) * neck(b.cx - a.cx - restOf(a, b))
       bridges.push({ x: a.cx, y: (a.cy + b.cy) / 2 - h / 2, w: b.cx - a.cx, h })
     }
     return { fill: circles[0].fill, circles, bridges }
