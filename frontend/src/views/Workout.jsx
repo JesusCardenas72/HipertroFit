@@ -70,7 +70,7 @@ function StartChooser() {
           <div className="ss">{fmtDate(p.d, true)} · {t('{0} sets', setsDoneActive(p) + '/' + p.entries.reduce((n, e) => n + e.sets.length, 0))}</div></div>
         <button className="iconbtn" aria-label={t('Discard')} onClick={e => { e.stopPropagation(); discardPausedWorkout(p) }}><Icon name="trash" /></button>
         <span className="tag" style={resumeTag}>{t('Resume')}</span></div>)}</div></>}
-    {todayR && <div className="card" style={{ borderColor: 'var(--acc)' }}>
+    {todayR && <div className="card halo" style={{ borderColor: 'var(--acc)' }}>
       <h2 className="accent">{t("Today's plan")}{todayOvr ? ' · ' + t('rescheduled') : ''}</h2>
       <div className="row between" style={{ marginBottom: 12 }}>
         <div><div className="big">{todayR.name}</div><div className="muted small">{exCount(todayR.ex.length)}</div></div>

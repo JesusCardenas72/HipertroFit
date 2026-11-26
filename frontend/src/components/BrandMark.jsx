@@ -4,5 +4,5 @@ import mark from '../assets/brand/logo.svg'
 // so it sits on whatever the theme puts behind it. The caller sets its size; in the header it is
 // set in the same units as the text beside it, so Settings ▸ Appearance scales them together.
 export default function BrandMark({ className, style }) {
-  return <img className={className} style={style} src={mark} alt="" draggable={false} />
+  return <img className={'brand-mark' + (className ? ' ' + className : '')} style={style} src={mark} alt="" draggable={false} />
 }
