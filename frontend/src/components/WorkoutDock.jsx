@@ -76,14 +76,21 @@ function createDockEngine({ strip, svg, goo, getEntries }) {
       })
     })
     let rest = null
+    let gap = null
     for (let i = 1; i < thumbs.length && rest == null; i++) {
-      if (thumbs[i].unit === thumbs[i - 1].unit) rest = thumbs[i].cx - thumbs[i - 1].cx
+      if (thumbs[i].unit === thumbs[i - 1].unit) {
+        rest = thumbs[i].cx - thumbs[i - 1].cx
+        gap = thumbs[i].left - thumbs[i - 1].right
+      }
     }
     svg.setAttribute('width', String(strip.scrollWidth || 0))
     svg.setAttribute('height', String(strip.clientHeight || 0))
     return {
       thumbs, valid: thumbs.length === list.length,
       rest: rest ?? (thumbs[0]?.w || 54) + 8,
+      // the space between two capsule mates, edge to edge: the running session draws its current
+      // exercise larger than the rest, so centre-to-centre distances differ pair by pair
+      gap: gap ?? 8,
       zoom,
       byIndex: new Map(thumbs.map(th => [th.index, th])),
       byKey: new Map(thumbs.map(th => [th.key, th])),
@@ -122,10 +129,10 @@ function createDockEngine({ strip, svg, goo, getEntries }) {
         applied.set(th.node, { x: sp.x, s: sp.s })
       }
       if (sp.fill && sp.r > hidden(th) + 0.5) {
-        blobs.push({ cx: th.cx + sp.x, cy: th.cy, r: sp.r * (layer ? sp.s : 1), fill: sp.fill, layer: layer || 'solo:' + th.key })
+        blobs.push({ cx: th.cx + sp.x, cy: th.cy, r: sp.r * (layer ? sp.s : 1), half: th.w / 2 * sp.s, fill: sp.fill, layer: layer || 'solo:' + th.key })
       }
     }
-    goo.innerHTML = gooMarkup(gooLayers(blobs, base.rest))
+    goo.innerHTML = gooMarkup(gooLayers(blobs, (a, b) => a.half + b.half + base.gap))
     return still
   }
 
@@ -283,7 +290,9 @@ export default function WorkoutDock({ entries, cur, onSelect, onReorder, onAdd, 
       })
     }
     engineRef.current.relayout()
-  }, [entries, items.length])
+    // `cur` too: the current exercise is drawn larger (index.css), so moving on resizes two
+    // thumbnails and shifts every one after them — the capsules have to follow.
+  }, [entries, items.length, cur])
 
   useEffect(() => {
     const strip = stripRef.current
