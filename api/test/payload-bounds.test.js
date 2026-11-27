@@ -91,8 +91,7 @@ test('names, the declined log and the meta codes are bounded too, since the stat
   const S = sampleState({ lang: 'en' + HUGE, unit: 'kg' + HUGE });
   S.routines[0].name = 'Push' + HUGE;
   S.routines[0].emoji = '💪' + HUGE;
-  S.workouts[0].name = 'Push' + HUGE;
-  S.workouts[0].rating = 'great' + HUGE;
+  for (const w of S.workouts) { w.name = 'Push' + HUGE; w.rating = 'great' + HUGE; }
   S.customEx = [{ id: 'cx1', n: 'Sandbag' + HUGE, bp: 'back' + HUGE }];
   S.coach.log = [{ decisions: [{ status: 'rejected', type: 'sets' + HUGE, why: 'no' + HUGE }] }];
   for (const kind of ['create', 'review', 'debrief']) {
@@ -169,7 +168,7 @@ test('an id is cut, a policy outside the engine\'s five and a number that is not
   S.routines[0].ex[0].weight = Infinity;
   S.routines[0].ex[0].sg = 'a'.repeat(500);
   S.week[3] = ['r'.repeat(500), { x: 1 }];
-  S.workouts[0].entries[0].sets[0].w = '20kg';
+  S.workouts.at(-1).entries[0].sets[0].w = '20kg';
   const p = payload.build(S, { handle: 'h'.repeat(16), kind: 'review' });
   const r = p.plan.routines[0];
   assert.equal(r.id.length, payload.ID_MAX);

@@ -52,8 +52,8 @@ test('review payload carries the plan, the window, effort and aggregates', () =>
   assert.equal(p.task, 'review');
   assert.equal(p.plan.routines.length, 1);
   assert.equal(p.plan.routines[0].ex[0].name, '3/4 sit-up', 'exercise names are resolved for the model');
-  assert.equal(p.window.workouts.length, 1);
-  assert.equal(p.window.workouts[0].entries[0].sets[0].rpe, 9.5, 'effort survives into the payload');
+  assert.equal(p.window.workouts.length, 2);
+  assert.equal(p.window.workouts.at(-1).entries[0].sets[0].rpe, 9.5, 'effort survives into the payload');
   assert.equal(p.userNote, 'shoulder pinches');
   assert.equal(p.meta.effortScale, 'rpe');
   assert.ok(p.aggregates.adherence.plannedPerWeek === 3);

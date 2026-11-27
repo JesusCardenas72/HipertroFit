@@ -92,7 +92,14 @@ export function sampleState(over = {}) {
     exWeights: { '0001': { w: 20 } },
     bodyweight: [{ d: D('2026-07-01'), w: 78 }, { d: D('2026-07-20'), w: 78.5 }],
     customEx: [],
+    // Two sessions: HipertroFit's review refuses changes read off a single one (C6).
     workouts: [{
+      id: 'w0', d: D('2026-07-17'), name: 'Full body A', start: 1000, end: 1000 + 45 * 60000, vol: 600, prs: [],
+      entries: [{
+        id: '0001', target: { sets: 3, reps: 10, weight: 20 },
+        sets: [{ w: 20, r: 10, done: true, rpe: 9 }, { w: 20, r: 10, done: true, rpe: 9.5 }, { w: 20, r: 9, done: true, rpe: 10 }]
+      }]
+    }, {
       id: 'w1', d: D('2026-07-20'), name: 'Full body A', start: 1000, end: 1000 + 45 * 60000, vol: 600, prs: [],
       entries: [{
         id: '0001', target: { sets: 3, reps: 10, weight: 20 },
