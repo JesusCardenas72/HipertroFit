@@ -54,3 +54,15 @@ export const localTZ = () => { try { return Intl.DateTimeFormat().resolvedOption
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
 export const ACCENTS = { lime: '#30d158', sky: '#0a84ff', orange: '#ff9f0a', violet: '#bf5af2', pink: '#ff375f', red: '#ff453a', teal: '#40c8e0', gold: '#ffd60a' }
+/* ---- added with the AI Coach (openGym 1.4.5 lib/format.js) ---- */
+// A chat timestamp: the time today, the date and time on any other day.
+export function fmtChatTimestamp(at, now = Date.now()) {
+  const d = new Date(at)
+  const day = isoOf(d)
+  const time = d.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })
+  return day === isoOf(new Date(now)) ? time : fmtDate(day) + ' · ' + time
+}
+// HipertroFit's weeks start on Monday (getDay() 1).
+export const weekStartOf = () => 1
+/** getDay() indices in display order — [1..6,0] for a Monday start, [0..6] for a Sunday one. */
+export const weekOrder = (ws = 1) => Array.from({ length: 7 }, (_, i) => (ws + i) % 7)

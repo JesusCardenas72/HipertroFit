@@ -27,7 +27,8 @@ describe('Brazilian Portuguese locale', () => {
       .sort(byCodeUnit)
     const fingerprint = createHash('sha256').update(JSON.stringify(inherited)).digest('hex')
 
-    expect(Object.keys(PT_BR_OVERRIDES)).toHaveLength(1059)
+    // 1059 own overrides + 475 AI Coach strings (pt-BR translations from openGym 1.4.5).
+    expect(Object.keys(PT_BR_OVERRIDES)).toHaveLength(1534)
     expect(inherited).toHaveLength(572)
     // If this fails, review the changed keys and wording before accepting a new hash. From
     // frontend/: node scripts/pt-br-inheritance-fingerprint.mjs --list

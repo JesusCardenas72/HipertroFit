@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Plain http:// only to this phone itself: the AI Coach talking to a model served on the
+     device (Ollama in Termux on 127.0.0.1:11434). Everything else stays HTTPS-only, Android's
+     default for this targetSdk. The app's own check (api/coach/core/providers.js phoneMayCall)
+     still decides per request. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

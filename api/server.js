@@ -14,6 +14,13 @@ import webpush from 'web-push';
 import { dayReminderPush, restTimerPush, testPush } from './push-messages.js';
 import { verifyError } from './verify-error.js';
 import { aiConfig, publicAiConfig, createQuota, readAiRequest, callProvider } from './ai.js';
+// The AI Coach, ported from openGym 1.4.5 (coach/, AGPL-3.0-or-later). Inert until an admin
+// enables and connects a provider; see docs/AI_COACH.md.
+import * as coachConfig from './coach/config.js';
+import * as coachJobs from './coach/jobs.js';
+import { coachRoutes } from './coach/routes.js';
+import { startCadence } from './coach/cadence.js';
+import { startWarmup } from './coach/warmup.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -44,6 +51,9 @@ fs.mkdirSync(DATA, { recursive: true });
 const secretFile = path.join(DATA, 'secret');
 if (!fs.existsSync(secretFile)) fs.writeFileSync(secretFile, crypto.randomBytes(32).toString('hex'), { mode: 0o600 });
 const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
+// coach.json holds the Coach's encrypted provider keys: owner-only, like the secret itself.
+// Best-effort: a bind-mounted host filesystem may refuse chmod.
+try { fs.chmodSync(path.join(DATA, 'coach.json'), 0o600); } catch { /* not present yet, or host says no */ }
 
 const dbFile = path.join(DATA, 'db.json');
 let db = { users: [], creds: [], subs: [], invites: [] };
@@ -201,7 +211,9 @@ function userNow(tz) {
       year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
     }).formatToParts(new Date());
     const g = t => parts.find(p => p.type === t)?.value;
-    return { date: `${g('year')}-${g('month')}-${g('day')}`, hhmm: `${g('hour')}:${g('minute')}` };
+    const date = `${g('year')}-${g('month')}-${g('day')}`;
+    // The weekday of the zone's own date, which the Coach's weekly review reads (coach/core/due.js).
+    return { date, hhmm: `${g('hour')}:${g('minute')}`, weekday: new Date(date + 'T12:00:00Z').getUTCDay() };
   } catch { return null; } // unknown/invalid tz string — skip this user rather than guess
 }
 setInterval(() => {
@@ -535,7 +547,12 @@ const routes = {
   'GET /api/health': async (req, res) => json(res, 200, { ok: true, users: db.users.length }),
 
   // Public config the login screen needs before anyone is signed in.
-  'GET /api/config': async (req, res) => json(res, 200, { invite_only: INVITE_ONLY, allow_guest: ALLOW_GUEST }),
+  // `coach` only for a signed-in caller: which provider and host the Coach talks to is not
+  // something to hand an anonymous visitor (lib/coach.js coachAvailable reads it).
+  'GET /api/config': async (req, res) => json(res, 200, {
+    invite_only: INVITE_ONLY, allow_guest: ALLOW_GUEST,
+    ...(readSession(req) ? { coach: coachConfig.publicConfig() } : {})
+  }),
 
   'GET /api/me': async (req, res) => {
     const user = readSession(req);
@@ -979,8 +996,32 @@ const routes = {
     auditCount = 0;
     audit(req, 'admin.audit.clear', { user: admin });
     json(res, 200, { ok: true });
-  }
+  },
+
+  /* ---------- AI Coach ---------- */
+  // Routes live in coach/routes.js and are handed the helpers above rather than importing them:
+  // they are closures over db and SECRET. Every one of them is inert while the feature is
+  // unconfigured.
+  ...coachRoutes({ json, readBody, readSession, requireAdmin })
 };
+
+/* ---------- Coach: boot recovery, notifications, scheduled reviews ---------- */
+// A job that was running when the process died is not coming back; say so rather than leaving a
+// spinner that never resolves.
+coachJobs.recoverOnBoot();
+// A ready proposal is the one Coach event worth a notification; failures and "nothing to change"
+// stay silent on purpose.
+coachJobs.setProposalHook((uid, pending) => {
+  const n = (pending?.changes || []).length;
+  if (!n) return;
+  sendPush(uid, {
+    title: 'Your Coach has been reading',
+    body: n === 1 ? '1 suggestion after this week' : `${n} suggestions after this week`,
+    tag: 'coach-proposal', url: '#/coach'
+  }).catch(() => { /* a push that does not arrive is not a failed job */ });
+});
+startCadence({ users: () => db.users.filter(u => !u.disabled), userNow, skip: uid => !readState(uid)?.coach?.consent?.agreedAt });
+startWarmup();
 
 http.createServer(async (req, res) => {
   // Same-origin (the deployed nginx-proxied web app) never triggers CORS, so this only matters

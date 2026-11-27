@@ -19,6 +19,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
 COPY server.js push-messages.js verify-error.js ai.js ./
+# The AI Coach (coach/core is also bundled into the frontend for the phone's own-key mode).
+COPY coach ./coach
 
 ENV NODE_ENV=production
 ENV PORT=3000

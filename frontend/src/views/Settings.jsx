@@ -7,6 +7,7 @@ import { effortOf } from '../lib/history.js'
 import { api, webauthnOK, passkeyLogin, passkeyRegister, IS_ANDROID } from '../lib/api.js'
 import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
+import { isOn } from '../lib/modules.js'
 import { t, LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder, backupFolderStatus, pickBackupFolder, clearBackupFolder, BACKUPS_KEPT } from '../lib/mobile.js'
@@ -301,6 +302,15 @@ export default function Settings() {
       <Row icon="heart" iconTint="var(--red)" title={t('Ask how each muscle responded')}>
         <Switch checked={S.muscleFeedback !== false} onChange={v => update(s => { s.muscleFeedback = v })} />
       </Row>
+      {/* The AI Coach (Plan → Coach): off hides it everywhere and pauses its scheduled reviews;
+          nothing it saved is deleted (lib/modules.js). */}
+      <Row icon="sparkles" iconTint="var(--green)" title={t('AI Coach')} subtitle={t('Reviews your training and suggests changes. You still say yes or no.')}>
+        <Switch checked={isOn(S, 'coach')} onChange={v => update(s => { s.modules = { ...(s.modules || {}), coach: v } })} />
+      </Row>
+      {/* On the phone the Coach runs here, with no server: a model on this device (Ollama in
+          Termux), on the home network, or a provider with your own key (views/CoachSetup.jsx). */}
+      {MOBILE && isOn(S, 'coach') && <Row icon="wrench" iconTint="var(--green)" title={t('Set up the Coach on this phone')}
+        accessory="chevron" onClick={() => nav('/coach/setup')} />}
     </Section>
 
     {/* ---------- training volume ---------- */}

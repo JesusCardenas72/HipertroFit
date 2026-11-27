@@ -11,6 +11,7 @@ import Icon from '../components/Icon.jsx'
 import MicrocycleActions from '../components/MicrocycleActions.jsx'
 
 import { Button } from '../components/ui.jsx'
+import { useCoachGate } from '../lib/use-coach-gate.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
 import { isSectionOpen, moveSection, planSectionOrder, sectionDropIntent, toggleSection } from '../lib/plan-sections.js'
@@ -316,6 +317,7 @@ function usePlanReorder(rows, onDrop, cfg = ROUTINE_DRAG) {
 }
 
 export default function Plan() {
+  const coachGate = useCoachGate()
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
@@ -419,6 +421,8 @@ export default function Plan() {
   return <>
     <div className="hdr">
       <div><h1>{t('Plan')}</h1><div className="sub">{t('Your weekly routine')}</div></div>
+      {/* The AI Coach's way in: only when the instance has it set up and it is switched on. */}
+      {coachGate.ok && <Button size="sm" variant="tinted" icon="sparkles" onClick={() => nav('/coach')}>{t('Coach')}</Button>}
       <button className="iconbtn" onClick={planToolsSheet} aria-label={t('Share your plan')} title={t('Share your plan')}><Icon name="upload" /></button>
     </div>
     <MicrocycleActions />

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation, useNavigationType } from 'react-router-dom'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
@@ -36,6 +36,12 @@ import History from './views/History.jsx'
 import Library from './views/Library.jsx'
 import Settings from './views/Settings.jsx'
 import Admin from './views/Admin.jsx'
+import { isOn } from './lib/modules.js'
+// The AI Coach (ported from openGym 1.4.5): screens most sessions never open, loaded on demand.
+const CoachChat = lazy(() => import('./views/CoachChat.jsx'))
+const CoachIntake = lazy(() => import('./views/CoachIntake.jsx'))
+const CoachSetup = lazy(() => import('./views/CoachSetup.jsx'))
+const lazyEl = El => <Suspense fallback={null}><El /></Suspense>
 
 // last known scrollY per route, so back-navigation can put the page where it was
 const scrollPositions = new Map()
@@ -68,6 +74,7 @@ function Shell() {
   const lang = useStore(s => s.S.lang)
   const activeId = useStore(s => s.S.active?.id)
   const active = useStore(s => !!s.S.active)
+  const coachOn = useStore(s => isOn(s.S, 'coach'))
   const keepAwake = useStore(s => s.S.keepAwake)
   const exNameStyle = useStore(s => s.S.exNameStyle)
   const exNames = useStore(s => s.S.exNames)
@@ -144,6 +151,12 @@ function Shell() {
         <Route path="/library" element={<Library />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
+        {/* The Coach screens gate themselves on the instance config; the routes exist whenever the
+            AI Coach is switched on, so a deep link from a notification lands somewhere sane. */}
+        {coachOn && <Route path="/coach" element={lazyEl(CoachChat)} />}
+        {coachOn && <Route path="/coach/intake" element={lazyEl(CoachIntake)} />}
+        {coachOn && <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />}
+        {coachOn && <Route path="/coach/setup" element={lazyEl(CoachSetup)} />}
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </ErrorBoundary>

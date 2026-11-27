@@ -729,3 +729,19 @@ export function bestWeightForEntry(entry = {}) {
     && Number.isFinite(topWeight) && topWeight > best) best = topWeight
   return best
 }
+
+// When a workout happened, in ms: its start, else noon on its day (NaN when neither is usable).
+// Ported with the AI Coach from openGym 1.4.5 (lib/coach-insights.js, lib/coach-demo.js read it).
+export const workoutAt = w => {
+  if (Number.isFinite(w?.start)) return w.start
+  const day = w?.d
+  return typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)
+    ? new Date(day + 'T12:00:00').getTime()
+    : NaN
+}
+// A session's volume as the Coach's insights read it: computed from its sets, else its stored `vol`.
+export function sessionVolume(w) {
+  if (Array.isArray(w?.entries)) return Math.max(0, Number(workoutVolume(w)) || 0)
+  const v = Number(w?.vol)
+  return Number.isFinite(v) ? Math.max(0, v) : 0
+}
