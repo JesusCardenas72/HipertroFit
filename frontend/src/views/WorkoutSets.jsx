@@ -144,7 +144,7 @@ const miniStepper = (value, step, dec, onChange) => (
 )
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-export function ExerciseBlock({ entryIdx, compact, drum, table, aims = false, nameless, nextSet = -1, onToggle, onToggleDrop, onOpenSet, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onUnpair, onSetRowRef, onProgressionSettings, onAddExercise, onOpenProgression, onSwap, onRemove, swipeSet, swipeDrop = null, swipeBurst = null, swipeDx = 0, open = true, onToggleHead, marks = null }) {
+export function ExerciseBlock({ entryIdx, compact, drum, table, aims = false, nameless, nextSet = -1, onToggle, onToggleDrop, onOpenSet, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onStartTimed, onPairPrev, onPairNext, onUnpair, onSetRowRef, onProgressionSettings, onAddExercise, onOpenProgression, onSwap, onAskCoach, onRemove, swipeSet, swipeDrop = null, swipeBurst = null, swipeDx = 0, open = true, onToggleHead, marks = null }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -246,6 +246,9 @@ export function ExerciseBlock({ entryIdx, compact, drum, table, aims = false, na
         onClick={() => exerciseProgressSheet(entry.id)}><Icon name="chartLine" /></button>
       {onSwap && <button className="iconbtn" aria-label={t('Swap exercise')} title={t('Swap exercise')}
         disabled={!!working} onClick={onSwap}><Icon name="shuffle" /></button>}
+      {/* The AI Coach on this exercise, for the rest of this workout (components/WorkoutCoachSheet.jsx). */}
+      {onAskCoach && <button className="iconbtn" aria-label={t('Ask the Coach')} title={t('Ask the Coach')}
+        disabled={!!working} onClick={onAskCoach}><Icon name="sparkles" /></button>}
       {onUnpair
         ? <button className="iconbtn" aria-label={t('Unpair')} title={t('Unpair')} onClick={onUnpair}><Icon name="linkSlash" /></button>
         : (onPairPrev || onPairNext) && <button className="iconbtn" aria-label={t('Make superset')} title={t('Make superset')} onClick={pair}><Icon name="link" /></button>}
@@ -868,4 +871,5 @@ export function DrumHero({ chamber, members, onToggle, onToggleDrop, onOpenSet, 
       </button>
     </div>
   </div>
-}
+}
+

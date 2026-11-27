@@ -402,3 +402,19 @@ export async function clearSessionNotice(id) {
     await LocalNotifications.cancel({ notifications: [{ id }] })
   } catch (e) { /* nothing to clear */ }
 }
+
+// A small JSON file in the app's private storage (the AI Coach's device settings and consent on
+// a phone with its own key; openGym 1.4.5 lib/mobile.js). Null when absent or not a native build.
+export async function readJsonFile(name) {
+  try {
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+    const r = await Filesystem.readFile({ path: name, directory: Directory.Data, encoding: Encoding.UTF8 })
+    return JSON.parse(r.data)
+  } catch (e) { return null }
+}
+export async function writeJsonFile(name, data) {
+  try {
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+    await Filesystem.writeFile({ path: name, directory: Directory.Data, data: JSON.stringify(data), encoding: Encoding.UTF8 })
+  } catch (e) { /* not a Capacitor build, or the write failed — the caller's in-memory copy stands */ }
+}

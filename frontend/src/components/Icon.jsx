@@ -47,6 +47,12 @@ const IMG = {
 }
 
 const P = {
+  /* ---- the AI Coach (openGym 1.4.5) ---- */
+  more: <><circle cx="5.5" cy="12" r="1.6" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" /><circle cx="18.5" cy="12" r="1.6" fill="currentColor" stroke="none" /></>,
+  swap: <path d="M4.4 8.2h14.4M15.2 4.6l3.6 3.6-3.6 3.6M19.6 15.8H5.2M8.8 12.2l-3.6 3.6 3.6 3.6" />,
+  chat: <path d="M5.6 4.8h12.8a2.2 2.2 0 0 1 2.2 2.2v8a2.2 2.2 0 0 1-2.2 2.2H11l-4.4 3.4v-3.4h-1a2.2 2.2 0 0 1-2.2-2.2V7a2.2 2.2 0 0 1 2.2-2.2Z" />,
+  note: <><rect x="4.6" y="3.6" width="14.8" height="16.8" rx="2.6" /><path d="M8.4 8.6h7.2M8.4 12h7.2M8.4 15.4h4" /></>,
+  plusCircle: <><circle cx="12" cy="12" r="8.2" /><path d="M12 8.2v7.6M8.2 12h7.6" /></>,
   /* ---- navigation ---- */
   house: <path d="M3.5 10.7 12 3.8l8.5 6.9M5.9 9.4V19a1.4 1.4 0 0 0 1.4 1.4h9.4A1.4 1.4 0 0 0 18.1 19V9.4" />,
   calendar: <><rect x="3.4" y="5.2" width="17.2" height="15.4" rx="3.2" /><path d="M8.2 3.4v3.4M15.8 3.4v3.4M3.4 10.2h17.2" /></>,

@@ -260,3 +260,6 @@ export function matchExercise(e, query) {
   const corpus = corpusOf(e)
   return tokens.every(tok => corpus.includes(tok))
 }
+
+// Whether an exercise is one of the user's own (the AI Coach shows those names as typed).
+export const isCustomEx = ex => !!ex && typeof ex === 'object' && (ex.custom === true || customIds.includes(ex.id))

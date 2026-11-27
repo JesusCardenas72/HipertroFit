@@ -10,6 +10,7 @@ import { confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { t } from '../lib/i18n.js'
+import AdminCoach from './AdminCoach.jsx'
 
 // Admin-only operator dashboard (owner passkey + admin flag; guarded again server-side).
 // Translated like the rest of the app: the operator reads it in the language they picked.
@@ -182,6 +183,9 @@ export default function Admin() {
       <div className="tile"><div className="l">{t('Active 7d')}</div><div className="v">{users ? activeCount : '—'}</div></div>
       <div className="tile"><div className="l">{t('Disabled')}</div><div className="v">{users ? disabledCount : '—'}</div></div>
     </div>
+
+    {/* The AI Coach: provider, key, model, limits, on/off (views/AdminCoach.jsx, from openGym 1.4.5). */}
+    <AdminCoach />
 
     {liveUsers.length > 0 && <div className="card" style={{ borderColor: 'var(--acc)' }}>
       <h2 className="row" style={{ margin: '0 0 8px', gap: 6 }}><Icon name="dot" style={{ fontSize: 10, color: 'var(--green)' }} />{t('Training now')}</h2>

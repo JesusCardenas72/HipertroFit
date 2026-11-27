@@ -22,6 +22,9 @@ import { applyProgressionChoice } from '../lib/double-progress.js'
 import { progressionSheet } from '../components/DoubleProgress.jsx'
 import { playProgressSound } from '../lib/custom-sound.js'
 import { glyphOf } from '../lib/glyphs.js'
+import { useCoachGate } from '../lib/use-coach-gate.js'
+import { hasConsent } from '../lib/coach.js'
+import { workoutCoachSheet } from '../components/WorkoutCoachSheet.jsx'
 import { isWarmupRow, dropsOf, clustersOf, removeDropAt, removeClusterAt, setDropAt, nextDropWeight } from '../lib/workout-model.js'
 import { dropActiveWorkoutEntry, moveActiveWorkoutUnitTo } from '../lib/active-workout-order.js'
 import { withSetKind, followDrop, DROP_PCT } from '../lib/set-kind.js'
@@ -130,6 +133,8 @@ export function removeActiveExercise(idx) {
 function ActiveWorkout() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
+  // Whether "Ask the Coach" is on each exercise (lib/use-coach-gate.js).
+  const coachGate = useCoachGate()
   const update = useStore(s => s.update)
   // Each piece picked on its own: the rest countdown rewrites the UI store every second, and
   // subscribing to all of it redrew the whole session that often.
@@ -901,6 +906,9 @@ function ActiveWorkout() {
     onAddExercise={preview ? undefined : () => addExercise(idx)}
     onOpenProgression={preview ? undefined : () => openProgression(idx, { celebrate: false })}
     onSwap={preview ? undefined : () => swapActiveWorkoutExercise(idx)} onRemove={preview ? undefined : () => confirmRemoveExercise(idx)}
+    // Only with the Coach set up and agreed to, live (not a past workout), and something left to do.
+    onAskCoach={!preview && coachGate.ok && hasConsent(S) && !A.backfill && (A.entries[idx]?.sets || []).some(x => !isWarmupRow(x) && !x.done)
+      ? () => workoutCoachSheet(idx) : undefined}
     open={!!openHeads[idx]} onToggleHead={() => toggleHead(idx)} table={tableView}
     {...extra} />
   // The session view's open exercises: the table's rows under the view's own name line, wired

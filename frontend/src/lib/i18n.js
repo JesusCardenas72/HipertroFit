@@ -6,13 +6,13 @@
 import { useSyncExternalStore } from 'react'
 import {
   LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, DATE_LOCALES,
-  getLang, dateLocale, t, instrFor, exerciseNameFor, exerciseNameSearchText,
+  getLang, dateLocale, t, tn, instrFor, exerciseNameFor, exerciseNameSearchText,
   exerciseNameOverrideFor, catalogueNameFor, getVersion, _setLangState, _setExerciseNameOptions
 } from './i18n-core.js'
 
 export {
   LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, DATE_LOCALES,
-  getLang, dateLocale, t, instrFor, exerciseNameFor, exerciseNameSearchText, exerciseNameOverrideFor, catalogueNameFor
+  getLang, dateLocale, t, tn, instrFor, exerciseNameFor, exerciseNameSearchText, exerciseNameOverrideFor, catalogueNameFor
 }
 export { NAME_STYLES, DEFAULT_NAME_STYLE } from './exercise-name.js'
 

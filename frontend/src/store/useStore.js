@@ -243,6 +243,11 @@ export const useStore = create((set, get) => {
     config: null,
     async loadConfig() {
       if (get().config) return get().config
+      return get().refreshConfig()
+    },
+    // Always asks: /api/config only carries the AI Coach's block to a signed-in caller, so the
+    // copy cached before signing in says nothing about it (lib/use-coach-gate.js asks again).
+    async refreshConfig() {
       try { const c = await api('/api/config'); set({ config: c }); return c }
       catch { return null }
     },

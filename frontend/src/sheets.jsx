@@ -1597,6 +1597,28 @@ export function beginWorkout(routineId, bw, deload = 0, freeItems = null) {
   nav('/workout')
 }
 
+/**
+ * Start a one-off session from exercise configs — the AI Coach's "do this workout" card
+ * (components/CoachActions.jsx). It is built like a routine's session (buildSessionEntries) so
+ * the loads come from your history, starts as a freestyle session, and asks for the weigh-in first.
+ */
+export function startBuiltSession(cfgs, name) {
+  if (S().active) { toast(t('Finish the current workout first.')); return }
+  bwSheet({
+    required: true,
+    onDone: bw => {
+      const st = S()
+      if (st.active) { toast(t('Finish the current workout first.')); return }
+      const { entries } = buildSessionEntries(st, { ex: cfgs || [] }, { rirGoal: rirGoalOf(st) })
+      update(s => {
+        s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId: null, name: name || t('Freestyle'), bw: bw || null, cur: 0, entries }
+      })
+      useUI.getState().stopRest()
+      nav('/workout')
+    }
+  })
+}
+
 /* ============================ freestyle planner ============================ */
 // Before a freestyle session: pick its exercises and work sets and see, group by group, how they
 // move the running microcycle's volume against its optimal range (lib/free-plan.js). "Start
