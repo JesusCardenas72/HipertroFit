@@ -10,14 +10,18 @@
 // together, so a round trip through a plan never resets an icon the app shows.
 
 // What the picker offers today.
+// HipertroFit's picker (frontend/src/lib/glyphs.js GLYPH_GROUPS), split days and muscle maps included.
 export const ROUTINE_GLYPHS = [
-  'figureStrength', 'arm', 'abs', 'legs', 'pullup',
-  'dumbbell', 'barbell', 'kettlebell', 'plate', 'machine',
+  'pushDay', 'pullDay', 'legDay', 'upperDay', 'fullBody',
+  'chest', 'shoulders', 'biceps', 'forearms', 'core', 'triceps', 'lats', 'upperBack', 'lowerBack',
+  'glutes', 'quads', 'hamstrings', 'calves',
+  'figureStrength', 'dumbbell', 'barbell', 'kettlebell', 'machine',
   'figureRun', 'bike', 'swim', 'boxing', 'timer',
   'stretch', 'moon', 'heart', 'flame', 'bolt'
 ];
-// What a routine may still hold: the first picker's keys, and the icons old emoji map onto.
-export const LEGACY_ROUTINE_GLYPHS = ['trophy', 'medal', 'crown', 'flag', 'star', 'target', 'shield'];
+// What a routine may still hold: keys the picker used to offer (redrawn as the new ones), and
+// the icons old emoji map onto. The app renders each (lib/glyphs.js glyphOf).
+export const LEGACY_ROUTINE_GLYPHS = ['bench', 'pullup', 'squat', 'arm', 'abs', 'legs', 'trophy', 'medal', 'crown', 'flag', 'star', 'target', 'shield'];
 export const DEFAULT_GLYPH = 'figureStrength';
 
 const KNOWN = new Set([...ROUTINE_GLYPHS, ...LEGACY_ROUTINE_GLYPHS]);

@@ -166,62 +166,17 @@ test('the adapt schema survives the strict copy: every change field is a plain s
   for (const [k, v] of Object.entries(item.properties)) assert.ok(['string', 'integer', 'number'].includes(v.type), k);
 });
 
-test('review: warm-up changes, explained and bounded', () => {
+// HipertroFit has no warm-up rows or programme blocks, so the Coach may not propose either.
+test('review: warm-up and programme changes are outside the closed list', () => {
   const plan = payloadLib.cleanPlan(S);
-  const ctx = {};
-  const r = validateReview({
-    coach_contract: 1, summary: 's', changes: [
-      { id: 'c1', type: 'warmup', target: { routineId: 'push', exId: '0294' }, after: { mode: 'own', rows: [{ pct: 50, reps: 10 }, { pct: 75, reps: 4 }] }, why: 'Your first curl set keeps missing a rep; two light sets first.' },
-      { id: 'c2', type: 'warmup', target: { routineId: 'legs', exId: '0043' }, after: { mode: 'auto' }, why: 'restates' }
-    ]
-  }, plan, ctx);
-  assert.equal(r.ok, true, JSON.stringify(r.errors));
-  assert.deepEqual(r.proposal.changes.map(c => c.id), ['c1'], 'auto on an auto slot restates the plan and is dropped');
-  assert.deepEqual(r.proposal.changes[0].after, { mode: 'own', rows: [{ wp: 50, r: 10 }, { wp: 75, r: 4 }] });
-  const bad = (after, msg) => {
-    const x = validateReview({ coach_contract: 1, summary: 's', changes: [{ id: 'c', type: 'warmup', target: { routineId: 'push', exId: '0025' }, after, why: 'w' }] }, plan, ctx);
-    assert.equal(x.ok, false); assert.match(x.errors.join(' '), msg);
-  };
-  bad({ mode: 'hot' }, /mode/);
-  bad({ mode: 'own', rows: [] }, /1-5/);
-  bad({ mode: 'own', rows: [{ pct: 60, reps: 5 }, { pct: 40, reps: 3 }] }, /climb/);
-  bad({ mode: 'own', rows: [{ pct: 120, reps: 5 }] }, /0-95/);
-});
-
-test('review: a programme, new or revised, over exercises of the plan', () => {
-  const plan = payloadLib.cleanPlan(S);
-  const fresh = validateReview({ coach_contract: 1, summary: 's', changes: [{ id: 'c1', type: 'programme', target: {}, after: {
-    name: 'Squat 4 weeks', weeks: [
-      { targets: [{ exId: '0043', pct: 72.3 }] }, { targets: [{ exId: '0043', pct: 77.5, rpe: 8 }] }, { rpe: 8.5, targets: [{ exId: '0043', routineId: 'legs', pct: 82.5 }] }, { deload: true }
-    ] }, why: 'You asked for a block before the meet: three climbing weeks, then an easy one.' }] }, plan, {});
-  assert.equal(fresh.ok, true, JSON.stringify(fresh.errors));
-  const after = fresh.proposal.changes[0].after;
-  assert.equal(after.name, 'Squat 4 weeks');
-  assert.deepEqual(after.weeks[0], { t: { '0043': { pct: 72.5 } } });
-  assert.deepEqual(after.weeks[2], { rpe: 8.5, t: { 'legs:0043': { pct: 82.5 } } });
-  assert.deepEqual(after.weeks[3], { deload: true });
-  assert.equal(fresh.proposal.changes[0].before, null);
-
-  const revise = validateReview({ coach_contract: 1, summary: 's', changes: [{ id: 'c1', type: 'programme', target: { programmeId: 'p1' }, after: { weeks: [{ targets: [{ exId: '0025', pct: 70 }] }] }, why: 'Your last two bench sessions missed the last set.' }] }, plan, {});
-  assert.equal(revise.ok, true, JSON.stringify(revise.errors));
-  assert.deepEqual(revise.proposal.changes[0].before, { name: 'Bench block', weeks: 3 });
-  assert.equal(revise.proposal.changes[0].after.name, 'Bench block');
-
-  const bad = (target, after, msg) => {
-    const x = validateReview({ coach_contract: 1, summary: 's', changes: [{ id: 'c', type: 'programme', target, after, why: 'w' }] }, plan, {});
-    assert.equal(x.ok, false); assert.match(x.errors.join(' '), msg);
-  };
-  bad({ programmeId: 'gone' }, { weeks: [{}] }, /not one of plan.programmes/);
-  bad({}, { weeks: [{}] }, /name is required/);
-  bad({}, { name: 'x', weeks: Array.from({ length: 17 }, () => ({})) }, /1-16/);
-  bad({}, { name: 'x', weeks: [{ targets: [{ exId: '9999', pct: 70 }] }] }, /exercise of the plan/);
-  bad({}, { name: 'x', weeks: [{ targets: [{ exId: '0043', routineId: 'push', pct: 70 }] }] }, /routine of the plan/);
-  bad({}, { name: 'x', weeks: [{ targets: [{ exId: '0043' }] }] }, /needs pct/);
-  const two = validateReview({ coach_contract: 1, summary: 's', changes: [
-    { id: 'a', type: 'programme', target: {}, after: { name: 'A', weeks: [{}] }, why: 'w' },
-    { id: 'b', type: 'programme', target: {}, after: { name: 'B', weeks: [{}] }, why: 'w' }
-  ] }, plan, {});
-  assert.match(two.errors.join(' '), /one programme change/);
+  for (const c of [
+    { id: 'c1', type: 'warmup', target: { routineId: 'push', exId: '0294' }, after: { mode: 'auto' }, why: 'w' },
+    { id: 'c2', type: 'programme', target: {}, after: { name: 'Block', weeks: [{ targets: [{ exId: '0025', pct: 75 }] }] }, why: 'w' }
+  ]) {
+    const r = validateReview({ coach_contract: 1, summary: 's', changes: [c] }, plan, {});
+    assert.equal(r.ok, false, c.type);
+    assert.match(r.errors.join(' '), /not allowed|not one of|type/);
+  }
 });
 
 test('the system prompt stays a prompt: every task under 20k characters', async () => {

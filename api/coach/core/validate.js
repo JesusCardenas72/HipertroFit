@@ -37,9 +37,11 @@ export const CHANGE_TYPES = [
   'reorder', 'superset',
   'routine-prog', 'exercise-prog', 'inc',
   'add-routine', 'remove-routine', 'rename-routine',
-  'week',
-  // v1.4.5: how an exercise warms up, and a multi-week programme (frontend lib/programmes.js).
-  'warmup', 'programme'
+  'week'
+  // openGym 1.4.5 also has 'warmup' (warm-up rows per exercise) and 'programme' (multi-week
+  // blocks). HipertroFit has neither model (its warm-ups are a set count, its blocks are the
+  // mesocycle), so both stay out of the closed list and any such change is refused. Their
+  // validation code below is unreachable until they are added back here.
 ];
 export const WARMUP_MODES = ['auto', 'own', 'none'];
 const MAX_PROGRAMME_WEEKS = 16;
