@@ -76,10 +76,12 @@ services:
       - ./media/img:/usr/share/nginx/html/img:ro
       - ./media/gif:/usr/share/nginx/html/gif:ro
 
-  # ── Optional: a local AI model for "Analyze with AI" ──────────────────────────
+  # ── Optional: a local AI model for "Analyze with AI" and the AI Coach ────────
   # Off unless started with the `ai` profile:  docker compose --profile ai up -d
   # Nothing leaves your machine. Then point the api at it in .env:
   #   AI_BASE_URL=http://ollama:11434/v1   AI_MODEL=qwen2.5:3b   AI_DAILY_LIMIT=0   AI_TIMEOUT_MS=300000
+  # The AI Coach is set up in the app instead (Settings → Admin → AI Coach): provider
+  # "OpenAI-compatible", base URL http://ollama:11434, then "List models" and pick one.
   # No port is published: only the api reaches it, over the compose network. The model
   # (~2 GB for qwen2.5:3b) lives in ./ollama — outside ./data, so it stays out of your backups.
   # Needs several GB of RAM; on a small NAS expect an analysis to take a minute or more.
@@ -87,6 +89,15 @@ services:
     image: ollama/ollama:latest
     profiles: [ai]
     restart: unless-stopped
+    environment:
+      # The Coach's prompts are 4–7k tokens with a short history and can reach ~15k with a long
+      # one; Ollama's default context (4096) would cut them silently. Lower it only for a model
+      # or a box that cannot hold this much (the KV cache grows with it).
+      - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH:-16384}
+      # Keep the model loaded, and one slot: an unloaded model takes the Coach's prompt cache
+      # with it, and parallel slots split it (the api re-warms it every half hour).
+      - OLLAMA_KEEP_ALIVE=-1
+      - OLLAMA_NUM_PARALLEL=1
     volumes:
       - ./ollama:/root/.ollama
 
