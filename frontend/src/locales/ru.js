@@ -2053,4 +2053,6 @@ export default {
   "It works! {0} model to pick from.": "Работает! На выбор {0} модель.",
   "It works! {0} models to pick from.": {"one":"Работает! На выбор {0} модель.","few":"Работает! На выбор {0} модели.","many":"Работает! На выбор {0} моделей.","other":"Работает! На выбор {0} модели."},
   "Reviews your training and suggests changes. You still say yes or no.": "Разбирает твои тренировки и предлагает изменения. Да или нет по-прежнему решаешь ты.",
+  // --- AI Coach (ported from openGym 1.4.5) ---
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "Программы, упражнения, подходы и повторы, разминка, циклы, расписание на неделю, настройки прогрессии и что можно навесить в вашем зале.",
 }

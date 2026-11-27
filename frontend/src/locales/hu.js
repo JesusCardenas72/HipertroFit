@@ -2058,4 +2058,6 @@ export default {
   "It works! {0} model to pick from.": "Működik! {0} modell közül választhatsz.",
   "It works! {0} models to pick from.": "Működik! {0} modell közül választhatsz.",
   "Reviews your training and suggests changes. You still say yes or no.": "Átnézi az edzésedet és változtatásokat javasol. Igent vagy nemet továbbra is te mondasz.",
+  // --- AI Coach (ported from openGym 1.4.5) ---
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "Rutinok, gyakorlatok, sorozatok és ismétlések, bemelegítések, programok, a heti beosztásod, progressziós beállítások és hogy mit tud terhelni a termed.",
 }

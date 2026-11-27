@@ -44,7 +44,7 @@ const CARDS = [
   { id: 'anthropic', provider: 'anthropic', icon: 'key', tint: 'var(--orange)', line: () => t('Claude, with an API key') },
   { id: 'openai', provider: 'openai', icon: 'key', tint: 'var(--green)', line: () => t('GPT, with an API key') },
   { id: 'gemini', provider: 'gemini', icon: 'key', tint: 'var(--blue)', line: () => t('Gemini, with a free tier to start') },
-  { id: 'local', provider: 'compatible', icon: 'house', tint: 'var(--teal)', title: () => t('On my network'), line: () => t('Ollama or LM Studio at home, nothing leaves your Wi-Fi') }
+  { id: 'local', provider: 'compatible', icon: 'house', tint: 'var(--teal)', title: () => t('Local model'), line: () => t('Ollama on this phone (Termux) or at home. Nothing leaves your phone or your Wi-Fi.') }
 ]
 const TIER = { free: () => t('free'), low: () => '$', mid: () => '$$', high: () => '$$$' }
 const tierOf = (m, prices) => { const k = priceTier(m, prices && prices[m]); return k ? TIER[k]() : '' }
@@ -130,6 +130,9 @@ export default function CoachSetup() {
 
       setStep(2)
       if (!model && meta.defaultModel && r.models.includes(meta.defaultModel)) setModel(meta.defaultModel)
+      // A local server serving exactly one model (the usual Ollama on a phone): that is the choice,
+      // so it is picked rather than left looking selected while "Save" still asks for one.
+      else if (!model && r.models.length === 1) setModel(r.models[0])
     } catch (e) {
       setStep(-1); toast(e.message || t('Could not connect'))
     } finally { setBusy(false) }
@@ -236,7 +239,7 @@ export default function CoachSetup() {
   }
 
   const current = coachLocal?.mode === 'server' ? t('Runs on your HipertroFit server')
-    : coachLocal?.mode === 'byok' ? t('Runs on this phone with your own API key')
+    : coachLocal?.mode === 'byok' ? t('Runs on this phone')
     : t('Off. Choose how the Coach should run.')
 
   return <div className="narrow">
@@ -245,17 +248,14 @@ export default function CoachSetup() {
       <div style={{ flex: 1, marginInlineStart: 12 }}><h1>{t('AI Coach')}</h1></div>
     </div>
 
-    <Section footer={t('No API key needed: Claude, ChatGPT or Gemini come to HipertroFit as a connector, on the plan you already pay for.')}>
-      <Row icon="chat" iconTint="var(--acc)" title={t('Use your Claude, ChatGPT or Gemini plan')} subtitle={t('Add HipertroFit to the assistant app you already pay for')}
-        accessory="chevron" onClick={() => nav('/assistants')} />
-    </Section>
-
+    {/* openGym also offers "Use your Claude, ChatGPT or Gemini plan" here: its MCP connector, which
+        HipertroFit does not have (its MCP server is read-only and local). */}
     <Section title={t('How should the Coach run?')} footer={current}>
       <Row icon="rocket" iconTint="var(--indigo)" title={t('Use my self-hosted HipertroFit')}
         subtitle={user ? (serverHasCoach ? t('Your server runs the Coach with whatever provider its admin set up. Nothing new leaves this phone beyond what already syncs.') : config == null ? t('Loading…') : t('Your server has no Coach enabled. Ask its admin, or bring your own key below.')) : t('Connect to my server')}
         accessory="chevron" onClick={() => { if (!user || serverHasCoach) useServer(); else setChoice('server') }} />
-      <Row icon="key" iconTint="var(--acc)" title={t('Bring my own API key')}
-        subtitle={t('This phone calls the provider directly with your key. Every request is charged to your account.')}
+      <Row icon="key" iconTint="var(--acc)" title={t('On this phone: a local model or my own key')}
+        subtitle={t('This phone talks to the model itself: one running on this phone or your home network (Ollama, LM Studio), free; or a provider with your API key, charged to your account.')}
         accessory="chevron" onClick={() => setChoice('byok')} />
     </Section>
 
@@ -303,7 +303,7 @@ export default function CoachSetup() {
         </div>}
       </Section>}
 
-      <Section title={meta.signIn === 'pkce' ? t('Or paste a key') : t('API key')} footer={t('The key is stored in this phone’s secure storage and never leaves it except to call the provider.')}>
+      <Section title={meta.signIn === 'pkce' ? t('Or paste a key') : t('API key')} footer={t('Kept in memory only while the app is open, never saved or synced: paste it again after a restart. A local model needs no key.')}>
         <div style={{ padding: '8px 12px' }}>
           <TextField value={key} type="password" placeholder={hasKey ? '••••••••  ' + t('(saved)') : (meta.keyPlaceholder || 'sk-…')} autoCapitalize="none" autoCorrect="off"
             onChange={e => onKey(e.target.value)} />

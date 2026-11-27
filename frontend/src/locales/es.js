@@ -1702,6 +1702,13 @@ export default {
   'Mesocycle in progress': 'Mesociclo en curso',
   'Last mesocycle': 'Último mesociclo',
   // --- AI Coach (ported from openGym 1.4.5) ---
+  "Kept in memory only while the app is open, never saved or synced: paste it again after a restart. A local model needs no key.": "Solo se guarda en memoria mientras la app está abierta, nunca en disco ni sincronizada: vuelve a pegarla tras reiniciar. Un modelo local no necesita clave.",
+  "Local model": "Modelo local",
+  "Ollama on this phone (Termux) or at home. Nothing leaves your phone or your Wi-Fi.": "Ollama en este teléfono (Termux) o en casa. Nada sale de tu teléfono ni de tu wifi.",
+  "On this phone: a local model or my own key": "En este teléfono: un modelo local o mi propia clave",
+  "This phone talks to the model itself: one running on this phone or your home network (Ollama, LM Studio), free; or a provider with your API key, charged to your account.": "El teléfono habla directamente con el modelo: uno que corre en este teléfono o en tu red de casa (Ollama, LM Studio), gratis; o un proveedor con tu clave de API, que te cobra cada uso.",
+  "Runs on this phone": "Funciona en este teléfono",
+  "Set up the Coach on this phone": "Configurar el Entrenador en este teléfono",
   "Make the box smaller": "Achicar el cuadro",
   "Make the box bigger": "Agrandar el cuadro",
   "Start “{0}” now": "Empezar «{0}» ahora",
@@ -2178,4 +2185,6 @@ export default {
   "It works! {0} model to pick from.": "¡Funciona! {0} modelo para elegir.",
   "It works! {0} models to pick from.": "¡Funciona! {0} modelos para elegir.",
   "Reviews your training and suggests changes. You still say yes or no.": "Revisa tu entrenamiento y sugiere cambios. El sí o el no sigue siendo tuyo.",
+  // --- AI Coach (ported from openGym 1.4.5) ---
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "Rutinas, ejercicios, series y repeticiones, calentamientos, programas, tu horario semanal, ajustes de progresión y lo que tu gimnasio puede cargar.",
 }

@@ -2052,4 +2052,6 @@ export default {
   "It works! {0} model to pick from.": "Çalışıyor! Seçebileceğin {0} model var.",
   "It works! {0} models to pick from.": "Çalışıyor! Seçebileceğin {0} model var.",
   "Reviews your training and suggests changes. You still say yes or no.": "Antrenmanını inceler ve değişiklik önerir. Evet ya da hayır demek yine sende.",
+  // --- AI Coach (ported from openGym 1.4.5) ---
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "Rutinler, egzersizler, setler ve tekrarlar, ısınmalar, programlar, haftalık planın, ilerleme ayarları ve salonunda takılabilecek ağırlıklar.",
 }

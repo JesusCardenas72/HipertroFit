@@ -2066,4 +2066,6 @@ export default {
   "It works! {0} model to pick from.": "ใช้ได้แล้ว! มี {0} โมเดลให้เลือก",
   "It works! {0} models to pick from.": "ใช้ได้แล้ว! มี {0} โมเดลให้เลือก",
   "Reviews your training and suggests changes. You still say yes or no.": "ตรวจดูการฝึกของคุณและแนะนำการเปลี่ยนแปลง คุณยังเป็นคนตัดสินใจเหมือนเดิม",
+  // --- AI Coach (ported from openGym 1.4.5) ---
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "รูทีน ท่า เซ็ตและจำนวนครั้ง วอร์มอัพ โปรแกรม ตารางรายสัปดาห์ การตั้งค่าการเพิ่มน้ำหนัก และน้ำหนักที่ยิมของคุณใส่ได้",
 }

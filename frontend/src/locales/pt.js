@@ -2047,4 +2047,6 @@ export default {
   "It works! {0} model to pick from.": "Funciona! {0} modelo à escolha.",
   "It works! {0} models to pick from.": "Funciona! {0} modelos à escolha.",
   "Reviews your training and suggests changes. You still say yes or no.": "Analisa o teu treino e sugere alterações. Quem diz sim ou não continuas a ser tu.",
+  // --- AI Coach (ported from openGym 1.4.5) ---
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "Rotinas, exercícios, séries e repetições, aquecimentos, programas, o plano semanal, definições de progressão e o que o teu ginásio consegue carregar.",
 }

@@ -2053,4 +2053,6 @@ export default {
   "It works! {0} model to pick from.": "작동해요! 고를 수 있는 모델 {0}개.",
   "It works! {0} models to pick from.": "작동해요! 고를 수 있는 모델 {0}개.",
   "Reviews your training and suggests changes. You still say yes or no.": "운동을 검토하고 변경을 제안해요. 할지 말지는 여전히 직접 정해요.",
+  // --- AI Coach (ported from openGym 1.4.5) ---
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "루틴, 운동, 세트와 반복 수, 워밍업, 프로그램, 주간 일정, 진행 설정, 그리고 체육관에서 걸 수 있는 무게.",
 }

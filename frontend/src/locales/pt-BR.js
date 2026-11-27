@@ -1553,6 +1553,7 @@ export const PT_BR_OVERRIDES = {
   "It works! {0} model to pick from.": "Funciona! {0} modelo para escolher.",
   "It works! {0} models to pick from.": "Funciona! {0} modelos para escolher.",
   "Reviews your training and suggests changes. You still say yes or no.": "Analisa seu treino e sugere mudanças. Quem diz sim ou não continua sendo você.",
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "Rotinas, exercícios, séries e repetições, aquecimentos, programas, sua agenda semanal, configurações de progressão e o que sua academia consegue carregar.",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

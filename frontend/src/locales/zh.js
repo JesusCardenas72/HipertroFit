@@ -2053,4 +2053,6 @@ export default {
   "It works! {0} model to pick from.": "成功了！有 {0} 个模型可选。",
   "It works! {0} models to pick from.": "成功了！有 {0} 个模型可选。",
   "Reviews your training and suggests changes. You still say yes or no.": "回顾你的训练并建议调整。同不同意还是你说了算。",
+  // --- AI Coach (ported from openGym 1.4.5) ---
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "计划、动作、组数和次数、热身、周期计划、每周安排、进阶设置，以及你的健身房能上的重量。",
 }

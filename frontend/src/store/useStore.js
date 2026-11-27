@@ -8,6 +8,7 @@ import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
 import { MOBILE, initReminderSync, nativeLoad, nativeSave, syncReminder, writeAutoBackup } from '../lib/mobile.js'
 import { loadRemote, chooseLocal, forgetRemote, connect } from '../lib/remote.js'
+import { loadCoachDevice, saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
 
 const KEY = 'gym_state_v1'
 export const DEF = {
@@ -200,6 +201,12 @@ export const useStore = create((set, get) => {
     user: (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })(),
     ready: false,
     needsMobileOnboarding: false,   // mobile build only — set true by boot() on a genuine first launch
+    // Mobile build only: how the AI Coach runs on this phone — { mode: 'off'|'server'|'byok',
+    // provider, model, baseUrl, limits } from lib/coach-device.js. Never the key, never a proposal.
+    coachLocal: null,
+    async setCoachLocal(patch) {
+      set({ coachLocal: coachDeviceSettings(await saveCoachDevice(patch)) })
+    },
 
     // Mutate a draft of S via producer fn, then persist + schedule sync.
     // The draft clones a key the first time the producer reaches for it; a key it never reads
@@ -333,6 +340,8 @@ export const useStore = create((set, get) => {
       // case it behaves exactly like the signed-in web flow below, straight from here.
       if (MOBILE) {
         const remote = await loadRemote()
+        // The phone's own Coach settings (a local model or a key of its own), from their file.
+        try { set({ coachLocal: coachDeviceSettings(await loadCoachDevice()) }) } catch { /* Coach stays off */ }
         if (remote?.mode === 'remote') {
           setRemoteAuth(remote.base, remote.token)
           try {

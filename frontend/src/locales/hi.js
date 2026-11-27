@@ -2053,4 +2053,6 @@ export default {
   "It works! {0} model to pick from.": "चल गया! चुनने के लिए {0} मॉडल।",
   "It works! {0} models to pick from.": "चल गया! चुनने के लिए {0} मॉडल।",
   "Reviews your training and suggests changes. You still say yes or no.": "आपकी ट्रेनिंग देखता है और बदलाव सुझाता है। हाँ या ना अब भी आप ही कहते हैं।",
+  // --- AI Coach (ported from openGym 1.4.5) ---
+  "Routines, exercises, sets and reps, warm-ups, programmes, your weekly schedule, progression settings and what your gym can load.": "रूटीन, एक्सरसाइज़, सेट और रेप, वार्म-अप, प्रोग्राम, आपका साप्ताहिक शेड्यूल, प्रोग्रेशन सेटिंग्स और आपके जिम में कितना वज़न लगाया जा सकता है।",
 }
