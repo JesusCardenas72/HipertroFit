@@ -43,15 +43,16 @@ public class MainActivity extends BridgeActivity {
         // AppUpdate downloads a newer APK published on gh-pages and opens the system installer.
         registerPlugin(AppUpdatePlugin.class);
 
-        // Phone upright, tablet on its side. Decided here rather than with a static
-        // screenOrientation in the manifest, which can only name one value for every device.
-        // smallestScreenWidthDp is the short side of the screen, so it doesn't change when the
-        // device is rotated; 600 is Android's own sw600dp tablet line (lib/orientation-lock.js
-        // uses the same one for the installed web app).
+        // Phone upright, tablet free to turn (landscape or portrait, honouring the system
+        // auto-rotate switch). Decided here rather than with a static screenOrientation in the
+        // manifest, which can only name one value for every device. smallestScreenWidthDp is
+        // the short side of the screen, so it doesn't change when the device is rotated; 600 is
+        // Android's own sw600dp tablet line (lib/orientation-lock.js uses the same one for the
+        // installed web app).
         boolean tablet = getResources().getConfiguration().smallestScreenWidthDp >= 600;
         setRequestedOrientation(
             tablet
-                ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                ? ActivityInfo.SCREEN_ORIENTATION_FULL_USER
                 : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         );
 

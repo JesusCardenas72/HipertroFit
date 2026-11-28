@@ -1,4 +1,5 @@
-// Orientation policy: a phone stays upright, a tablet stays on its side.
+// Orientation policy: a phone stays upright, a tablet turns freely — landscape or portrait,
+// whichever way it is held (the wide layout in index.css fills it either way).
 //
 // "Tablet" is the same line Android draws for its sw600dp resource qualifier: the SHORT side
 // of the physical screen is at least 600 CSS px. The short side does not change when the
@@ -18,9 +19,9 @@ export function deviceClass(width, height) {
   return Math.min(w, h) >= TABLET_MIN_SHORT_SIDE ? 'tablet' : 'phone'
 }
 
-/** The Screen Orientation API lock type for that device: 'portrait' or 'landscape'. */
+/** The Screen Orientation API lock type for that device: 'portrait', or 'any' for a tablet. */
 export function lockFor(width, height) {
-  return deviceClass(width, height) === 'tablet' ? 'landscape' : 'portrait'
+  return deviceClass(width, height) === 'tablet' ? 'any' : 'portrait'
 }
 
 /**

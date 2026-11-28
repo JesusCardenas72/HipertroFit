@@ -21,7 +21,7 @@
 }
 .pg-page { background: var(--pg-bg); margin: calc(-8px - var(--sat)) calc(-1 * (var(--pad) + var(--sar))) 0 calc(-1 * (var(--pad) + var(--sal)));
   padding: calc(var(--sat) + 14px) calc(var(--pad) + var(--sar)) 24px calc(var(--pad) + var(--sal)); min-height: 100vh }
-@media (min-width: 1000px) { .pg-page { margin-top: -32px; padding-top: 32px } }
+@media (min-width: 720px) and (min-height: 500px) { .pg-page { margin-top: calc(-32px - var(--sat)); padding-top: calc(32px + var(--sat)) } }
 /* zero specificity, so every .pg-* class below sets its own colour over it */
 :where(.pg) button, :where(.pg) input { font: inherit; color: inherit }
 .pg :focus-visible { outline: 2px solid var(--pg-accent); outline-offset: 2px }

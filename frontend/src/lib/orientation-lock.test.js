@@ -26,17 +26,18 @@ describe('deviceClass', () => {
 })
 
 describe('lockFor', () => {
-  it('locks phones to portrait and tablets to landscape', () => {
+  it('locks phones to portrait and lets tablets turn either way', () => {
     expect(lockFor(390, 844)).toBe('portrait')
-    expect(lockFor(1280, 800)).toBe('landscape')
+    expect(lockFor(1280, 800)).toBe('any')
+    expect(lockFor(800, 1280)).toBe('any')
   })
 })
 
 describe('applyOrientationLock', () => {
   it('asks the API for the device orientation and reports it', async () => {
     const lock = vi.fn().mockResolvedValue(undefined)
-    expect(await applyOrientationLock({ width: 800, height: 1280, orientation: { lock } })).toBe('landscape')
-    expect(lock).toHaveBeenCalledWith('landscape')
+    expect(await applyOrientationLock({ width: 800, height: 1280, orientation: { lock } })).toBe('any')
+    expect(lock).toHaveBeenCalledWith('any')
     expect(await applyOrientationLock({ width: 390, height: 844, orientation: { lock } })).toBe('portrait')
   })
 

@@ -30,14 +30,16 @@
 	<array>
 		<string>armv7</string>
 	</array>
-	<!-- iPhone upright, iPad on its side. An iPad app may only drop orientations when it opts
-	     out of multitasking, hence UIRequiresFullScreen. -->
+	<!-- iPhone upright, iPad free to turn either way (UIRequiresFullScreen kept from when the
+	     iPad was landscape-only, which needed it; it also keeps the iPad layout full-screen). -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>

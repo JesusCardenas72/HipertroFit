@@ -1671,10 +1671,15 @@ h4.sec{
   :root[data-theme="light"] .today-row:hover{background:color-mix(in srgb,var(--surface-2),var(--surface-3) 85%)}
 }
 
-/* --------------------------------------------------- desktop (≥1000px) --- */
+/* ------------------------------------------- tablet and desktop (≥720px) --- */
+/* From 720px wide the two-column layout, floating tab bar and centred sheets take over — a
+   tablet held either way gets it, not just a desktop window. The min-height keeps a phone
+   turned on its side (≈850×390) on the phone layout: the floating bar and timer need room.
+   The top padding adds to --sat rather than replacing it, so on a tablet the first row stays
+   clear of the status bar (on a desktop --sat is 0 and this is the old 32px). */
 .cols{display:block}
-@media (min-width:1000px){
-  .app{max-width:1080px;padding-top:32px}
+@media (min-width:720px) and (min-height:500px){
+  .app{max-width:1080px;padding-top:calc(var(--sat) + 32px)}
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
   .cols>*{min-width:0}
   .app .list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -1682,7 +1687,7 @@ h4.sec{
   /* one column, so a routine can be dragged anywhere along it */
   .app .list.plan-routines,.app .plan-routines .list{display:flex;flex-direction:column}
   .narrow{max-width:640px;margin:0 auto}
-  .wtop{padding-top:32px;margin-top:-32px}
+  .wtop{padding-top:calc(var(--sat) + 32px);margin-top:calc(-1 * (var(--sat) + 32px))}
   .tiles{grid-template-columns:repeat(4,1fr)}
   .cols .tiles{grid-template-columns:1fr 1fr}
   #tabbar{
@@ -1699,6 +1704,13 @@ h4.sec{
   #timer.rest .head{flex:1;min-width:0}
   .exmedia img{height:380px}
   .hm-wrap{display:flex;flex-direction:column;align-items:center}
+}
+/* A touch screen this wide is a tablet: use all of it instead of the 1080px desktop column,
+   and let the single-column screens (Home, Workout, Settings, routine editor) grow past the
+   desktop's 640px — still capped, so a row on a 13" tablet held sideways stays readable. */
+@media (min-width:720px) and (min-height:500px) and (pointer:coarse){
+  .app{max-width:none}
+  .narrow{max-width:900px}
 }
 
 /* --- exercise-wide fields (lib/exercise-defaults.js) --- */
